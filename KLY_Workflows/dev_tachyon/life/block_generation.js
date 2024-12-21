@@ -374,7 +374,7 @@ let generateBlocksPortion = async() => {
     
     if(typeof canGenerateBlocksNow === 'string'){
 
-        generateBatchOfMockTransactionsAndPushToMempool(myShardForThisEpoch)
+        generateBatchOfMockTransactionsAndPushToMempool(BLOCKCHAIN_GENESIS.SHARD)
 
         // Check if <epochFullID> is the same in APPROVEMENT_THREAD and in GENERATION_THREAD
 
