@@ -341,11 +341,12 @@ let setGenesisToState=async()=>{
             storageAbstractionLastPayment:0
 
         }
-        
-        
-        // Store all info about pool(pointer+metadata+storage) to state
 
-        verificationThreadAtomicBatch.put(poolPubKey+'(POOL)_POINTER',bindToShard)
+        // Add the activation status to the validator
+
+        poolContractStorage.activated = true
+        
+        // Store all info about pool(account data + storage) to state
 
         verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
     
