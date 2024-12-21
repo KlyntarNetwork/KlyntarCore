@@ -209,9 +209,7 @@ export let getCurrentShardLeaderURL = async shardID => {
 
         // Get the url of current shard leader on some shard
 
-        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(currentLeaderPubkey+'(POOL)_STORAGE_POOL')
-
-        poolStorage ||= await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
 
         if(poolStorage) return {isMeShardLeader:false,url:poolStorage.poolURL}
@@ -370,10 +368,12 @@ let setGenesisToState=async()=>{
             storageAbstractionLastPayment:0
 
         }
-        
-        // Store all info about pool(pointer+metadata+storage) to state
 
-        verificationThreadAtomicBatch.put(poolPubKey+'(POOL)_POINTER',bindToShard)
+        // Add the activation status to the validator
+
+        poolContractStorage.activated = true
+        
+        // Store all info about pool(account data + storage) to state
 
         verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
     
