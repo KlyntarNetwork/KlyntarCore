@@ -8,6 +8,8 @@ import { getFromState, getUserAccountFromState } from "../../common_functions/st
 
 import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
+import { BLOCKCHAIN_GENESIS } from "../../../../klyn74r.js"
+
 
 
 export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
@@ -46,6 +48,8 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
             }
 
             let onlyOnePossibleStorageForStakingContract = {
+
+                activated: true,
                 
                 percentage,
 
@@ -83,18 +87,18 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             } else {
 
-                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(creator+'(POOL)_POINTER').catch(()=>null)
+                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+creator+'(POOL)').catch(()=>null)
 
                 if(!poolAlreadyExists){
 
-                    GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)_POINTER',originShard)
+                    // Put metadata
+                    
+                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
 
                     // Put storage
                     // NOTE: We just need a simple storage with ID="POOL"
-                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
-                    // Put metadata
-                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
+                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
                 } else return {isOk:false}
 
@@ -118,24 +122,28 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         
         creator: transaction.creator,
 
-        originShard, percentage, poolURL, wssPoolURL
+        originShard, activated, percentage, poolURL, wssPoolURL
     }
     
     */
     updateStakingPool:async (threadContext,delayedTransaction) => {
 
-        let {creator,originShard,percentage,poolURL,wssPoolURL} = delayedTransaction
+        let {creator,originShard,activated,percentage,poolURL,wssPoolURL} = delayedTransaction
 
-        if(percentage >=0 && percentage <= 1 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(percentage >=0 && percentage <= 1 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string' && typeof activated === 'boolean'){
+
+            let poolStorage
 
             if(threadContext === 'APPROVEMENT_THREAD'){
 
-                let poolStorage = await getFromApprovementThreadState(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+                poolStorage = await getFromApprovementThreadState(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
 
                 if(poolStorage){
 
                     // Update values
 
+                    poolStorage.activated = activated
+
                     poolStorage.percentage = percentage
 
                     poolStorage.poolURL = poolURL
@@ -147,11 +155,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             } else {
 
-                let shardWherePoolStorageLocated = await BLOCKCHAIN_DATABASES.STATE.get(creator+'(POOL)_POINTER').catch(()=>null)
+                poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+creator+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-                let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+                if(poolStorage){
 
-                if(shardWherePoolStorageLocated && poolStorage){
+                    poolStorage.activated = activated
 
                     poolStorage.percentage = percentage
 
@@ -163,82 +171,41 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             }
 
-            return {isOk:true}
+            let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+
+            if(poolStorage){
+
+                if(poolStorage.activated){
+
+                    // Check if pool has enough power to be added to pools registry
+
+                    if(poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(creator)){
+
+                        threadById.EPOCH.poolsRegistry.push(creator)
+
+                    }
+
+                } else {
+
+                    // Just remove the pool from registry
+
+                    if(threadById.EPOCH.poolsRegistry.includes(creator)){
+
+                        let indexOfPool = threadById.EPOCH.poolsRegistry.indexOf(creator)
+
+                        threadById.EPOCH.poolsRegistry.splice(indexOfPool, 1)
+
+                    }
+
+                }
+
+                return {isOk:true}
+                
+            } else return {isOk:false,reason:'No such pool'}
 
         } else return {isOk:false}
 
     },
-
-
-    /*
-    
-    delayedTransaction is:
-
-    {
-        type:'deactivateStakingPool',
-
-        poolPubKey:<Format is Ed25519_pubkey>,
-        
-        operation:<activate|deactivate>
-    }
-    
-    */
-    changePoolActivationStatus:async(threadContext,delayedTransaction) => {
-
-        let {poolPubKey, operation} = delayedTransaction
-
-        let poolStorage
-
-        let shardWherePoolStorageLocated
-
-        if(threadContext === 'APPROVEMENT_THREAD'){
-
-            poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
-
-        } else {
-        
-            shardWherePoolStorageLocated = await getFromState(poolPubKey+'(POOL)_POINTER').catch(()=>null)
-
-            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-        }
-
-        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
-
-        if(poolStorage){
-
-            if(operation === 'activate'){
-
-                // Check if pool has enough power to be added to pools registry
-
-                if(poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
-
-                    threadById.EPOCH.poolsRegistry.push(poolPubKey)
-
-                }
-
-            } else {
-
-                // Just remove the pool from registry
-
-                if(threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
-
-                    let indexOfPool = threadById.EPOCH.poolsRegistry.indexOf(poolPubKey)
-
-                    threadById.EPOCH.poolsRegistry.splice(indexOfPool, 1)
-
-                }
-
-            }
-
-
-            return {isOk:true}
-
-        } else return {isOk:false,reason:'No such pool'}
-
-
-    },
-
     
 
     /*
@@ -260,17 +227,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         let poolStorage
 
-        let shardWherePoolStorageLocated
-
         if(threadContext === 'APPROVEMENT_THREAD'){
 
             poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
         } else {
         
-            shardWherePoolStorageLocated = await getFromState(poolPubKey+'(POOL)_POINTER').catch(()=>null)
-
-            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         }
 
@@ -292,7 +255,14 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 poolStorage.totalStakedKly += amount
 
-                
+                // Check if pool has enough power to be added to pools registry
+
+                if(poolStorage.activated && poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+
+                    threadById.EPOCH.poolsRegistry.push(poolPubKey)
+
+                }
+
                 toReturn = {isOk:true}
 
             } else toReturn = {isOk:false,reason:'Overview failed'}
@@ -300,7 +270,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         } else toReturn = {isOk:false,reason:'No such pool'}
 
 
-        if(!toReturn.isOk && shardWherePoolStorageLocated){
+        if(!toReturn.isOk){
 
             // Return the stake 
 
@@ -319,7 +289,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             } else {
 
-                let txCreatorAccount = await getUserAccountFromState(shardWherePoolStorageLocated+':'+staker)
+                let txCreatorAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+staker)
 
                 if(txCreatorAccount){
     
@@ -359,18 +329,14 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         let poolStorage
 
-        let shardWherePoolStorageLocated
-
 
         if(threadContext === 'APPROVEMENT_THREAD'){
 
             poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
         } else {
-        
-            shardWherePoolStorageLocated = await getFromState(poolPubKey+'(POOL)_POINTER').catch(()=>null)
 
-            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         }
 
@@ -414,7 +380,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
             
                         } else {
 
-                            let unstakerAccount = await getFromState(shardWherePoolStorageLocated+':'+unstaker)
+                            let unstakerAccount = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+unstaker)
     
                             if(unstakerAccount){
         
@@ -472,7 +438,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         let poolStorage
 
-        let shardWherePoolStorageLocated
 
         if(threadContext === 'APPROVEMENT_THREAD'){
 
@@ -480,9 +445,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         } else {
         
-            shardWherePoolStorageLocated = await getFromState(targetPool+'(POOL)_POINTER').catch(()=>null)
-
-            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
+            poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         }
 

@@ -1,8 +1,8 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
-
 import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../common_functions/quorum_related.js'
 
 import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
+
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
@@ -33,7 +33,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
         if(!TEMP_CACHE.has('WS:'+pubKey)){
             
-            let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await getFromApprovementThreadState(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            let poolStorage = await getFromApprovementThreadState(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(poolStorage){
 

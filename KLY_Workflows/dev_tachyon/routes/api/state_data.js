@@ -4,7 +4,7 @@ import {getFromState} from '../../common_functions/state_interactions.js'
 
 import {KLY_EVM} from '../../../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {SYSTEM_CONTRACTS} from '../../system_contracts/root.js'
 
@@ -143,7 +143,7 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
         // Take the info related to pool based on data in VT(verification thread) and AT(approvement thread)
 
-        let poolOriginShard = await getFromState(`${request.params.poolID}_POINTER`)
+        let poolOriginShard = BLOCKCHAIN_GENESIS.SHARD
 
         let poolMetadata = await getFromState(`${poolOriginShard}:${request.params.poolID}`)
 
