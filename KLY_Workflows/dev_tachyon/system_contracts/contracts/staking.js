@@ -88,7 +88,7 @@ export let CONTRACT = {
 
     updateStakingPool:async (originShard,transaction) => {
 
-        let {percentage,poolURL,wssPoolURL} = transaction.payload.params
+        let {activated,percentage,poolURL,wssPoolURL} = transaction.payload.params
 
         if(percentage >= 0 && percentage <= 1 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
@@ -110,65 +110,7 @@ export let CONTRACT = {
 
                 creator: transaction.creator,
 
-                originShard, percentage, poolURL, wssPoolURL
-
-            }
-
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
-
-            return {isOk:true}
-
-        } else return {isOk:false, reason: `Failed with input verification`}
-
-    },
-
-
-    /*
-    
-        Method to activate/deactivate validator
-        
-        It might be useful for recovery or when pool owner(validator) want to exit
-        Stakers can still stake/unstake but deactivated vadlidator anyway won't be choosen to quorum
-        Opposite - in case validator is activated and has enough voting power - it will be choosen to quorum and receive rewards
-
-        transaction.payload.params is:
-
-        {
-            poolPubKey:<Format is Ed25519_pubkey>,
-            operation:<activate|deactivate>
-        }
-    
-    */
-
-    changePoolActivationStatus:async(originShard,transaction) => {
-
-        let {operation} = transaction.payload.params
-
-        let shardWhereTargetPoolBinded = await getFromState(transaction.creator+'(POOL)_POINTER')
-
-        if(originShard === shardWhereTargetPoolBinded && (operation === 'activate' || operation === 'deactivate')){
-
-            // Now add it to delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
-            let templateToPush = {
-
-                type:'changePoolActivationStatus',
-
-                poolPubKey: transaction.creator,
-
-                operation
+                originShard, activated, percentage, poolURL, wssPoolURL
 
             }
 

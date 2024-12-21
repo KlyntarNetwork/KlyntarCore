@@ -59,7 +59,7 @@ export let CONTRACT = {
 
             let majorityApproved = verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)
 
-            let targetPoolExists = await getFromState(targetPool+'(POOL)_POINTER').catch(()=>null)
+            let targetPoolExists = await getFromState(originShard+':'+targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(majorityApproved && targetPoolExists){
 

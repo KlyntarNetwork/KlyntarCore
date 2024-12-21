@@ -554,7 +554,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
             for(let leaderPubKey of leadersArray){
 
-                let shardWherePoolStorageLocated = await getFromState(leaderPubKey+'(POOL)_POINTER').catch(()=>null)
+                let shardWherePoolStorageLocated = BLOCKCHAIN_GENESIS.SHARD
 
                 let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+leaderPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
     
@@ -828,11 +828,8 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epoch
 
     if(!endpointURL){
 
-        let poolBinding = await getFromState(poolPubKeyToOpenConnectionWith+'(POOL)_POINTER')
-
-        let poolStorage = await getFromState(poolBinding+':'+poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
+        let poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
         
-
         if(poolStorage) endpointURL = poolStorage.wssPoolURL
     
     }
@@ -1567,10 +1564,8 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     totalFees += blockReward    
 
-    
-    let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
 
-    let mainStorageOfBlockCreator = await getFromState(shardOfBlockCreatorStorage+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
+    let mainStorageOfBlockCreator = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
 
     // Transfer part of fees to account with pubkey associated with block creator
 
