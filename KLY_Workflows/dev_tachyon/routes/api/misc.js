@@ -304,16 +304,14 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
         let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
         if(currentEpochMetadata){
-
-            let myShardForThisEpoch = currentEpochMetadata.TEMP_CACHE.get('MY_SHARD_FOR_THIS_EPOCH')
     
-            let filteredEvent = await TXS_FILTERS[transaction.type](transaction,myShardForThisEpoch)
+            let filteredTx = await TXS_FILTERS[transaction.type](transaction,BLOCKCHAIN_GENESIS.SHARD)
         
-            if(filteredEvent){
+            if(filteredTx){
         
                 response.send({status:'OK'})
         
-                NODE_METADATA.MEMPOOL.push(filteredEvent)
+                NODE_METADATA.MEMPOOL.push(filteredTx)
                                 
             }else response.send({err:`Can't get filtered value of tx`})
 

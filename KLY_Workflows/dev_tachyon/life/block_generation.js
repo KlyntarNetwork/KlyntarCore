@@ -10,7 +10,7 @@ import {signEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
 import {getAllKnownPeers} from '../utils.js'
 
@@ -365,31 +365,13 @@ let generateBlocksPortion = async() => {
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
-    //_________________ Once we moved to new epoch - check the shard where this validator was assigned _________________
-
-    if(!currentEpochMetadata.TEMP_CACHE.has('MY_SHARD_FOR_THIS_EPOCH')){
-
-        for(let [shardID, poolsForShardOnThisEpoch] of Object.entries(epochHandler.leadersSequence)){
-
-            if(poolsForShardOnThisEpoch.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)){
-
-                currentEpochMetadata.TEMP_CACHE.set('MY_SHARD_FOR_THIS_EPOCH',shardID)
-
-            }
-
-        }
-
-    }
-
-    // Safe "if" branch to prevent unnecessary blocks generation
 
     // Must be string value
 
     let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
-    let myShardForThisEpoch = currentEpochMetadata.TEMP_CACHE.get('MY_SHARD_FOR_THIS_EPOCH')
-
-
+    // Safe "if" branch to prevent unnecessary blocks generation
+    
     if(typeof canGenerateBlocksNow === 'string'){
 
         generateBatchOfMockTransactionsAndPushToMempool(myShardForThisEpoch)
@@ -402,7 +384,7 @@ let generateBlocksPortion = async() => {
 
             if(epochIndex !== 0){
 
-                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(myShardForThisEpoch,epochHandler)
+                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(BLOCKCHAIN_GENESIS.SHARD,epochHandler)
 
                 // If we can't find a proof - try to do it later
                 // Only in case it's initial epoch(index is -1) - no sense to push it
@@ -454,18 +436,18 @@ let generateBlocksPortion = async() => {
 
             // Build the template to insert to the extraData of block. Structure is {pool0:ALRP,...,poolN:ALRP}
 
-            let leadersSequenceOfMyShard = epochHandler.leadersSequence[myShardForThisEpoch]
+            let leadersSequenceForShard = epochHandler.leadersSequence[BLOCKCHAIN_GENESIS.SHARD]
     
-            let myIndexInLeadersSequenceForShard = leadersSequenceOfMyShard.indexOf(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+            let myIndexInLeadersSequenceForShard = leadersSequenceForShard.indexOf(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
     
 
             // Get all previous pools - from zero to <my_position>
 
-            let pubKeysOfAllThePreviousPools = leadersSequenceOfMyShard.slice(0,myIndexInLeadersSequenceForShard).reverse()
+            let pubKeysOfAllThePreviousPools = leadersSequenceForShard.slice(0,myIndexInLeadersSequenceForShard).reverse()
 
             let indexOfPreviousLeaderInSequence = myIndexInLeadersSequenceForShard-1
 
-            let previousLeaderPubkey = leadersSequenceOfMyShard[indexOfPreviousLeaderInSequence]
+            let previousLeaderPubkey = leadersSequenceForShard[indexOfPreviousLeaderInSequence]
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________
@@ -497,7 +479,7 @@ let generateBlocksPortion = async() => {
                 if(leaderPubKey !== previousLeaderPubkey && proofThatAtLeastFirstBlockWasCreated) break
 
 
-                let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,leaderPubKey,indexOfPreviousLeaderInSequence,myShardForThisEpoch)
+                let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,leaderPubKey,indexOfPreviousLeaderInSequence,BLOCKCHAIN_GENESIS.SHARD)
                 
                 if(aggregatedLeaderRotationProof){                    
 
