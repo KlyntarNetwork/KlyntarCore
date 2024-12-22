@@ -769,13 +769,11 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
                         } else {
 
-                            let accountOfStakerToReceiveRewards = await getFromState(shardWherePoolStorageLocated+':'+stakerPubKey).catch(()=>null)
+                            let stakerAccount = await getFromState(shardWherePoolStorageLocated+':'+stakerPubKey).catch(()=>null)
 
-                            let forReward = Number(poolStorage.stakers[stakerPubKey].reward.toFixed(9))
-
-                            accountOfStakerToReceiveRewards.balance += forReward
+                            stakerAccount.balance += poolStorage.stakers[stakerPubKey].reward
             
-                            accountOfStakerToReceiveRewards.balance -= 0.000000001
+                            stakerAccount.balance = Number((stakerAccount.balance).toFixed(9))-0.000000001
 
                         }
 
@@ -1798,13 +1796,16 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     if(mainStorageOfBlockCreator.percentage !== 0){
 
-        rewardForBlockCreator = Number((mainStorageOfBlockCreator.percentage * totalFees).toFixed(9))-0.000000001
-
         if(!mainStorageOfBlockCreator.stakers[blockCreatorPubKey]) mainStorageOfBlockCreator.stakers[blockCreatorPubKey] = {kly:0,uno:0,reward:0}
 
         let poolCreatorAccountForRewards = mainStorageOfBlockCreator.stakers[blockCreatorPubKey]  
 
+
+        rewardForBlockCreator = mainStorageOfBlockCreator.percentage * totalFees 
+
         poolCreatorAccountForRewards.reward += rewardForBlockCreator
+
+        poolCreatorAccountForRewards.reward = Number((poolCreatorAccountForRewards.reward).toFixed(9))-0.000000001
 
     }
 
@@ -1821,7 +1822,9 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
         let stakerAccountForReward = mainStorageOfBlockCreator.stakers[stakerPubKey]
 
-        stakerAccountForReward.reward += Number((totalStakerPowerPercent * feesToDistributeAmongStakers).toFixed(9))-0.000000001
+        stakerAccountForReward.reward += totalStakerPowerPercent * feesToDistributeAmongStakers
+
+        stakerAccountForReward.reward = Number((stakerAccountForReward.reward).toFixed(9))-0.000000001
 
     }
 
