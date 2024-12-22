@@ -861,7 +861,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             rwxContracts:{
                 total:0,
                 closed:0
-            }
+            },
+
+            totalKlyStaked:0,
+            totalKlyUnstaked:0
         
         }
 

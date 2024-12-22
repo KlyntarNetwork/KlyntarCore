@@ -176,7 +176,34 @@ FASTIFY_SERVER.get('/verification_thread_stats_per_epoch/:index',async(request,r
 
             // Get these stats from DB related to epoch data
 
-            let emptyTemplate = { totalBlocksNumber:'N/A', totalTxsNumber:'N/A', successfulTxsNumber:'N/A' }
+            let emptyTemplate = {
+
+                totalBlocksNumber:-1,
+                
+                totalTxsNumber:-1,
+    
+                successfulTxsNumber:-1,
+    
+                newUserAccountsNumber:{
+                    native:-1,
+                    evm:-1
+                },
+    
+                newSmartContractsNumber:{
+                    native:-1,
+                    evm:-1
+                },
+    
+                rwxContracts:{
+                    total:-1,
+                    closed:-1
+                },
+    
+                totalKlyStaked:-1,
+                totalKlyUnstaked:-1
+    
+            }
+
 
             let vtStatsPerEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS:${request.params.index}`).catch(()=>emptyTemplate)
 
@@ -211,8 +238,35 @@ FASTIFY_SERVER.get('/historical_stats_per_epoch/:start_index/:limit',async(reque
 
         let limit = +(request.params.limit) // 20 recommended
 
-        let responseObject = {} // epochIndex => {totalBlocksNumber, totalTxsNumber, successfulTxsNumber}
+        let responseObject = {}
 
+        let emptyTemplate = {
+
+            totalBlocksNumber:-1,
+            
+            totalTxsNumber:-1,
+
+            successfulTxsNumber:-1,
+
+            newUserAccountsNumber:{
+                native:-1,
+                evm:-1
+            },
+
+            newSmartContractsNumber:{
+                native:-1,
+                evm:-1
+            },
+
+            rwxContracts:{
+                total:-1,
+                closed:-1
+            },
+
+            totalKlyStaked:-1,
+            totalKlyUnstaked:-1
+
+        }
 
         for(let i = 0 ; i < limit ; i++){
 
@@ -220,7 +274,7 @@ FASTIFY_SERVER.get('/historical_stats_per_epoch/:start_index/:limit',async(reque
 
                                                 .get(`VT_STATS:${startFromEpoch}`)
 
-                                                .catch(()=>({totalBlocksNumber:'N/A', totalTxsNumber:'N/A', successfulTxsNumber:'N/A'}))
+                                                .catch(()=>emptyTemplate)
 
             if(startFromEpoch === WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id){
 
