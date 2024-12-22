@@ -857,6 +857,11 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
                 native:0,
                 evm:0
             },
+
+            rwxContracts:{
+                total:0,
+                closed:0
+            }
         
         }
 
