@@ -120,7 +120,9 @@ export let WORKING_THREADS = {
             rwxContracts:{
                 total:0,
                 closed:0
-            }
+            },
+
+            totalKlyStaked:0
 
         },
 
@@ -145,7 +147,10 @@ export let WORKING_THREADS = {
             rwxContracts:{
                 total:0,
                 closed:0
-            }
+            },
+
+            totalKlyStaked:0,
+            totalKlyUnstaked:0
 
         },
 
@@ -399,6 +404,10 @@ let setGenesisToState=async()=>{
         // Register new pool
 
         poolsRegistryForEpochHandler.push(poolPubKey)
+
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked += poolContractStorage.totalStakedKly
+
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked += poolContractStorage.totalStakedKly
 
     }
 

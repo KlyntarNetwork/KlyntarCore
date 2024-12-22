@@ -303,6 +303,10 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             }
 
+            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked += amount
+                        
+            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked += amount
+
         }
 
         return toReturn
@@ -364,7 +368,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                         // Pay back to staker
 
-
                         if(unstaker.startsWith('0x') && unstaker.length === 42){
 
                             // Return the stake back tp EVM account
@@ -393,6 +396,10 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                             }    
 
                         }
+
+                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked -= amount
+
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyUnstaked += amount
     
                     }
 
