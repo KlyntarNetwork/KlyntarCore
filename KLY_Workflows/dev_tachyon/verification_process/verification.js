@@ -829,7 +829,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             },
 
             totalKlyStaked:0,
-            totalKlyUnstaked:0
+            totalUnoStaked:0
         
         }
 

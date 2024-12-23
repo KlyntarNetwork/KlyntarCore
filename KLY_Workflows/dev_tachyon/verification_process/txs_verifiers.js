@@ -868,7 +868,7 @@ export let VERIFIERS = {
 
                             accountToTransfer = {
                 
-                                type:'eoa', balance:0, nonce:0, gas:0
+                                type:'eoa', balance:BigInt(0), nonce:0, gas:0
                             
                             }
                             
@@ -882,9 +882,9 @@ export let VERIFIERS = {
                         
                         }
 
-                        let transferValue = Number(web3.utils.fromWei(tx.value,'ether'))
+                        let transferValue = BigInt(web3.utils.fromWei(tx.value,'ether')) * (BigInt(10) ** BigInt(18))
 
-                        accountToTransfer.balance = Number((accountToTransfer.balance + transferValue).toFixed(9))
+                        accountToTransfer.balance += transferValue
                         
                         touchedAccounts.push(parsedData.to)
 

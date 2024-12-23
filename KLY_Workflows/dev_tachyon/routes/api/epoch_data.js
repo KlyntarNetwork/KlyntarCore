@@ -200,7 +200,7 @@ FASTIFY_SERVER.get('/verification_thread_stats_per_epoch/:index',async(request,r
                 },
     
                 totalKlyStaked:-1,
-                totalKlyUnstaked:-1
+                totalUnoStaked:-1
     
             }
 
@@ -264,7 +264,7 @@ FASTIFY_SERVER.get('/historical_stats_per_epoch/:start_index/:limit',async(reque
             },
 
             totalKlyStaked:-1,
-            totalKlyUnstaked:-1
+            totalUnoStaked:-1
 
         }
 

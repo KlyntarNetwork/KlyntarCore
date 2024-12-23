@@ -74,6 +74,13 @@ global.__dirname = await import('path').then(async mod=>
 
 
 
+// Add toJSON for BigInt
+BigInt.prototype.toJSON = function () {
+    
+    return this.toString()
+
+}
+
 
 //______INITIALLY,LET'S COPE WITH ENV VARIABLES_________
 

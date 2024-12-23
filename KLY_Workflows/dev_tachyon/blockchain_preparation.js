@@ -122,7 +122,8 @@ export let WORKING_THREADS = {
                 closed:0
             },
 
-            totalKlyStaked:0
+            totalKlyStaked:0,
+            totalUnoStaked:0
 
         },
 
@@ -150,7 +151,7 @@ export let WORKING_THREADS = {
             },
 
             totalKlyStaked:0,
-            totalKlyUnstaked:0
+            totalUnoStaked:0
 
         },
 

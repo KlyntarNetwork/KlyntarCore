@@ -132,9 +132,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     */
     updateStakingPool:async (threadContext,delayedTransaction) => {
 
-        let {creator,originShard,activated,percentage,poolURL,wssPoolURL} = delayedTransaction
+        let {creator,activated,percentage,poolURL,wssPoolURL} = delayedTransaction
 
-        if(percentage >=0 && percentage <= 1 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string' && typeof activated === 'boolean'){
+        let typeCheckIsOk = typeof poolURL === 'string' && typeof wssPoolURL === 'string' && typeof activated === 'boolean'
+
+        let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
+
+        if(typeCheckIsOk && percentageIsOk){
 
             let poolStorage
 
@@ -183,7 +187,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                     // Check if pool has enough power to be added to pools registry
 
-                    if(poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(creator)){
+                    let enoughToBeValidator = BigInt(poolStorage.totalStakedKly) >= BigInt(threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE)
+
+                    if(enoughToBeValidator && !threadById.EPOCH.poolsRegistry.includes(creator)){
 
                         threadById.EPOCH.poolsRegistry.push(creator)
 
@@ -247,25 +253,38 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         if(poolStorage){
 
-            let amountIsBiggerThanMinimalStake = amount >= threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY
+            poolStorage.totalStakedKly = BigInt(poolStorage.totalStakedKly)
+
+            amount = BigInt(amount)
+
+            let amountIsBiggerThanMinimalStake = amount >= BigInt(threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY)
 
             // Here we also need to check if pool is still not fullfilled
 
             if(amountIsBiggerThanMinimalStake){
 
-                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0, reward:0}
+                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:BigInt(0), uno:BigInt(0), reward:BigInt(0)}
 
-                poolStorage.stakers[staker].kly += amount
+                
+                poolStorage.stakers[staker].kly = BigInt(poolStorage.stakers[staker].kly) + amount
 
                 poolStorage.totalStakedKly += amount
 
                 // Check if pool has enough power to be added to pools registry
 
-                if(poolStorage.activated && poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+                let hasEnoughPower = poolStorage.totalStakedKly >= BigInt(threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE)
+
+                if(poolStorage.activated && hasEnoughPower && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
 
                     threadById.EPOCH.poolsRegistry.push(poolPubKey)
 
                 }
+
+                let amountAsNumber = Number(amount / (BigInt(10)**BigInt(18)))
+
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked += amountAsNumber
+                        
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked += amountAsNumber
 
                 toReturn = {isOk:true}
 
@@ -282,11 +301,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 // Return the stake back tp EVM account
 
-                let amountInWei = BigInt(amount) * BigInt(10 ** 18)
-
                 let recipientAccount = await KLY_EVM.getAccount(staker)
 
-                recipientAccount.balance += amountInWei
+                recipientAccount.balance += amount
 
                 await KLY_EVM.updateAccount(staker,recipientAccount)
 
@@ -296,22 +313,12 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                 let txCreatorAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+staker)
 
                 if(txCreatorAccount){
-    
-                    amount = Number(amount.toFixed(9))
         
                     txCreatorAccount.balance += amount
-    
-                    txCreatorAccount.balance -= 0.000000001
-
-                    txCreatorAccount.balance = BigInt(txCreatorAccount.balance) + BigInt(amount)
     
                 }    
 
             }
-
-            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked += amount
-                        
-            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked += amount
 
         }
 
@@ -356,6 +363,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             if(unstakerAccount){
 
+                unstakerAccount.kly = BigInt(unstakerAccount.kly)
+
+                amount = BigInt(amount)
+
+                poolStorage.totalStakedKly = BigInt(poolStorage.totalStakedKly)
+
+
                 let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
                 if(unstakerAccount.kly >= amount){
@@ -364,7 +378,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                     poolStorage.totalStakedKly -= amount
 
-                    if(unstakerAccount.kly === 0 && unstakerAccount.uno === 0){
+                    if(unstakerAccount.kly === BigInt(0) && BigInt(unstakerAccount.uno) === 0){
 
                         delete poolStorage.stakers[unstaker] // just to make pool storage more clear
 
@@ -378,11 +392,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                             // Return the stake back tp EVM account
             
-                            let amountInWei = Math.round(amount * (10 ** 18))
-            
                             let unstakerEvmAccount = await KLY_EVM.getAccount(unstaker)
             
-                            unstakerEvmAccount.balance += BigInt(amountInWei)
+                            unstakerEvmAccount.balance += BigInt(amount)
             
                             await KLY_EVM.updateAccount(unstaker,unstakerEvmAccount)
             
@@ -392,20 +404,18 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                             let unstakerAccount = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+unstaker)
     
                             if(unstakerAccount){
-        
-                                amount = Number(amount.toFixed(9))
     
                                 unstakerAccount.balance += amount
-    
-                                unstakerAccount.balance -= 0.000000001
-        
+            
                             }    
 
                         }
 
-                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked -= amount
+                        let amountAsNumber = Number(amount / (BigInt(10)**BigInt(18)))
 
-                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyUnstaked += amount
+                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked -= amountAsNumber
+                        
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked -= amountAsNumber
     
                     }
 
@@ -464,29 +474,48 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         if(poolStorage){
 
-            let generalUnoChange = 0
+            let generalUnoChange = BigInt(0)
 
-            for(let [staker,valueOfUno] of Object.entries(changesPerAccounts)){
+            poolStorage.totalStakedUno = BigInt(poolStorage.totalStakedUno)
+
+            for(let [staker,valueOfUnoWei] of Object.entries(changesPerAccounts)){
+
+                let bigIntUnoWei = BigInt(valueOfUnoWei)
 
                 if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0, reward:0}
+                
+                poolStorage.stakers[staker] = {
 
-                poolStorage.stakers[staker].uno += valueOfUno
+                    kly:BigInt(poolStorage.stakers[staker].kly),
+                    uno:BigInt(poolStorage.stakers[staker].uno),
+                    reward:BigInt(poolStorage.stakers[staker].reward)
 
-                if(poolStorage.stakers[staker].uno < 0) poolStorage.stakers[staker].uno = 0
+                }
 
-                if(poolStorage.stakers[staker].kly === 0 && poolStorage.stakers[staker].uno === 0){
+                poolStorage.stakers[staker].uno += bigIntUnoWei
+
+                if(poolStorage.stakers[staker].uno < BigInt(0)) poolStorage.stakers[staker].uno = BigInt(0)
+
+                if(poolStorage.stakers[staker].kly === BigInt(0) && poolStorage.stakers[staker].uno === BigInt(0)){
 
                     delete poolStorage.stakers[staker] // just to make pool storage more clear
 
                 }
                 
-                generalUnoChange += valueOfUno
+                generalUnoChange += bigIntUnoWei
 
             }
 
             // Finally modify the general UNO amount for pool
 
             poolStorage.totalStakedUno += generalUnoChange
+
+            let generalUnoChangeAsNumber = Number(generalUnoChange / (BigInt(10)**BigInt(18)))
+            
+            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUnoStaked += generalUnoChangeAsNumber
+                        
+            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalUnoStaked += generalUnoChangeAsNumber
+
             
             return {isOk:true}
 
