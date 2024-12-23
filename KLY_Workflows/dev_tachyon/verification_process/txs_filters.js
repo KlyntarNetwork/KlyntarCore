@@ -22,11 +22,13 @@ let overviewToCheckIfTxIsOk = async(tx,originShard) => {
 
     
     if(result){
+
+        if(tx.payload.amount) tx.payload.amount = BigInt(tx.payload.amount)
         
         return {
             
             v:tx.v,
-            fee:tx.fee,
+            fee: BigInt(tx.fee),
             creator:tx.creator,
             type:tx.type,
             nonce:tx.nonce,
@@ -62,7 +64,7 @@ export let TXS_FILTERS = {
     */
     TX:async (tx,originShard) => {
 
-        return  typeof tx.payload?.amount==='number' && typeof tx.payload.to==='string' && tx.payload.amount>0 && (!tx.payload.rev_t || typeof tx.payload.rev_t==='number')
+        return  typeof tx.payload?.amount==='string' && typeof tx.payload.to==='string' && BigInt(tx.payload.amount) > 0n && (!tx.payload.rev_t || typeof tx.payload.rev_t==='number')
                 &&
                 await overviewToCheckIfTxIsOk(tx,originShard)
 

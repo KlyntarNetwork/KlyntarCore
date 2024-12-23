@@ -35,7 +35,7 @@ import Web3 from 'web3'
 
 let getBlockReward = () => {
 
-    if(WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS === 0) return 0
+    if(WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS === 0) return 0n
 
     else {
 
@@ -48,7 +48,7 @@ let getBlockReward = () => {
         let blockReward = perShardAllocationPerEpoch / blocksPerShardPerEpoch
 
     
-        return blockReward.toFixed(9)-0.000000001    
+        return BigInt(Math.floor(blockReward))
 
     }
 
@@ -1756,51 +1756,59 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     }
 
-    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] += blockReward    
+    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] += Number(blockReward)
 
-    totalFees += blockReward    
+    blockReward *= BigInt(10) ** BigInt(18)
+
+    totalFees += blockReward
 
 
-    let mainStorageOfBlockCreator = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
+    let blockCreatorContractStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
+
+    let poolTotalPower = BigInt(blockCreatorContractStorage.totalStakedKly) + BigInt(blockCreatorContractStorage.totalStakedUno)
 
     // Transfer part of fees to account with pubkey associated with block creator
 
-    let rewardForBlockCreator = 0
+    let rewardForBlockCreator = 0n
 
-    if(mainStorageOfBlockCreator.percentage !== 0){
+    if(blockCreatorContractStorage.percentage !== 0){
 
-        if(!mainStorageOfBlockCreator.stakers[blockCreatorPubKey]) mainStorageOfBlockCreator.stakers[blockCreatorPubKey] = {kly:0,uno:0,reward:0}
+        if(!blockCreatorContractStorage.stakers[blockCreatorPubKey]) blockCreatorContractStorage.stakers[blockCreatorPubKey] = {kly:0,uno:0,reward:0}
 
-        let poolCreatorAccountForRewards = mainStorageOfBlockCreator.stakers[blockCreatorPubKey]  
+        blockCreatorContractStorage.stakers[blockCreatorPubKey].reward = BigInt(blockCreatorContractStorage.stakers[blockCreatorPubKey].reward)
+
+        let poolCreatorAccountForRewards = blockCreatorContractStorage.stakers[blockCreatorPubKey]
 
 
-        rewardForBlockCreator = mainStorageOfBlockCreator.percentage * totalFees 
+        rewardForBlockCreator = (BigInt(blockCreatorContractStorage.percentage) * totalFees) / BigInt(100);
 
         poolCreatorAccountForRewards.reward += rewardForBlockCreator
-
-        poolCreatorAccountForRewards.reward = Number((poolCreatorAccountForRewards.reward).toFixed(9))-0.000000001
 
     }
 
     let feesToDistributeAmongStakers = totalFees - rewardForBlockCreator
 
-
     // Share the rest of fees among stakers due to their % part in total pool stake
-    
-    for(let [stakerPubKey,stakerMetadata] of Object.entries(mainStorageOfBlockCreator.stakers)){
 
-        // Iteration over the stakerPubKey = <any of supported pubkeys>     |       stakerMetadata = {kly,uno,reward}
+    for(let stakerPubKey of Object.keys(blockCreatorContractStorage.stakers)){
 
-        let totalStakerPowerPercent = stakerMetadata.kly / mainStorageOfBlockCreator.totalStakedKly
+        if (stakerPubKey === blockCreatorPubKey) continue
 
-        let stakerAccountForReward = mainStorageOfBlockCreator.stakers[stakerPubKey]
+        let stakerData = blockCreatorContractStorage.stakers[stakerPubKey]
 
-        stakerAccountForReward.reward += totalStakerPowerPercent * feesToDistributeAmongStakers
+        stakerData = {
 
-        stakerAccountForReward.reward = Number((stakerAccountForReward.reward).toFixed(9))-0.000000001
+            kly: BigInt(stakerData[stakerPubKey].kly),
+            uno: BigInt(stakerData[stakerPubKey].uno),
+            reward: BigInt(stakerData[stakerPubKey].reward)
+
+        }
+
+        let stakerTotalPower = stakerData.kly + stakerData.uno
+
+        stakerData.reward += (stakerTotalPower * feesToDistributeAmongStakers) / poolTotalPower
 
     }
-
      
 }
 
@@ -1881,7 +1889,7 @@ let verifyBlock = async(block,shardContext) => {
 
         // To calculate fees and split among pool-creator & stakers. Currently - general fees sum is 0. It will be increased each performed transaction
         
-        let rewardsAndSuccessfulTxsCollector = {fees:0, successfulTxsCounter:0}
+        let rewardsAndSuccessfulTxsCollector = {fees:0n, successfulTxsCounter:0}
 
         let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
@@ -1916,6 +1924,7 @@ let verifyBlock = async(block,shardContext) => {
             // Firstly - execute independent transactions in a parallel way
 
             let txsPromises = []
+            
 
             //____________Add the independent transactions. 1 tx = 1 thread____________
 

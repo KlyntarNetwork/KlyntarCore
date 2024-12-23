@@ -406,9 +406,10 @@ let setGenesisToState=async()=>{
 
         poolsRegistryForEpochHandler.push(poolPubKey)
 
-        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked += poolContractStorage.totalStakedKly
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked += Number(BigInt(poolContractStorage.totalStakedKly) / BigInt(10**18))
 
-        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked += poolContractStorage.totalStakedKly
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked += Number(BigInt(poolContractStorage.totalStakedKly) / BigInt(10**18))
+
 
     }
 
@@ -512,6 +513,8 @@ let setGenesisToState=async()=>{
         } else {
 
             // Else - it's default EOA account
+
+            accountData.balance = (BigInt(accountData.balance) * (BigInt(10) ** BigInt(18))).toString()
 
             verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
 

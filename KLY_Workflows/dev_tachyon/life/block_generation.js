@@ -6,11 +6,11 @@ import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_w
 
 import {getUserAccountFromState} from '../common_functions/state_interactions.js'
 
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
+
 import {signEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
-
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
 import {getAllKnownPeers} from '../utils.js'
 
@@ -72,6 +72,7 @@ let postQuantumBlissKeypair = {
 
 }
 
+let nonces = new Map()
 
 let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
@@ -84,17 +85,19 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
         const myPrivateKey = privateKey;
 
-        let nonce = await getUserAccountFromState(shardID+':'+pubKey).then(acc=>{
+        let nonce = nonces.get(shardID+':'+pubKey) || await getUserAccountFromState(shardID+':'+pubKey).then(acc=>{
 
             return acc.nonce
 
         })
 
-        nonce++
+        nonce += 1
 
-        const fee = 0.03;
+        nonces.set(shardID+':'+pubKey,nonce)
 
-        const amountInKLY = 2;
+        const fee = (BigInt(2)*BigInt(10**17)).toString();
+
+        const amountInWei = (BigInt(2) * BigInt(10**18)).toString();
 
         let signedTx
 
@@ -102,7 +105,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
             to: recipient,
 
-            amount: amountInKLY,
+            amount: amountInWei,
 
             touchedAccounts: [pubKey, recipient]
 
@@ -137,25 +140,26 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     const myPrivateKey = postQuantumBlissKeypair.privateKey;
 
-    let nonce = await getUserAccountFromState(shardID+':'+from).then(acc=>{
+    let nonce = nonces.get(shardID+':'+from) || await getUserAccountFromState(shardID+':'+from).then(acc=>{
 
         return acc.nonce
 
     })
 
+    nonce += 1
 
-    nonce++
+    nonces.set(shardID+':'+from,nonce)
 
-    const fee = 0.03;
+    const fee = (BigInt(2)*BigInt(10**17)).toString();
 
-    const amountInKLY = 2;
+    const amountInWei = (BigInt(2) * BigInt(10**18)).toString();
 
     
     let payload = {
 
         to: recipient,
 
-        amount: amountInKLY,
+        amount: amountInWei,
 
         touchedAccounts: [from, recipient]
 

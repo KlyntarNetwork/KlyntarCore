@@ -180,7 +180,7 @@ export let CONTRACT = {
 
                         let amountInWeiToTransfer = BigInt(subTx.amount)
 
-                        let hasEnoughToTransfer = (rwxContractRelatedToDeal.balance - amountInWeiToTransfer) >= BigInt(0)
+                        let hasEnoughToTransfer = (rwxContractRelatedToDeal.balance - amountInWeiToTransfer) >= 0n
 
                         if(recipientAccount && hasEnoughToTransfer){
 

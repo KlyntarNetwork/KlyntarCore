@@ -32,17 +32,17 @@ import web3 from 'web3'
 
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.sigType==='D') return 5000
+    if(transaction.sigType==='D') return 5000n
     
-    if(transaction.sigType==='T') return 10000
+    if(transaction.sigType==='T') return 10000n
 
-    if(transaction.sigType==='P/D') return 15000
+    if(transaction.sigType==='P/D') return 15000n
 
-    if(transaction.sigType==='P/B') return 15000
+    if(transaction.sigType==='P/B') return 15000n
 
-    if(transaction.sigType==='M') return 7000 + transaction.payload.afk.length * 1000
+    if(transaction.sigType==='M') return 7000n + BigInt(transaction.payload.afk.length) * 1000n
 
-    return 0
+    return 0n
 
 }
 
@@ -176,6 +176,7 @@ let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccou
 
     let dataToPush = {txid,txType,sigType,fee}
 
+
     for(let account of touchedAccounts){
 
         let txsListForAccount = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(()=>[])
@@ -255,16 +256,14 @@ export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,o
 
 let calculateAmountToSpendAndGasToBurn = tx => {
 
-    let goingToSpendInNativeCurrency = BigInt(0)
+    let goingToSpendInNativeCurrency = 0n
 
-    let goingToBurnGasAmount = BigInt(0)
+    let goingToBurnGasAmount = 0n
 
-    let transferAmount = tx.payload.amount || 0
+    let transferAmount = tx.payload.amount || 0n
 
-    transferAmount = BigInt(transferAmount)
-    
 
-    if(tx.fee > 0){
+    if(tx.fee > 0n){
 
         // In this case creator pays fee in native KLY currency
 
@@ -272,21 +271,21 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
-            goingToSpendInNativeCurrency += 0.000002 * (tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
+            goingToSpendInNativeCurrency += 2000n * BigInt(tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
 
-            goingToSpendInNativeCurrency += 0.002 * JSON.stringify(tx.payload.constructorParams.initStorage).length
+            goingToSpendInNativeCurrency += 2_000_000n * BigInt(JSON.stringify(tx.payload.constructorParams.initStorage).length)
 
         } else if(tx.type === 'WVM_CALL'){
 
             let totalSize = JSON.stringify(tx.payload).length
 
-            goingToSpendInNativeCurrency += 0.000002 * totalSize
+            goingToSpendInNativeCurrency += 2_000_000n * BigInt(totalSize)
 
-            goingToSpendInNativeCurrency += tx.payload.gasLimit / 1_000_000_000
+            goingToSpendInNativeCurrency += BigInt(tx.payload.gasLimit)
 
         } // TODO: Add EVM_CALL type
 
-    } else if(tx.fee === 0 && tx.payload.abstractionBoosts){
+    } else if(tx.fee === 0n && tx.payload.abstractionBoosts){
 
         // In this case creator pays using boosts. This should be signed by current quorum
 
@@ -296,7 +295,7 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         if(verifyQuorumMajoritySolution(dataThatShouldBeSignedForBoost,tx.payload.abstractionBoosts?.quorumAgreements)){
 
-            goingToBurnGasAmount = tx.payload.abstractionBoosts.proposedGasToBurn
+            goingToBurnGasAmount = BigInt(tx.payload.abstractionBoosts.proposedGasToBurn)
 
         } return {errReason:`Majority verification failed in attempt to use boost`}
 
@@ -306,26 +305,26 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         goingToSpendInNativeCurrency = transferAmount
 
-        goingToBurnGasAmount = getCostPerSignatureType(tx) * 1_000_000_000 * 2
+        goingToBurnGasAmount = getCostPerSignatureType(tx) * 2n
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
-            goingToBurnGasAmount += (tx.payload.bytecode.length/2)
+            goingToBurnGasAmount += BigInt(tx.payload.bytecode.length/2)
 
         } else if(tx.type === 'WVM_CALL'){
 
             let totalSize = JSON.stringify(tx.payload)
 
-            goingToBurnGasAmount += totalSize
+            goingToBurnGasAmount += BigInt(totalSize)
 
-            goingToBurnGasAmount += tx.payload.gasLimit
+            goingToBurnGasAmount += BigInt(tx.payload.gasLimit)
 
         } // TODO: Add EVM_CALL type
 
     }
 
 
-    return {goingToSpendInNativeCurrency,goingToBurnGasAmount}
+    return {goingToSpendInNativeCurrency, goingToBurnGasAmount}
 
 }
 
@@ -380,9 +379,9 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
 
-        if(tx && tx.fee >= 0 && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
+        if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
-            if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
+            if(senderAccount.nonce >= tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}            
 
             if(Array.isArray(tx.payload.touchedAccounts)){
 
@@ -440,11 +439,11 @@ export let VERIFIERS = {
 
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
+            
             if(!goingToSpend.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= BigInt(0) && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
-
-                    
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0n && BigInt(senderAccount.gas) - goingToSpend.goingToBurnGasAmount >= 0n){
+                            
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
 
@@ -483,7 +482,7 @@ export let VERIFIERS = {
 
                     }
     
-                    senderAccount.gas -= goingToSpend.goingToBurnGasAmount
+                    senderAccount.gas -= Number(goingToSpend.goingToBurnGasAmount)
                 
                     senderAccount.nonce = tx.nonce
                     
@@ -545,9 +544,9 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
 
-        if(tx && tx.fee >= 0 && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
+        if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
-            if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
+            if(senderAccount.nonce >= tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
 
             if(Array.isArray(tx.payload.touchedAccounts) && tx.payload.touchedAccounts.includes(tx.creator)){
 
@@ -559,7 +558,7 @@ export let VERIFIERS = {
 
             if(!goingToSpend.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= BigInt(0) && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0n && BigInt(senderAccount.gas) - goingToSpend.goingToBurnGasAmount >= 0n){
 
                     let contractID = `0x${blake3Hash(originShard+tx.creator+tx.nonce)}`
 
@@ -589,7 +588,7 @@ export let VERIFIERS = {
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
 
-                    senderAccount.gas -= goingToSpend.goingToBurnGasAmount
+                    senderAccount.gas -= Number(goingToSpend.goingToBurnGasAmount)
             
                     senderAccount.nonce = tx.nonce
                     
@@ -634,9 +633,9 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
        
 
-        if(tx && tx.fee >= 0 && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
+        if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
-            if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
+            if(senderAccount.nonce >= tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
 
             if(Array.isArray(tx.payload.touchedAccounts)){
 
@@ -651,7 +650,7 @@ export let VERIFIERS = {
 
             if(!goingToSpend.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= BigInt(0) && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0n && BigInt(senderAccount.gas) - goingToSpend.goingToBurnGasAmount >= 0n){
 
                     let execResultWithStatusAndReason
 
@@ -750,7 +749,7 @@ export let VERIFIERS = {
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
-                    senderAccount.gas -= goingToSpend.goingToBurnGasAmount
+                    senderAccount.gas -= Number(goingToSpend.goingToBurnGasAmount)
             
                     senderAccount.nonce = tx.nonce
                     
@@ -868,7 +867,7 @@ export let VERIFIERS = {
 
                             accountToTransfer = {
                 
-                                type:'eoa', balance:BigInt(0), nonce:0, gas:0
+                                type:'eoa', balance:0n, nonce:0, gas:0
                             
                             }
                             

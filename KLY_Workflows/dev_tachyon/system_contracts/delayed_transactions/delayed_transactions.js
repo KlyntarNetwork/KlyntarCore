@@ -263,7 +263,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             if(amountIsBiggerThanMinimalStake){
 
-                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:BigInt(0), uno:BigInt(0), reward:BigInt(0)}
+                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0n, uno:0n, reward:0n}
 
                 
                 poolStorage.stakers[staker].kly = BigInt(poolStorage.stakers[staker].kly) + amount
@@ -378,7 +378,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                     poolStorage.totalStakedKly -= amount
 
-                    if(unstakerAccount.kly === BigInt(0) && BigInt(unstakerAccount.uno) === 0){
+                    if(unstakerAccount.kly === 0n && BigInt(unstakerAccount.uno) === 0){
 
                         delete poolStorage.stakers[unstaker] // just to make pool storage more clear
 
@@ -474,7 +474,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         if(poolStorage){
 
-            let generalUnoChange = BigInt(0)
+            let generalUnoChange = 0n
 
             poolStorage.totalStakedUno = BigInt(poolStorage.totalStakedUno)
 
@@ -494,9 +494,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 poolStorage.stakers[staker].uno += bigIntUnoWei
 
-                if(poolStorage.stakers[staker].uno < BigInt(0)) poolStorage.stakers[staker].uno = BigInt(0)
+                if(poolStorage.stakers[staker].uno < 0n) poolStorage.stakers[staker].uno = 0n
 
-                if(poolStorage.stakers[staker].kly === BigInt(0) && poolStorage.stakers[staker].uno === BigInt(0)){
+                if(poolStorage.stakers[staker].kly === 0n && poolStorage.stakers[staker].uno === 0n){
 
                     delete poolStorage.stakers[staker] // just to make pool storage more clear
 

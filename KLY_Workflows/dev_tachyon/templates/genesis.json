@@ -50,14 +50,14 @@
 
         "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
         
-            "percentage":0.5,
-            "totalStakedKly":55000,
-            "totalStakedUno": 0,
+            "percentage":50,
+            "totalStakedKly":"55000",
+            "totalStakedUno": "0",
             "stakers":{
                 "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
-                    "kly":55000,
-                    "uno":0,
-                    "reward":0
+                    "kly":"55000",
+                    "uno":"0",
+                    "reward":"0"
                 }
             },
             "poolURL":"http://localhost:7332",
