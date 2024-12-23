@@ -34,13 +34,17 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         let {creator,originShard,percentage,poolURL,wssPoolURL} = delayedTransaction
 
-        if(percentage >= 0 && percentage <= 1 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        let typeCheckIsOk = typeof poolURL === 'string' && typeof wssPoolURL === 'string'
+
+        let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
+
+        if(typeCheckIsOk && percentageIsOk){
 
             let contractMetadataTemplate = {
 
                 type:'contract',
                 lang:'system/staking/sub',
-                balance:0,
+                balance:'0',
                 gas:0,
                 storages:['POOL'],
                 storageAbstractionLastPayment:0
@@ -53,9 +57,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                 
                 percentage,
 
-                totalStakedKly: 0,
+                totalStakedKly: '0',
 
-                totalStakedUno: 0,
+                totalStakedUno: '0',
 
                 shard: originShard,
 
@@ -70,7 +74,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
             // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0,reward:0}
             // We need it to send rewards to this special address
 
-            onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:0,uno:0,reward:0}
+            onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:'0',uno:'0',reward:'0'}
 
             if(threadContext === 'APPROVEMENT_THREAD'){
 
@@ -278,11 +282,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 // Return the stake back tp EVM account
 
-                let amountInWei = Math.round(amount * (10 ** 18))
+                let amountInWei = BigInt(amount) * BigInt(10 ** 18)
 
                 let recipientAccount = await KLY_EVM.getAccount(staker)
 
-                recipientAccount.balance += BigInt(amountInWei)
+                recipientAccount.balance += amountInWei
 
                 await KLY_EVM.updateAccount(staker,recipientAccount)
 
@@ -298,6 +302,8 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                     txCreatorAccount.balance += amount
     
                     txCreatorAccount.balance -= 0.000000001
+
+                    txCreatorAccount.balance = BigInt(txCreatorAccount.balance) + BigInt(amount)
     
                 }    
 

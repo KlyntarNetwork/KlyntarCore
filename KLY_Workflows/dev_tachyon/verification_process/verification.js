@@ -8,7 +8,7 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/qu
 
 import {customLog, blake3Hash, logColors, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
-import {getFromState} from '../common_functions/state_interactions.js'
+import {getFromState, getUserAccountFromState} from '../common_functions/state_interactions.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
@@ -687,13 +687,13 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         
                         let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
         
-                        let amountInWei = Math.round(unlockAmount * (10 ** 18))
+                        let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
 
                         WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`][recipient] = unlockAmount
         
                         let recipientAccount = await KLY_EVM.getAccount(recipient)
         
-                        recipientAccount.balance += BigInt(amountInWei)
+                        recipientAccount.balance += amountInWei
         
                         await KLY_EVM.updateAccount(recipient,recipientAccount)
         
@@ -726,25 +726,23 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
                             // Return the stake back tp EVM account
             
-                            let rewardInWei = Math.round(poolStorage.stakers[stakerPubKey].reward * (10 ** 18))
+                            let rewardInWeiAsString = poolStorage.stakers[stakerPubKey].reward
             
                             let stakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
               
-                            stakerEvmAccount.balance += BigInt(rewardInWei)
+                            stakerEvmAccount.balance += BigInt(rewardInWeiAsString)
               
                             await KLY_EVM.updateAccount(stakerPubKey,stakerEvmAccount)
 
                         } else {
 
-                            let stakerAccount = await getFromState(shardWherePoolStorageLocated+':'+stakerPubKey).catch(()=>null)
+                            let stakerAccount = await getUserAccountFromState(shardWherePoolStorageLocated+':'+stakerPubKey)
 
-                            stakerAccount.balance += poolStorage.stakers[stakerPubKey].reward
-            
-                            stakerAccount.balance = Number((stakerAccount.balance).toFixed(9))-0.000000001
+                            stakerAccount.balance += BigInt(poolStorage.stakers[stakerPubKey].reward)
 
                         }
 
-                        poolStorage.stakers[stakerPubKey].reward = 0
+                        poolStorage.stakers[stakerPubKey].reward = '0'
 
                     }
 

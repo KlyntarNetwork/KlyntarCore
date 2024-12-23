@@ -380,7 +380,7 @@ let setGenesisToState=async()=>{
 
             type:'contract',
             lang:'system/staking/sub',
-            balance:0,
+            balance:'0',
             gas:0,
             storages:['POOL'],
             storageAbstractionLastPayment:0
@@ -476,6 +476,8 @@ let setGenesisToState=async()=>{
 
             let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment} = accountData
 
+            balance = (BigInt(balance) * (BigInt(10) ** BigInt(18))).toString()
+
             let contractMeta = {
 
                 type:'contract',
@@ -547,13 +549,13 @@ let setGenesisToState=async()=>{
 
                         let unlockAmount = unlocksTable["0"]
     
-                        let amountInWei = Math.round(unlockAmount * (10 ** 18))
+                        let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
         
                         WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"][recipient] = unlockAmount
     
                         let recipientAccount = await KLY_EVM.getAccount(recipient)
         
-                        recipientAccount.balance += BigInt(amountInWei)
+                        recipientAccount.balance += amountInWei
         
                         await KLY_EVM.updateAccount(recipient,recipientAccount)
 

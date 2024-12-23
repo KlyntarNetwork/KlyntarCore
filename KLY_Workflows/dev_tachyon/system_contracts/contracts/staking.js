@@ -50,7 +50,11 @@ export let CONTRACT = {
 
         let {percentage,poolURL,wssPoolURL} = transaction.payload.params
 
-        if(percentage >= 0 && percentage <= 1 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        let typeCheckIsOk = typeof poolURL === 'string' && typeof wssPoolURL === 'string'
+
+        let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
+
+        if(typeCheckIsOk && percentageIsOk){
 
             // Get the array of delayed operations
 
@@ -90,7 +94,11 @@ export let CONTRACT = {
 
         let {activated,percentage,poolURL,wssPoolURL} = transaction.payload.params
 
-        if(percentage >= 0 && percentage <= 1 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        let typeCheckIsOk = typeof poolURL === 'string' && typeof wssPoolURL === 'string'
+
+        let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
+
+        if(typeCheckIsOk && percentageIsOk){
 
             // Get the array of delayed operations
 
@@ -133,7 +141,7 @@ export let CONTRACT = {
 
     {
         poolPubKey:<Format is Ed25519_pubkey>,
-        amount:<amount in KLY>
+        amount:<amount in wei>
     }
     
     */
@@ -144,45 +152,43 @@ export let CONTRACT = {
 
         let {poolPubKey,amount} = transaction.payload.params
 
-        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof amount === 'number'){
-            
-            if(amount <= txCreatorAccount.balance){
+        amount = BigInt(amount) // convert from string to bigint
 
-                amount = Number(amount.toFixed(9))
+        if(txCreatorAccount && typeof poolPubKey === 'string'){
+            
+            if(txCreatorAccount.balance >= amount){
 
                 txCreatorAccount.balance -= amount
 
-                txCreatorAccount.balance -= 0.000000001
+                // Now add it to delayed operations
 
-            }
+                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
 
-            // Now add it to delayed operations
+                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+                if(!Array.isArray(delayedTransactions)){
 
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+                    delayedTransactions = []
 
-            if(!Array.isArray(delayedTransactions)){
+                }   
 
-                delayedTransactions = []
+                let templateToPush = {
 
-            }
+                    type:'stake',
 
-            let templateToPush = {
+                    staker: transaction.creator,
 
-                type:'stake',
+                    poolPubKey, amount: amount.toString()
 
-                staker: transaction.creator,
+                }
 
-                poolPubKey, amount
+                delayedTransactions.push(templateToPush)
 
-            }
+                GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
-            delayedTransactions.push(templateToPush)
+                return {isOk:true}
 
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
-
-            return {isOk:true}
+            } else return {isOk:false, reason: `Not enough on balance`}
 
         } else return {isOk:false, reason: `Failed with input verification`}
 
@@ -197,7 +203,7 @@ export let CONTRACT = {
 
     {
         poolPubKey:<Format is Ed25519_pubkey>,
-        amount:<amount in KLY>
+        amount:<amount in wei>
     }
     
     */
@@ -207,7 +213,9 @@ export let CONTRACT = {
 
         let {poolPubKey,amount} = transaction.payload.params
 
-        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof amount === 'number'){
+        amount = BigInt(amount) // convert from string to bigint
+
+        if(txCreatorAccount && typeof poolPubKey === 'string'){
 
             // Now add it to delayed operations
 
@@ -227,7 +235,7 @@ export let CONTRACT = {
 
                 unstaker: transaction.creator,
 
-                poolPubKey, amount
+                poolPubKey, amount: amount.toString()
 
             }
 

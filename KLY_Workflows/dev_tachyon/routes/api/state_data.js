@@ -1,14 +1,12 @@
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {getFromState} from '../../common_functions/state_interactions.js'
 
 import {KLY_EVM} from '../../../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
-
 import {SYSTEM_CONTRACTS} from '../../system_contracts/root.js'
-
-import Web3 from 'web3'
 
 
 
@@ -187,7 +185,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             data = {
                         
-                type:"contract", lang:`system/${accountID}`,  balance:0, gas:0,
+                type:"contract", lang:`system/${accountID}`,  balance:'0', gas:0,
                 
                 storages:[],
                 
@@ -205,7 +203,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             if(account){
 
-                let balanceInKlyUnits = Number(Web3.utils.fromWei(account.balance.toString(),'ether'))
+                let balanceInWei = account.balance.toString()
 
                 let nonce = Number(account.nonce)
 
@@ -215,7 +213,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                     data = {
                         
-                        type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, gas,
+                        type:"contract", lang:"Solidity", balance: balanceInWei, gas,
                         
                         storages:['DEFAULT'],
                         
@@ -225,7 +223,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                 } else {
 
-                    data = { type:"eoa", balance:balanceInKlyUnits, nonce, gas}
+                    data = { type:"eoa", balance:balanceInWei, nonce, gas}
     
                 }
 

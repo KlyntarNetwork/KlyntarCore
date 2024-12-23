@@ -32,15 +32,15 @@ import web3 from 'web3'
 
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.sigType==='D') return 0.005
+    if(transaction.sigType==='D') return 5000
     
-    if(transaction.sigType==='T') return 0.01
+    if(transaction.sigType==='T') return 10000
 
-    if(transaction.sigType==='P/D') return 0.015
+    if(transaction.sigType==='P/D') return 15000
 
-    if(transaction.sigType==='P/B') return 0.015
+    if(transaction.sigType==='P/B') return 15000
 
-    if(transaction.sigType==='M') return 0.007 + transaction.payload.afk.length * 0.001
+    if(transaction.sigType==='M') return 7000 + transaction.payload.afk.length * 1000
 
     return 0
 
@@ -255,11 +255,13 @@ export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,o
 
 let calculateAmountToSpendAndGasToBurn = tx => {
 
-    let goingToSpendInNativeCurrency = 0
+    let goingToSpendInNativeCurrency = BigInt(0)
 
-    let goingToBurnGasAmount = 0
+    let goingToBurnGasAmount = BigInt(0)
 
     let transferAmount = tx.payload.amount || 0
+
+    transferAmount = BigInt(transferAmount)
     
 
     if(tx.fee > 0){
@@ -378,7 +380,7 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
+        if(tx && tx.fee >= 0 && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
             if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
 
@@ -407,7 +409,7 @@ export let VERIFIERS = {
                 
                     type:'eoa',
 
-                    balance:0,
+                    balance:'0',
                     
                     nonce:0,
 
@@ -429,19 +431,26 @@ export let VERIFIERS = {
             
             }
 
+            // Convert balances of sender / recipient from string to BigInt
+
+            senderAccount.balance = BigInt(senderAccount.balance)
+
+            recipientAccount.balance = BigInt(recipientAccount.balance)
+
+
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
             if(!goingToSpend.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= BigInt(0) && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
                     
-                    senderAccount.balance = Number((senderAccount.balance-goingToSpend.goingToSpendInNativeCurrency).toFixed(9))-0.000000002
+                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
 
                     let touchedAccounts = [tx.creator,tx.payload.to]
 
-                    let amountForRecipient = Number(tx.payload.amount.toFixed(9))
+                    let amountForRecipientInWei = BigInt(tx.payload.amount)
 
 
                     if(tx.payload.to.startsWith('0x') && tx.payload.to.length === 42){
@@ -450,13 +459,13 @@ export let VERIFIERS = {
 
                         let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
 
-                        let recipientShardBinding = await getFromState(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`)
+                        let evmAccountMetadata = await getFromState(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`)
 
-                        if(!recipientShardBinding){
+                        if(!evmAccountMetadata){
 
-                            recipientShardBinding = {shard:originShard,gas:0}
+                            evmAccountMetadata = {shard:originShard, gas:0}
 
-                            GLOBAL_CACHES.STATE_CACHE.set(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard,gas:0})
+                            GLOBAL_CACHES.STATE_CACHE.set(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,evmAccountMetadata)
 
                             WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
 
@@ -464,15 +473,13 @@ export let VERIFIERS = {
 
                         }
 
-                        let amountInWei = Math.round(amountForRecipient * (10 ** 18));
-
-                        recipientAccount.balance += BigInt(amountInWei);
+                        recipientAccount.balance += amountForRecipientInWei
 
                         await KLY_EVM.updateAccount(tx.payload.to,recipientAccount)
 
                     } else {
 
-                        recipientAccount.balance += amountForRecipient
+                        recipientAccount.balance += amountForRecipientInWei
 
                     }
     
@@ -538,7 +545,7 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
+        if(tx && tx.fee >= 0 && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
             if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
 
@@ -552,7 +559,7 @@ export let VERIFIERS = {
 
             if(!goingToSpend.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= BigInt(0) && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
                     let contractID = `0x${blake3Hash(originShard+tx.creator+tx.nonce)}`
 
@@ -560,7 +567,7 @@ export let VERIFIERS = {
         
                         type:'contract',
                         lang:tx.payload.lang,
-                        balance:0,
+                        balance:'0',
                         gas:0,
                         storages:['DEFAULT'],
                         storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
@@ -579,7 +586,7 @@ export let VERIFIERS = {
                     WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
 
 
-                    senderAccount.balance = Number((senderAccount.balance-goingToSpend.goingToSpendInNativeCurrency).toFixed(9))-0.000000001
+                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
 
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
@@ -627,7 +634,7 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
        
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
+        if(tx && tx.fee >= 0 && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
             if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
 
@@ -644,7 +651,7 @@ export let VERIFIERS = {
 
             if(!goingToSpend.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= BigInt(0) && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
                     let execResultWithStatusAndReason
 
@@ -741,7 +748,7 @@ export let VERIFIERS = {
         
                     }
 
-                    senderAccount.balance = Number((senderAccount.balance-goingToSpend.goingToSpendInNativeCurrency).toFixed(9))-0.000000001
+                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
             

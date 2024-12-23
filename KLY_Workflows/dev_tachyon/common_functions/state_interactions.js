@@ -13,7 +13,13 @@ export let getUserAccountFromState = async recordID =>{
     
         .then(account=>{
  
-            if(account.type==='eoa') GLOBAL_CACHES.STATE_CACHE.set(recordID,account)
+            if(account.type==='eoa') {
+
+                account.balance = BigInt(account.balance)
+
+                GLOBAL_CACHES.STATE_CACHE.set(recordID,account)
+
+            }
 
             return GLOBAL_CACHES.STATE_CACHE.get(recordID)
  
@@ -23,6 +29,26 @@ export let getUserAccountFromState = async recordID =>{
 }
 
 
+export let getContractAccountFromState = async recordID =>{
+
+    return GLOBAL_CACHES.STATE_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.STATE.get(recordID)
+    
+        .then(account=>{
+ 
+            if(account.type==='contract') {
+
+                account.balance = BigInt(account.balance)
+
+                GLOBAL_CACHES.STATE_CACHE.set(recordID,account)
+
+            }
+
+            return GLOBAL_CACHES.STATE_CACHE.get(recordID)
+ 
+    
+        }).catch(()=>false)
+ 
+}
 
 
 export let getFromState = async recordID => {

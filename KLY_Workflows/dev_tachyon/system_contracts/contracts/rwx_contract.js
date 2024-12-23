@@ -1,4 +1,4 @@
-import {getUserAccountFromState, getFromState} from "../../common_functions/state_interactions.js"
+import {getUserAccountFromState, getContractAccountFromState} from "../../common_functions/state_interactions.js"
 
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
@@ -71,7 +71,7 @@ export let CONTRACT = {
 
             type:'contract',
             lang:'system/rwx/sub',
-            balance:0,
+            balance:'0',
             gas:0,
             storages:['DEFAULT'],
             storageAbstractionLastPayment:-1
@@ -168,7 +168,7 @@ export let CONTRACT = {
 
                 // Check if contract present in state
 
-                let rwxContractRelatedToDeal = await getFromState(originShard+':'+rwxContractId)
+                let rwxContractRelatedToDeal = await getContractAccountFromState(originShard+':'+rwxContractId)
 
                 if(rwxContractRelatedToDeal){
 
@@ -178,15 +178,15 @@ export let CONTRACT = {
                         
                         let recipientAccount = await getUserAccountFromState(originShard+':'+subTx.to)
 
-                        if(recipientAccount && (rwxContractRelatedToDeal.balance - subTx.amount) >= 0){                          
+                        let amountInWeiToTransfer = BigInt(subTx.amount)
 
-                            subTx.amount = Number(subTx.amount.toFixed(9))
+                        let hasEnoughToTransfer = (rwxContractRelatedToDeal.balance - amountInWeiToTransfer) >= BigInt(0)
 
-                            recipientAccount.balance += subTx.amount
+                        if(recipientAccount && hasEnoughToTransfer){
 
-                            recipientAccount.balance -= 0.000000001
+                            recipientAccount.balance += amountInWeiToTransfer
 
-                            rwxContractRelatedToDeal.balance -= subTx.amount
+                            rwxContractRelatedToDeal.balance -= amountInWeiToTransfer
 
                         }   
     
