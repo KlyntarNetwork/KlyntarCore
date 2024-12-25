@@ -423,7 +423,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 // Check if pool has not enough power to be at pools registry
 
-                if(poolStorage.totalStakedKly < threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+                if(poolStorage.totalStakedKly < BigInt(threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE) && threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
 
                     // Remove from registry
 
