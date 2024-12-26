@@ -276,10 +276,8 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
         return
     
     }
-
-    // In case this node is not a shard leader - just check the tx.payload.shard, get the shard leader and transfer tx to that leader
     
-    let whoIsShardLeader = await getCurrentShardLeaderURL(transaction.payload.shard)
+    let whoIsShardLeader = await getCurrentShardLeaderURL()
 
     if(!whoIsShardLeader?.isMeShardLeader){
 
