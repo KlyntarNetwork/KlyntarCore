@@ -210,7 +210,7 @@ global.CREATED_EVM_ACCOUNTS = new Set()
 
 
 
-export let getCurrentShardLeaderURL = async shardID => {
+export let getCurrentShardLeaderURL = async () => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -226,9 +226,9 @@ export let getCurrentShardLeaderURL = async shardID => {
 
     else {
 
-        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<id>}
+        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(BLOCKCHAIN_GENESIS.SHARD) // {currentLeader:<id>}
 
-        let currentLeaderPubkey = epochHandler.leadersSequence[shardID][indexOfCurrentLeaderForShard.currentLeader]
+        let currentLeaderPubkey = epochHandler.leadersSequence[BLOCKCHAIN_GENESIS.SHARD][indexOfCurrentLeaderForShard.currentLeader]
 
         // Get the url of current shard leader on some shard
 
