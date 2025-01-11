@@ -781,7 +781,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Delete the useless temporary info from previous epoch about indexes/hashes to verify on shards
         
-        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[vtEpochFullID]
+        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID]
 
 
         GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
@@ -792,7 +792,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Store the stats during verification thread work in this epoch
         
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
 
 
 
@@ -1436,7 +1436,7 @@ export let startVerificationThread=async()=>{
 
     
 
-    let tempInfoAboutFinalBlocksByPreviousPoolsOnShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
+    let tempInfoAboutFinalBlocksByPreviousPoolsOnShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
 
 
     if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){

@@ -94,7 +94,7 @@ export let WORKING_THREADS = {
         KLY_EVM_METADATA:{}, // shardID => {nextBlockIndex,parentHash,timestamp}
 
 
-        TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS:{},
+        TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS:{},
 
         SID_TRACKER:{}, // shardID => index
 
