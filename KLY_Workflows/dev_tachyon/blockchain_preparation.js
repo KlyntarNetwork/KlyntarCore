@@ -151,13 +151,13 @@ export let WORKING_THREADS = {
             },
 
             totalKlyStaked:0,
-            totalUnoStaked:0
+            totalUnoStaked:0,
+
+            coinsAllocations:{ mining:0 } // {entity:alreadyAllocated}
 
         },
 
         MONTHLY_ALLOCATION_FOR_REWARDS:0, // need this var for block reward
-
-        ALLOCATIONS_PER_EPOCH:{}, // epochIndex => {entity:alreadyAllocated}
 
         EPOCH:{} // epoch handler
 
@@ -528,16 +528,12 @@ let setGenesisToState=async()=>{
 
     if(BLOCKCHAIN_GENESIS.UNLOCKS){
 
-        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"] = {}
-
         for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
 
             if(unlocksTable["0"]){
 
 
                 if(recipient === 'mining') {
-
-                    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"]["mining"] = 0
 
                     WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable["0"]
 
@@ -551,7 +547,7 @@ let setGenesisToState=async()=>{
     
                         let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
         
-                        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"][recipient] = unlockAmount
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations[recipient] = unlockAmount
     
                         let recipientAccount = await KLY_EVM.getAccount(recipient)
         
