@@ -369,7 +369,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector,_atomicBatch)=>{
 
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
         
@@ -776,8 +776,6 @@ export let VERIFIERS = {
 
     */
     EVM_CALL:async(originShard,txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
-
-        global.STATE_CACHE = GLOBAL_CACHES.STATE_CACHE
 
         let evmResult = await KLY_EVM.callEVM(txWithPayload.payload)
 

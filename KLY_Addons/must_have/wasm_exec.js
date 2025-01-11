@@ -693,38 +693,3 @@ let webAssemblyInstantiatedSource = await WebAssembly.instantiate(fs.readFileSyn
 
 
 go.run(webAssemblyInstantiatedSource.instance);
-
-
-// Test
-
-// let [pubKey,prvKey] = globalThis.generateBlissKeypair().split(':')
-
-// console.log('PubKey is ',pubKey);
-
-// console.log('PrvKey is ',prvKey);
-
-// let signa = globalThis.generateBlissSignature(prvKey,'Hello World')
-
-// console.log('Signa is ',signa);
-
-// console.log('Is verified => ',globalThis.verifyBlissSignature('Hello World',pubKey,signa))
-
-// console.log('Is verified => ',globalThis.verifyBlissSignature('Hello World X',pubKey,signa))
-
-// console.log('Gas used => ',global.contractMetadata)
-
-// console.log('\n========[Dilithium]=========\n')
-
-// let [pubKey2,prvKey2] = globalThis.generateDilithiumKeypair().split(':')
-
-// console.log('PubKey is ',pubKey2);
-
-// console.log('PrvKey is ',prvKey2);
-
-// let signa2 = globalThis.generateDilithiumSignature(prvKey2,'Hello World')
-
-// console.log('Signa is ',signa2);
-
-// console.log('Is verified => ',globalThis.verifyDilithiumSignature('Hello World',pubKey2,signa2))
-
-// console.log('Is verified => ',globalThis.verifyDilithiumSignature('Hello World X',pubKey2,signa2))
