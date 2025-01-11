@@ -36,17 +36,4 @@ export let useTemporaryDb = async(operationType,dbReference,keys,values) => {
     
     else if(operationType === 'put') await dbReference.put(keys,values)
 
-    else if(operationType === 'atomicPut'){
-
-        let atomicBatch = dbReference.batch()
-
-        for(let i=0,len=keys.length;i<len;i++) atomicBatch.put(keys[i],values[i])
-
-        await atomicBatch.write()
-        
-
-    }
-
-    else await dbReference.del(keys)
-
 }

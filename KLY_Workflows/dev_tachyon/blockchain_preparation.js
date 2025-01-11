@@ -188,7 +188,7 @@ export let BLOCKCHAIN_DATABASES = {
 
     BLOCKS: resolveDatabase('BLOCKS'), // blockID => block
     
-    STATE: resolveDatabase('STATE'), // contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
+    STATE: resolveDatabase('STATE'), // contains state of accounts, contracts, services, metadata, info about state changes from block N to block N+1 and so on
 
     EPOCH_DATA: resolveDatabase('EPOCH_DATA'), // contains epoch data that shouldn't be deleted each new epoch (e.g. AEFPs, AFPs, etc.) 
 
