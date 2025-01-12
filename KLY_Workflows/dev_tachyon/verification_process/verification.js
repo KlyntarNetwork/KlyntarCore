@@ -1874,6 +1874,8 @@ let verifyBlock = async(block,shardContext) => {
 
     if(overviewOk){
 
+        GLOBAL_CACHES.STATE_CHANGES_CACHE.clear()
+
         // To calculate fees and split among pool-creator & stakers. Currently - general fees sum is 0. It will be increased each performed transaction
         
         let rewardsAndSuccessfulTxsCollector = {fees:0n, successfulTxsCounter:0}
@@ -1893,6 +1895,12 @@ let verifyBlock = async(block,shardContext) => {
 
         // Set the next block's parameters
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
+
+
+        // First of all - set the KLY-EVM state root hash
+
+        GLOBAL_CACHES.STATE_CHANGES_CACHE.set('VERIFICATION_THREAD',WORKING_THREADS.VERIFICATION_THREAD)
+
 
         // To change the state atomically
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
@@ -2019,13 +2027,7 @@ let verifyBlock = async(block,shardContext) => {
             // If no exists - it's obvious that it's the first block
             if(!handlerWithTheFirstBlockData){
 
-                handlerWithTheFirstBlockData = {
-
-                    firstBlockCreator: block.creator,
-                    
-                    firstBlockHash: blockHash
-
-                }
+                handlerWithTheFirstBlockData = { firstBlockCreator: block.creator, firstBlockHash: blockHash }
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData).catch(()=>{})
 
@@ -2139,7 +2141,7 @@ let verifyBlock = async(block,shardContext) => {
             sid:generalBlockIndexInShard
 
         })
-
+        
         
         //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
 

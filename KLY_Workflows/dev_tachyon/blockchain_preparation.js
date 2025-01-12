@@ -76,6 +76,7 @@ export let GLOBAL_CACHES = {
 
     STUFF_CACHE:new Map(), // cache for different stuff during node work
 
+    STATE_CHANGES_CACHE: new Map(), // ... contains changes of state between blocks to provide state rollback functionality
 
 }
 
