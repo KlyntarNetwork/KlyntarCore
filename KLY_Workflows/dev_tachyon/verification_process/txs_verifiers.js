@@ -462,7 +462,7 @@ export let VERIFIERS = {
 
                         if(!evmAccountMetadata){
 
-                            evmAccountMetadata = {shard:originShard, gas:0}
+                            evmAccountMetadata = {gas:0}
 
                             GLOBAL_CACHES.STATE_CACHE.set(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,evmAccountMetadata)
 
