@@ -67,3 +67,6 @@ export let getFromState = async recordID => {
         }).catch(()=>false)
 
 }
+
+
+export let trackStateChange = (key,value) => GLOBAL_CACHES.STATE_CHANGES_CACHE.set(key,value)

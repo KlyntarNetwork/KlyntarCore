@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
+import {getUserAccountFromState, getFromState, trackStateChange} from '../common_functions/state_interactions.js'
 
 import * as functionsToInjectToVm from '../../../KLY_VirtualMachines/common_modules.js'
 
@@ -575,9 +575,15 @@ export let VERIFIERS = {
                 
                     atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
 
+                    trackStateChange(originShard+':'+contractID,1)
+
                     atomicBatch.put(originShard+':'+contractID+'_BYTECODE',tx.payload.bytecode)
+
+                    trackStateChange(originShard+':'+contractID+'_BYTECODE',1)
     
                     atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
+
+                    trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1)
 
 
                     WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++

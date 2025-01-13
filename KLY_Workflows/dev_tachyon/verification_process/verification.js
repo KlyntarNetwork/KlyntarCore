@@ -2,7 +2,7 @@ import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} 
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
-import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
+import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray, trackStateChange} from '../utils.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
@@ -1897,9 +1897,7 @@ let verifyBlock = async(block,shardContext) => {
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
 
 
-        // First of all - set the KLY-EVM state root hash
-
-        GLOBAL_CACHES.STATE_CHANGES_CACHE.set('VERIFICATION_THREAD',WORKING_THREADS.VERIFICATION_THREAD)
+        trackStateChange('VERIFICATION_THREAD',WORKING_THREADS.VERIFICATION_THREAD)
 
 
         // To change the state atomically
@@ -2013,6 +2011,9 @@ let verifyBlock = async(block,shardContext) => {
 
         atomicBatch.put(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
 
+        trackStateChange(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
+
+
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
 
@@ -2072,6 +2073,8 @@ let verifyBlock = async(block,shardContext) => {
 
                 atomicBatch.put('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,{gas:0})
 
+                trackStateChange('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,{gas:0})
+
                 if(account.codeHash.toString('hex') === 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'){
 
                     // It's EOA account
@@ -2090,6 +2093,8 @@ let verifyBlock = async(block,shardContext) => {
                     WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
 
                     atomicBatch.put('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,{storageAbstractionLastPayment:currentEpochIndex})
+
+                    trackStateChange('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,{storageAbstractionLastPayment:currentEpochIndex})
 
                 }
 
@@ -2130,18 +2135,23 @@ let verifyBlock = async(block,shardContext) => {
 
         atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
+        trackStateChange(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,1)
+
         atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
+
+        trackStateChange(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,1)
 
         atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
 
+        trackStateChange(`${shardContext}:EVM_LOGS:${blockToStore.number}`,1)
+
         atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{klyBlock:currentBlockID})
-        
-        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{
 
-            sid:generalBlockIndexInShard
-
-        })
+        trackStateChange(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,1)
+ 
+        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{sid:generalBlockIndexInShard})
         
+        trackStateChange(`BLOCK_RECEIPT:${currentBlockID}`,1)
         
         //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
 

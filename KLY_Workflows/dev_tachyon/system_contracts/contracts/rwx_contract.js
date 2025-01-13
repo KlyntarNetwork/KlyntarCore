@@ -1,4 +1,4 @@
-import {getUserAccountFromState, getContractAccountFromState} from "../../common_functions/state_interactions.js"
+import {getUserAccountFromState, getContractAccountFromState, trackStateChange} from "../../common_functions/state_interactions.js"
 
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
@@ -88,7 +88,11 @@ export let CONTRACT = {
 
         atomicBatch.put(originShard+':'+contractID,futureRwxContractMetadataTemplate)
 
+        trackStateChange(originShard+':'+contractID,1)
+
         atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',futureRwxContractSingleStorage)
+
+        trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1)
 
 
         WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.rwxContracts.total++
