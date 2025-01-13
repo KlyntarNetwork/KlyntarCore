@@ -56,8 +56,7 @@
             "stakers":{
                 "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
                     "kly":"55000000000000000000000",
-                    "uno":"0",
-                    "reward":"0"
+                    "uno":"0"
                 }
             },
             "poolURL":"http://localhost:7332",

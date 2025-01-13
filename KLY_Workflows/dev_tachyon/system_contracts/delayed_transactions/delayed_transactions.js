@@ -63,7 +63,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 shard: originShard,
 
-                stakers:{}, // Pubkey => {kly,uno,reward}
+                stakers:{}, // Pubkey => {kly,uno}
 
                 poolURL,
 
@@ -71,10 +71,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             }
 
-            // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0,reward:0}
-            // We need it to send rewards to this special address
+            // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0}
 
-            onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:'0',uno:'0',reward:'0'}
+            onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:'0',uno:'0'}
 
             if(threadContext === 'APPROVEMENT_THREAD'){
 
@@ -263,7 +262,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             if(amountIsBiggerThanMinimalStake){
 
-                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0n, uno:0n, reward:0n}
+                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0n, uno:0n}
 
                 
                 poolStorage.stakers[staker].kly = BigInt(poolStorage.stakers[staker].kly) + amount
@@ -482,13 +481,12 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 let bigIntUnoWei = BigInt(valueOfUnoWei)
 
-                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0, reward:0}
+                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0}
                 
                 poolStorage.stakers[staker] = {
 
                     kly:BigInt(poolStorage.stakers[staker].kly),
-                    uno:BigInt(poolStorage.stakers[staker].uno),
-                    reward:BigInt(poolStorage.stakers[staker].reward)
+                    uno:BigInt(poolStorage.stakers[staker].uno)
 
                 }
 

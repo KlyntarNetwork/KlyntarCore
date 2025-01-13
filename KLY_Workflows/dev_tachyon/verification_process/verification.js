@@ -2,13 +2,13 @@ import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} 
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
-import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray, trackStateChange} from '../utils.js'
+import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {customLog, blake3Hash, logColors, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
-import {getFromState, getUserAccountFromState} from '../common_functions/state_interactions.js'
+import {getFromState, getUserAccountFromState, trackStateChange} from '../common_functions/state_interactions.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
@@ -660,54 +660,6 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         //     }
 
         // }
-
-
-        // Distribute rewards
-        
-        for(let leadersArray of Object.values(vtEpochHandler.leadersSequence)){
-
-            // Now iterate over pools who participated in blocks generation process
-
-            for(let leaderPubKey of leadersArray){
-
-                let shardWherePoolStorageLocated = BLOCKCHAIN_GENESIS.SHARD
-
-                let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+leaderPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-    
-                if(poolStorage){
-
-                    for(let stakerPubKey of Object.keys(poolStorage.stakers)){
-
-
-                        if(stakerPubKey.startsWith('0x') && stakerPubKey.length === 42){
-
-                            // Return the stake back tp EVM account
-            
-                            let rewardInWeiAsString = poolStorage.stakers[stakerPubKey].reward
-            
-                            let stakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
-              
-                            stakerEvmAccount.balance += BigInt(rewardInWeiAsString)
-              
-                            await KLY_EVM.updateAccount(stakerPubKey,stakerEvmAccount)
-
-                        } else {
-
-                            let stakerAccount = await getUserAccountFromState(shardWherePoolStorageLocated+':'+stakerPubKey)
-
-                            stakerAccount.balance += BigInt(poolStorage.stakers[stakerPubKey].reward)
-
-                        }
-
-                        poolStorage.stakers[stakerPubKey].reward = '0'
-
-                    }
-
-                }
-
-            }
-
-        }
     
 
         // Nullify values for the upcoming epoch
@@ -1721,15 +1673,15 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
         2) In this list (poolStorage.stakers) we have structure like:
 
             {
-                poolCreatorPubkey:{kly,uno,reward},
+                poolCreatorPubkey:{kly,uno},
                 ...
-                stakerPubkey:{kly,uno,reward}
+                stakerPubkey:{kly,uno}
                 ...
             }
 
         3) Send <stakingPoolStorage.percentage * totalFees> to block creator:
 
-            poolStorage.stakers[poolCreatorPubkey].reward += stakingPoolStorage.percentage * totalFees
+            poolCreatorAccount.balance += stakingPoolStorage.percentage * totalFees
 
         2) Distribute the rest among other stakers
 
@@ -1737,7 +1689,7 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
                 2.1) Go through poolStorage.stakers
 
-                2.2) Increase reward poolStorage.stakers[stakerPubkey].reward += totalStakerPowerPercentage * restOfFees
+                2.2) Increase balance - stakerAccount.balance += totalStakerPowerPercentage * restOfFees
     
     */
     
@@ -1752,48 +1704,53 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     let blockCreatorContractStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
 
+    let blockCreatorAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey)
+
     let poolTotalPower = BigInt(blockCreatorContractStorage.totalStakedKly) + BigInt(blockCreatorContractStorage.totalStakedUno)
 
-    // Transfer part of fees to account with pubkey associated with block creator
+    // 1. Transfer part of fees to account with pubkey associated with block creator
 
     let rewardForBlockCreator = 0n
 
     if(blockCreatorContractStorage.percentage !== 0){
 
-        if(!blockCreatorContractStorage.stakers[blockCreatorPubKey]) blockCreatorContractStorage.stakers[blockCreatorPubKey] = {kly:0,uno:0,reward:0}
+        rewardForBlockCreator = (BigInt(blockCreatorContractStorage.percentage) * totalFees) / BigInt(100)
 
-        blockCreatorContractStorage.stakers[blockCreatorPubKey].reward = BigInt(blockCreatorContractStorage.stakers[blockCreatorPubKey].reward)
-
-        let poolCreatorAccountForRewards = blockCreatorContractStorage.stakers[blockCreatorPubKey]
-
-
-        rewardForBlockCreator = (BigInt(blockCreatorContractStorage.percentage) * totalFees) / BigInt(100);
-
-        poolCreatorAccountForRewards.reward += rewardForBlockCreator
-
+        blockCreatorAccount.balance = BigInt(blockCreatorAccount.balance) + rewardForBlockCreator
+        
     }
 
+    // 2. Share the rest of fees among stakers due to their % part in total pool stake
+    
     let feesToDistributeAmongStakers = totalFees - rewardForBlockCreator
-
-    // Share the rest of fees among stakers due to their % part in total pool stake
 
     for(let stakerPubKey of Object.keys(blockCreatorContractStorage.stakers)){
 
-        if (stakerPubKey === blockCreatorPubKey) continue
-
         let stakerData = blockCreatorContractStorage.stakers[stakerPubKey]
 
-        stakerData = {
-
-            kly: BigInt(stakerData[stakerPubKey].kly),
-            uno: BigInt(stakerData[stakerPubKey].uno),
-            reward: BigInt(stakerData[stakerPubKey].reward)
-
-        }
+        stakerData = {kly: BigInt(stakerData.kly), uno: BigInt(stakerData.uno)}
 
         let stakerTotalPower = stakerData.kly + stakerData.uno
 
-        stakerData.reward += (stakerTotalPower * feesToDistributeAmongStakers) / poolTotalPower
+        let rewardInWei = (stakerTotalPower * feesToDistributeAmongStakers) / poolTotalPower
+
+        if(stakerPubKey.startsWith('0x') && stakerPubKey.length === 42){
+
+            // Return the stake back tp EVM account
+
+            let stakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
+
+            stakerEvmAccount.balance += rewardInWei
+
+            await KLY_EVM.updateAccount(stakerPubKey,stakerEvmAccount)
+
+        } else {
+
+            let stakerAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+stakerPubKey)
+
+            stakerAccount.balance = BigInt(stakerAccount.balance) + rewardInWei
+
+        }
 
     }
      
