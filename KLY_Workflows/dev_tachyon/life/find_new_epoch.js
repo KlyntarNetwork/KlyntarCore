@@ -220,7 +220,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Structure is {firstBlockCreator,firstBlockHash}
             
-                let storedFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${currentEpochHandler.id}:${shardID}`).catch(()=>null)
+                let storedFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochHandler.id}:${shardID}`).catch(()=>null)
 
                 if(!storedFirstBlockData){
 

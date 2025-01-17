@@ -2027,20 +2027,14 @@ let verifyBlock = async(block,shardContext) => {
 
             // Structure is {firstBlockCreator,firstBlockHash}
             
-            let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`).catch(()=>false)
+            let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`).catch(()=>null)
 
             // If no exists - it's obvious that it's the first block
             if(!handlerWithTheFirstBlockData){
 
-                handlerWithTheFirstBlockData = {
+                handlerWithTheFirstBlockData = { firstBlockCreator: block.creator, firstBlockHash: blockHash }
 
-                    firstBlockCreator: block.creator,
-                    
-                    firstBlockHash: blockHash
-
-                }
-
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData).catch(()=>{})
+                atomicBatch.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData)
 
             }
 
