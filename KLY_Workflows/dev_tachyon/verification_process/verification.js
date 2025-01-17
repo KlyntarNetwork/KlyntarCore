@@ -779,6 +779,9 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         }
 
+        // Update the KLY-EVM state root after allocations
+
+        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
         
         // Commit the changes of state using atomic batch

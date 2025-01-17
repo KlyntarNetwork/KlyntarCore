@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
-
 import {getUserAccountFromState, getFromState, trackStateChange} from '../common_functions/state_interactions.js'
+
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import * as functionsToInjectToVm from '../../../KLY_VirtualMachines/common_modules.js'
 

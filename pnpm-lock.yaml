@@ -11,6 +11,9 @@ importers:
       '@assemblyscript/loader':
         specifier: ^0.20.19
         version: 0.20.19
+      '@ethereumjs/trie':
+        specifier: 5.0.5
+        version: 5.0.5
       '@ethereumjs/tx':
         specifier: 4.1.2
         version: 4.1.2
@@ -169,6 +172,10 @@ packages:
     resolution: {integrity: sha512-tqsQiBQDQdmPWE1xkkBq4rlSW5QZpLOUJ5RJh2/9fug+q9tnUhuZoVLk7s0scUIKTOzEtR72DFBXI4WiZcMpvw==}
     engines: {node: '>=14'}
     hasBin: true
+
+  '@ethereumjs/trie@5.0.5':
+    resolution: {integrity: sha512-H3gHtYxJVGfkT4H05LTJfD1W6h9WZYNkfhTUyAYruNZKFitkSHUM/bEFWH/GIhxt5SAkf283F5uJOx7X2Fr6pQ==}
+    engines: {node: '>=14'}
 
   '@ethereumjs/tx@3.5.2':
     resolution: {integrity: sha512-gQDNJWKrSDGu2w7w0PzVXVBNMzb7wwdDOmOqczmhNjqFxFuIbhVJDwiGEnxFNC2/b8ifcZzY7MLcluizohRzNw==}
@@ -359,6 +366,9 @@ packages:
 
   '@types/pbkdf2@3.1.2':
     resolution: {integrity: sha512-uRwJqmiXmh9++aSu1VNEn3iIxWOhd8AHXNSdlaLfdAAdSTY9jYVeGWnzejM3dvrkbqE3/hyQkQQ29IFATEGlew==}
+
+  '@types/readable-stream@2.3.15':
+    resolution: {integrity: sha512-oM5JSKQCcICF1wvGgmecmHldZ48OZamtMxcGGVICOJA8o8cahXC1zEVAif8iwoc5j8etxFaRFnf095+CDsuoFQ==}
 
   '@types/responselike@1.0.3':
     resolution: {integrity: sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw==}
@@ -3094,6 +3104,14 @@ snapshots:
 
   '@ethereumjs/rlp@4.0.1': {}
 
+  '@ethereumjs/trie@5.0.5':
+    dependencies:
+      '@ethereumjs/rlp': 4.0.1
+      '@ethereumjs/util': 8.1.0
+      '@types/readable-stream': 2.3.15
+      ethereum-cryptography: 2.1.2
+      readable-stream: 3.6.2
+
   '@ethereumjs/tx@3.5.2':
     dependencies:
       '@ethereumjs/common': 2.6.5
@@ -3373,24 +3391,24 @@ snapshots:
 
   '@types/bn.js@5.1.5':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/cacheable-request@6.0.3':
     dependencies:
       '@types/http-cache-semantics': 4.0.4
       '@types/keyv': 3.1.4
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
       '@types/responselike': 1.0.3
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/http-cache-semantics@4.0.4': {}
 
   '@types/keyv@3.1.4':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/node@12.20.55': {}
 
@@ -3402,9 +3420,14 @@ snapshots:
     dependencies:
       '@types/node': 20.10.5
 
+  '@types/readable-stream@2.3.15':
+    dependencies:
+      '@types/node': 20.10.5
+      safe-buffer: 5.1.2
+
   '@types/responselike@1.0.3':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/secp256k1@4.0.6':
     dependencies:
@@ -3414,7 +3437,7 @@ snapshots:
 
   '@types/ws@7.4.7':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@ungap/promise-all-settled@1.1.2': {}
 
