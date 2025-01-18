@@ -449,15 +449,7 @@ export let VERIFIERS = {
 
                         if(!evmAccountMetadata){
 
-                            evmAccountMetadata = {gas:0}
-
-                            GLOBAL_CACHES.STATE_CACHE.set(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,evmAccountMetadata)
-
-                            trackStateChange(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,1,'put')
-
-                            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
-
-                            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+                            global.CREATED_EVM_ACCOUNTS.add('0x'+lowerCaseAddressAsStringWithout0x)
 
                         }
 
