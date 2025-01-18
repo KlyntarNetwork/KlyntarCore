@@ -1781,6 +1781,8 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
             atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
 
+            trackStateChange('TX:'+txid,1,'put')
+
         }
 
         if(isOk) rewardsAndSuccessfulTxsCollector.successfulTxsCounter++
@@ -1809,6 +1811,8 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
     
                 atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
     
+                trackStateChange('TX:'+txid,1,'put')
+
             }
 
             if(isOk) rewardsAndSuccessfulTxsCollector.successfulTxsCounter++

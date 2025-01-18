@@ -444,8 +444,6 @@ let setGenesisToState=async()=>{
 
             let lowerCaseAddressWith0xPrefix = evmKey.toLowerCase()
 
-            // Add assignment to shard
-
             verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAddressWith0xPrefix,{gas})
 
             if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})

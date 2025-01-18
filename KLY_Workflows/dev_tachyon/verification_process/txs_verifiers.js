@@ -795,6 +795,8 @@ export let VERIFIERS = {
 
                 atomicBatch.put('TX:'+tx.hash,{tx,receipt,originShard})
 
+                trackStateChange('TX:'+tx.hash,1,'put')
+
                 let propsedFee = Number(web3.utils.fromWei((tx.gasLimit * tx.gasPrice).toString(),'ether'))
                                 
                 let touchedAccounts = [tx.from, tx.to]
