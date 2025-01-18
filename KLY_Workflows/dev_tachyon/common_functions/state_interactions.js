@@ -68,5 +68,11 @@ export let getFromState = async recordID => {
 
 }
 
+/**
+ * @param {'put'|'delete'|'update'} crudOp
+ */
+export let trackStateChange = (key,value,crudOp) => {
 
-export let trackStateChange = (key,value) => GLOBAL_CACHES.STATE_CHANGES_CACHE.set(key,value)
+    GLOBAL_CACHES.STATE_CHANGES_CACHE[crudOp][key] = value
+
+}

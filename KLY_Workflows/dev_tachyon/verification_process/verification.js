@@ -1834,7 +1834,7 @@ let verifyBlock = async(block,shardContext) => {
 
     if(overviewOk){
 
-        GLOBAL_CACHES.STATE_CHANGES_CACHE.clear()
+        GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
 
         // To calculate fees and split among pool-creator & stakers. Currently - general fees sum is 0. It will be increased each performed transaction
         
@@ -1977,7 +1977,7 @@ let verifyBlock = async(block,shardContext) => {
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
 
-        // Try to set the pointer to the first block in epoch on specific shard
+        // Try to set the pointer to the first block in epoch
 
         if(block.index === 0){
 
@@ -1991,6 +1991,8 @@ let verifyBlock = async(block,shardContext) => {
                 handlerWithTheFirstBlockData = { firstBlockCreator: block.creator, firstBlockHash: blockHash }
 
                 atomicBatch.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData)
+
+                trackStateChange(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
 
             }
 
