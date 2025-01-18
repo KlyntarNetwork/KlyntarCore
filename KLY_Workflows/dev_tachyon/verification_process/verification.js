@@ -743,7 +743,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             totalKlyStaked:0,
             totalUnoStaked:0,
 
-            coinsAllocations:{ mining:0 }
+            coinsAllocations:{ blockRewards:0 }
         
         }
 
@@ -755,7 +755,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
                 if(unlocksTable[`${nextVtEpochIndex}`]){
 
-                    if(recipient === 'mining') {
+                    if(recipient === 'blockRewards') {
 
                         WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable[`${nextVtEpochIndex}`]
 
@@ -1702,7 +1702,7 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
     
     let blockRewardAsBigInt = getBlockReward()
 
-    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations.mining += Number(blockRewardAsBigInt)
+    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations.blockRewards += Number(blockRewardAsBigInt)
 
     let blockRewardAsBigIntInWei = blockRewardAsBigInt * BigInt(10) ** BigInt(18)
 

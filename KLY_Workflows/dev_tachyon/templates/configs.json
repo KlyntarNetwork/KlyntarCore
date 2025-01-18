@@ -27,7 +27,6 @@
         "TIMEOUT_TO_FIND_TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS":10000,
     
         "TXS_MEMPOOL_SIZE":300000,
-        "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
         
         "BOOTSTRAP_NODES":[
             "http://localhost:7332",

@@ -154,7 +154,7 @@ export let WORKING_THREADS = {
             totalKlyStaked:0,
             totalUnoStaked:0,
 
-            coinsAllocations:{ mining:0 } // {entity:alreadyAllocated}
+            coinsAllocations:{ blockRewards:0 } // {entity:alreadyAllocated}
 
         },
 
@@ -529,21 +529,18 @@ let setGenesisToState=async()=>{
 
         for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
 
-            if(unlocksTable["0"]){
+            if(BLOCKCHAIN_GENESIS.EVM[recipient] || recipient === 'blockRewards'){
 
+                if(unlocksTable["0"]){
 
-                if(recipient === 'mining') {
-
-                    WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable["0"]
-
-                }
-
-                if(recipient.startsWith('0x') && recipient.length === 42){
-
-                    if(BLOCKCHAIN_GENESIS.EVM[recipient]){
-
-                        let unlockAmount = unlocksTable["0"]
+                    if(recipient === 'blockRewards') {
     
+                        WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable["0"]
+    
+                    } else if(recipient.startsWith('0x') && recipient.length === 42){
+    
+                        let unlockAmount = unlocksTable["0"]
+        
                         let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
         
                         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations[recipient] = unlockAmount
@@ -553,12 +550,12 @@ let setGenesisToState=async()=>{
                         recipientAccount.balance += amountInWei
         
                         await KLY_EVM.updateAccount(recipient,recipientAccount)
-
-                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM")
+        
+                    }    
     
-                }    
+                }
 
-            }
+            } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM")
 
         }
 
