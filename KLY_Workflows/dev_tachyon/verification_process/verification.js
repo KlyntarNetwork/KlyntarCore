@@ -1,5 +1,7 @@
 import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
+import {getFromState, getUserAccountFromState, trackStateChange} from '../common_functions/state_interactions.js'
+
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
 import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
@@ -7,8 +9,6 @@ import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArra
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {customLog, blake3Hash, logColors, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
-
-import {getFromState, getUserAccountFromState, trackStateChange} from '../common_functions/state_interactions.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
@@ -633,6 +633,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && delayedTransactions){
+
+        GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
+
+        GLOBAL_CACHES.STATE_CACHE.clear()
         
         
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
@@ -1836,6 +1840,8 @@ let verifyBlock = async(block,shardContext) => {
 
         GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
 
+        GLOBAL_CACHES.STATE_CACHE.clear()
+
         // To calculate fees and split among pool-creator & stakers. Currently - general fees sum is 0. It will be increased each performed transaction
         
         let rewardsAndSuccessfulTxsCollector = {fees:0n, successfulTxsCounter:0}
@@ -1857,7 +1863,7 @@ let verifyBlock = async(block,shardContext) => {
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
 
 
-        trackStateChange('VERIFICATION_THREAD',WORKING_THREADS.VERIFICATION_THREAD)
+        trackStateChange('VERIFICATION_THREAD',WORKING_THREADS.VERIFICATION_THREAD,'update')
 
 
         // To change the state atomically
@@ -1962,16 +1968,11 @@ let verifyBlock = async(block,shardContext) => {
         }
 
 
-        
-        if(GLOBAL_CACHES.STATE_CACHE.size>=CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE) GLOBAL_CACHES.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
-
-
-
         let generalBlockIndexInShard = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
 
         atomicBatch.put(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
 
-        trackStateChange(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
+        trackStateChange(`SID:${shardContext}:${generalBlockIndexInShard}`,1,'put')
 
 
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
@@ -1992,7 +1993,7 @@ let verifyBlock = async(block,shardContext) => {
 
                 atomicBatch.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData)
 
-                trackStateChange(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
+                trackStateChange(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData,'put')
 
             }
 
@@ -2035,7 +2036,7 @@ let verifyBlock = async(block,shardContext) => {
 
                 atomicBatch.put('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,{gas:0})
 
-                trackStateChange('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,{gas:0})
+                trackStateChange('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,1,'put')
 
                 if(account.codeHash.toString('hex') === 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'){
 
@@ -2056,7 +2057,7 @@ let verifyBlock = async(block,shardContext) => {
 
                     atomicBatch.put('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,{storageAbstractionLastPayment:currentEpochIndex})
 
-                    trackStateChange('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,{storageAbstractionLastPayment:currentEpochIndex})
+                    trackStateChange('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,1,'put')
 
                 }
 
@@ -2097,23 +2098,23 @@ let verifyBlock = async(block,shardContext) => {
 
         atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
-        trackStateChange(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,1)
+        trackStateChange(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,1,'put')
 
         atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
 
-        trackStateChange(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,1)
+        trackStateChange(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,1,'put')
 
         atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-        trackStateChange(`${shardContext}:EVM_LOGS:${blockToStore.number}`,1)
+        trackStateChange(`${shardContext}:EVM_LOGS:${blockToStore.number}`,1,'put')
 
         atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{klyBlock:currentBlockID})
 
-        trackStateChange(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,1)
+        trackStateChange(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,1,'put')
  
         atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{sid:generalBlockIndexInShard})
         
-        trackStateChange(`BLOCK_RECEIPT:${currentBlockID}`,1)
+        trackStateChange(`BLOCK_RECEIPT:${currentBlockID}`,1,'put')
         
         //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
 
@@ -2121,8 +2122,11 @@ let verifyBlock = async(block,shardContext) => {
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
         await atomicBatch.write()
-        
+
         vtStatsLog(block.epoch,shardContext,block.creator,block.index,blockHash,block.transactions.length)
+
+        console.log('DEBUG: State changes => ',GLOBAL_CACHES.STATE_CHANGES_CACHE)
+        
 
     }
 

@@ -105,11 +105,6 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
             let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
 
             let templateToPush = {
 
@@ -122,8 +117,6 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
             }
 
             delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
             return {isOk:true,reason:'EVM'}
 
@@ -139,12 +132,6 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
             let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
             let templateToPush = {
 
                 type:'unstake',
@@ -156,8 +143,6 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
             }
 
             delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
             return {isOk:true,reason:'EVM'}
 
@@ -424,6 +409,8 @@ export let VERIFIERS = {
 
                 GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
 
+                trackStateChange(originShard+':'+tx.payload.to,1,'put')
+
                 WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
 
                 WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
@@ -465,6 +452,8 @@ export let VERIFIERS = {
                             evmAccountMetadata = {gas:0}
 
                             GLOBAL_CACHES.STATE_CACHE.set(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,evmAccountMetadata)
+
+                            trackStateChange(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,1,'put')
 
                             WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
 
@@ -575,15 +564,15 @@ export let VERIFIERS = {
                 
                     atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
 
-                    trackStateChange(originShard+':'+contractID,1)
+                    trackStateChange(originShard+':'+contractID,1,'put')
 
                     atomicBatch.put(originShard+':'+contractID+'_BYTECODE',tx.payload.bytecode)
 
-                    trackStateChange(originShard+':'+contractID+'_BYTECODE',1)
+                    trackStateChange(originShard+':'+contractID+'_BYTECODE',1,'put')
     
                     atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
 
-                    trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1)
+                    trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1,'put')
 
 
                     WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++

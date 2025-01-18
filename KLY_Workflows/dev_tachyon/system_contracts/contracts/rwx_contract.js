@@ -88,11 +88,11 @@ export let CONTRACT = {
 
         atomicBatch.put(originShard+':'+contractID,futureRwxContractMetadataTemplate)
 
-        trackStateChange(originShard+':'+contractID,1)
+        trackStateChange(originShard+':'+contractID,1,'put')
 
         atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',futureRwxContractSingleStorage)
 
-        trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1)
+        trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1,'put')
 
 
         WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.rwxContracts.total++

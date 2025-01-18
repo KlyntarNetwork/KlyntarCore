@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 
+import { getFromState, getUserAccountFromState, trackStateChange } from "../../common_functions/state_interactions.js"
+
 import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../blockchain_preparation.js"
 
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
-
-import { getFromState, getUserAccountFromState } from "../../common_functions/state_interactions.js"
 
 import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
@@ -94,14 +94,17 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 if(!poolAlreadyExists){
 
-                    // Put metadata
+                    // Put metadata and default storage
                     
                     GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
 
-                    // Put storage
-                    // NOTE: We just need a simple storage with ID="POOL"
-
                     GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+
+                    trackStateChange(originShard+':'+creator+'(POOL)',1,'put')
+
+                    trackStateChange(originShard+':'+creator+'(POOL)_STORAGE_POOL',1,'put')
+
 
                 } else return {isOk:false}
 
