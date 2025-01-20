@@ -2,7 +2,7 @@ import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_pro
 
 import {getFromState} from "../../common_functions/state_interactions.js"
 
-import {WORKING_THREADS} from "../../blockchain_preparation.js"
+import {WORKING_THREADS} from "../../globals.js"
 
 
 

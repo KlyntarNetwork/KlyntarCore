@@ -1,8 +1,8 @@
 import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
-import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
-
 import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
+
+import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
 import {epochStillFresh} from '../utils.js'
 

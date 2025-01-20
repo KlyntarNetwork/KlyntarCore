@@ -1,8 +1,12 @@
+import {FASTIFY_SERVER} from '../klyn74r.js'
+
 import cryptoModule from 'crypto'
 
 import {hash} from 'blake3-wasm'
 
 import Base58 from 'base-58'
+
+import fs from 'fs'
 
 
 
@@ -159,3 +163,29 @@ export let customLog=(msg,msgColor)=>{
     console.log(logColors.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,msgColor,msg,logColors.CLEAR)
 
 }
+
+
+
+export let gracefulStop = async() => {
+
+    console.log('\n')
+
+    customLog('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...',logColors.CYAN)
+    
+    customLog(fs.readFileSync(pathResolve('images/events/termination.txt')).toString(),logColors.YELLOW)
+
+    console.log('\n')
+
+    customLog('Closing server connections...',logColors.CYAN)
+
+    await FASTIFY_SERVER.close()
+
+    customLog('Node was gracefully stopped',logColors.CYAN)
+        
+    process.exit(0)
+
+}
+
+process.on('SIGTERM',gracefulStop)
+process.on('SIGINT',gracefulStop)
+process.on('SIGHUP',gracefulStop)

@@ -2,7 +2,7 @@ import {getUserAccountFromState, getContractAccountFromState, trackStateChange} 
 
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
-import {GLOBAL_CACHES, WORKING_THREADS} from "../../blockchain_preparation.js"
+import {GLOBAL_CACHES, WORKING_THREADS} from "../../globals.js"
 
 import {blake3Hash} from "../../../../KLY_Utils/utils.js"
 

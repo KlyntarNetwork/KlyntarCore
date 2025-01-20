@@ -1,11 +1,11 @@
 /* eslint-disable no-unused-vars */
 import {getUserAccountFromState, getFromState, trackStateChange} from '../common_functions/state_interactions.js'
 
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
-
 import * as functionsToInjectToVm from '../../../KLY_VirtualMachines/common_modules.js'
 
 import {verifyQuorumMajoritySolution} from '../common_functions/work_with_proofs.js'
+
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 

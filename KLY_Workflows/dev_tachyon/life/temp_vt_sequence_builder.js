@@ -1,14 +1,14 @@
-import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
-
-import {checkAlrpChainValidity,getBlock} from '../verification_process/verification.js'
+import {checkAlrpChainValidity, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {WORKING_THREADS} from '../blockchain_preparation.js'
+import {getBlock} from '../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
 import {getRandomFromArray} from '../utils.js'
+
+import {WORKING_THREADS} from '../globals.js'
 
 import Block from '../structures/block.js'
 

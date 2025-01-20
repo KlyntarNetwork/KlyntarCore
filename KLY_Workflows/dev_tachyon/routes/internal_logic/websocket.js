@@ -1,14 +1,12 @@
-import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
+import {checkAlrpChainValidity, verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
 import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../../common_functions/quorum_related.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
-import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
-import {checkAlrpChainValidity} from '../../verification_process/verification.js'
+import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
 import {CONFIGURATION} from '../../../../klyn74r.js'
 

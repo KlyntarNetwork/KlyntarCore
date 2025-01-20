@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../globals.js'
 
 
 

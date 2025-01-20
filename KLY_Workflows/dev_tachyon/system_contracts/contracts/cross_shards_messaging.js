@@ -2,7 +2,7 @@ import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_pro
 
 import {getUserAccountFromState} from "../../common_functions/state_interactions.js"
 
-import {GLOBAL_CACHES} from "../../blockchain_preparation.js"
+import {GLOBAL_CACHES} from "../../globals.js"
 
 
 

@@ -1,8 +1,8 @@
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {getFromState} from '../../common_functions/state_interactions.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
 
 import {KLY_EVM} from '../../../../KLY_VirtualMachines/kly_evm/vm.js'
 

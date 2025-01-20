@@ -2,9 +2,9 @@
 
 import { getFromState, getUserAccountFromState, trackStateChange } from "../../common_functions/state_interactions.js"
 
-import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../blockchain_preparation.js"
-
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
+
+import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../globals.js"
 
 import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
