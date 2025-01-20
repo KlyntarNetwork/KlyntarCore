@@ -1,14 +1,14 @@
-import {getFromApprovementThreadState} from './common_functions/approvement_thread_related.js'
+import {customLog, pathResolve, logColors, blake3Hash, gracefulStop} from '../../KLY_Utils/utils.js'
 
 import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
 
-import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
-
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from './globals.js'
 
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+
+import {BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
 
 import {isMyCoreVersionOld} from './utils.js'
 
@@ -18,277 +18,14 @@ import Web3 from 'web3'
 
 import fs from 'fs'
 
-import os from 'os'
 
 
-// !!!!!!!! FOR TEST ONLY !!!!!!!!
 
-const platform = os.platform();
 
-let versionFilePath
 
 
 
-if (platform === 'win32' || platform === 'darwin') {
-    
-    versionFilePath = pathResolve('../../../../../../../KLY_Workflows/dev_tachyon/version.txt')
-
-} else versionFilePath = '/home/vladartem/KlyntarCore/KLY_Workflows/dev_tachyon/version.txt'
-
-
-
-
-
-
-let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{valueEncoding:'json'})
-
-
-
-
-// First of all - define the NODE_METADATA globally available object
-
-export let NODE_METADATA = {
-
-    CORE_MAJOR_VERSION:+(fs.readFileSync(versionFilePath).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
-    
-    MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
-
-    PEERS:[] // peers to exchange data with. Just strings with addresses    
-
-}
-
-
-global.MEMPOOL = NODE_METADATA.MEMPOOL
-
-
-
-
-export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
-
-
-
-
-export let GLOBAL_CACHES = {
-
-    STATE_CACHE:new Map(), // cache to hold accounts of EOAs/contracts. Mapping(ID => ACCOUNT_STATE). Used by VERIFICATION_THREAD
-
-    APPROVEMENT_THREAD_CACHE:new Map(), // ... the same, but used by APPROVEMENT_THREAD
-
-    STUFF_CACHE:new Map(), // cache for different stuff during node work
-
-
-}
-
-
-
-
-export let WORKING_THREADS = {
-
-    VERIFICATION_THREAD: {
-
-        VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:int,hash:''}
-
-
-        KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
-
-        KLY_EVM_METADATA:{}, // shardID => {nextBlockIndex,parentHash,timestamp}
-
-
-        TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS:{},
-
-        SID_TRACKER:{}, // shardID => index
-
-
-        TOTAL_STATS:{
-
-            totalBlocksNumber:0,
-            
-            totalTxsNumber:0,
-
-            successfulTxsNumber:0,
-
-            totalUserAccountsNumber:{
-                native:0,
-                evm:0
-            },
-
-            totalSmartContractsNumber:{
-                native:0,
-                evm:0
-            },
-
-            rwxContracts:{
-                total:0,
-                closed:0
-            },
-
-            totalKlyStaked:0,
-            totalUnoStaked:0
-
-        },
-
-        STATS_PER_EPOCH:{
-
-            totalBlocksNumber:0,
-            
-            totalTxsNumber:0,
-
-            successfulTxsNumber:0,
-
-            newUserAccountsNumber:{
-                native:0,
-                evm:0
-            },
-
-            newSmartContractsNumber:{
-                native:0,
-                evm:0
-            },
-
-            rwxContracts:{
-                total:0,
-                closed:0
-            },
-
-            totalKlyStaked:0,
-            totalUnoStaked:0
-
-        },
-
-        MONTHLY_ALLOCATION_FOR_REWARDS:0, // need this var for block reward
-
-        ALLOCATIONS_PER_EPOCH:{}, // epochIndex => {entity:alreadyAllocated}
-
-        EPOCH:{} // epoch handler
-
-    },
-
-    GENERATION_THREAD: {
-            
-        epochFullId:`${blake3Hash('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'+BLOCKCHAIN_GENESIS.NETWORK_ID)}#-1`,
-
-        epochIndex:0,
-        
-        prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
-        
-        nextIndex:0 // so the first block will be with index 0
-    
-    },
-
-    APPROVEMENT_THREAD:{}
-
-}
-
-
-
-
-// Global object which holds LevelDB instances for databases for blocks, state, metadata, KLY_EVM, etc.
-
-export let BLOCKCHAIN_DATABASES = {
-
-    BLOCKS: resolveDatabase('BLOCKS'), // blockID => block
-    
-    STATE: resolveDatabase('STATE'), // contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
-
-    EPOCH_DATA: resolveDatabase('EPOCH_DATA'), // contains epoch data that shouldn't be deleted each new epoch (e.g. AEFPs, AFPs, etc.) 
-
-    APPROVEMENT_THREAD_METADATA: resolveDatabase('APPROVEMENT_THREAD_METADATA'), // metadata for APPROVEMENT_THREAD
-
-    EXPLORER_DATA: resolveDatabase('EXPLORER_DATA') // just a database for misc useful data for explorers & API. Just to store useful artifacts separately from state
-
-}
-
-// Required by KLY-EVM JSON-RPC API, so make it available via global
-
-global.STATE = BLOCKCHAIN_DATABASES.STATE
-
-global.VERIFICATION_THREAD = WORKING_THREADS.VERIFICATION_THREAD
-
-global.BLOCKCHAIN_GENESIS = BLOCKCHAIN_GENESIS
-
-global.CREATED_EVM_ACCOUNTS = new Set()
-
-
-
-export let getCurrentShardLeaderURL = async () => {
-
-    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-    
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
-
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-    if(!currentEpochMetadata) return
-
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
-    if(canGenerateBlocksNow) return {isMeShardLeader:true}
-
-    else {
-
-        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(BLOCKCHAIN_GENESIS.SHARD) // {currentLeader:<id>}
-
-        let currentLeaderPubkey = epochHandler.leadersSequence[BLOCKCHAIN_GENESIS.SHARD][indexOfCurrentLeaderForShard.currentLeader]
-
-        // Get the url of current shard leader on some shard
-
-        let poolStorage = await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-
-        if(poolStorage) return {isMeShardLeader:false,url:poolStorage.poolURL}
-        
-    }
-    
-}
-
-
-// Required by KLY-EVM JSON-RPC API, so make it available via global
-
-global.getCurrentShardLeaderURL = getCurrentShardLeaderURL
-
-
-//___________________________________________________________ 0. Set the handlers for system signals(e.g. Ctrl+C to stop blockchain) ___________________________________________________________
-
-
-
-// Need it with 'export' keyword because used in other files - for example to gracefully stop the node when it's version is outdated
-
-export let GRACEFUL_STOP = async() => {
-
-    console.log('\n')
-
-    customLog('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...',logColors.CYAN)
-    
-    customLog(fs.readFileSync(pathResolve('images/events/termination.txt')).toString(),logColors.YELLOW)
-
-    console.log('\n')
-
-    customLog('Closing server connections...',logColors.CYAN)
-
-    await FASTIFY_SERVER.close()
-
-    customLog('Node was gracefully stopped',logColors.CYAN)
-        
-    process.exit(0)
-
-}
-
-process.on('SIGTERM',GRACEFUL_STOP)
-process.on('SIGINT',GRACEFUL_STOP)
-process.on('SIGHUP',GRACEFUL_STOP)
-
-
-
-
-
-
-
-
-
-
-
-
-let restoreMetadataCaches=async()=>{
+let restoreCachesForApprovementThread=async()=>{
 
     // Function to restore metadata since the last turn off
 
@@ -447,9 +184,7 @@ let setGenesisToState=async()=>{
 
             let lowerCaseAddressWith0xPrefix = evmKey.toLowerCase()
 
-            // Add assignment to shard
-
-            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAddressWith0xPrefix,{shard:BLOCKCHAIN_GENESIS.SHARD,gas})
+            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAddressWith0xPrefix,{gas})
 
             if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
 
@@ -532,42 +267,35 @@ let setGenesisToState=async()=>{
 
     if(BLOCKCHAIN_GENESIS.UNLOCKS){
 
-        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"] = {}
-
         for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
 
-            if(unlocksTable["0"]){
+            if(BLOCKCHAIN_GENESIS.EVM[recipient] || recipient === 'blockRewards'){
 
+                if(unlocksTable["0"]){
 
-                if(recipient === 'mining') {
-
-                    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"]["mining"] = 0
-
-                    WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable["0"]
-
-                }
-
-                if(recipient.startsWith('0x') && recipient.length === 42){
-
-                    if(BLOCKCHAIN_GENESIS.EVM[recipient]){
-
-                        let unlockAmount = unlocksTable["0"]
+                    if(recipient === 'blockRewards') {
     
+                        WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable["0"]
+    
+                    } else if(recipient.startsWith('0x') && recipient.length === 42){
+    
+                        let unlockAmount = unlocksTable["0"]
+        
                         let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
         
-                        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"][recipient] = unlockAmount
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations[recipient] = unlockAmount
     
                         let recipientAccount = await KLY_EVM.getAccount(recipient)
         
                         recipientAccount.balance += amountInWei
         
                         await KLY_EVM.updateAccount(recipient,recipientAccount)
-
-                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM")
+        
+                    }    
     
-                }    
+                }
 
-            }
+            } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM")
 
         }
 
@@ -771,7 +499,7 @@ export let prepareBlockchain=async()=>{
     
 
         // Stop the node to update the software
-        GRACEFUL_STOP()
+        gracefulStop()
 
     }
 
@@ -785,7 +513,7 @@ export let prepareBlockchain=async()=>{
     
 
         // Stop the node to update the software
-        GRACEFUL_STOP()
+        gracefulStop()
 
     }
 
@@ -827,6 +555,6 @@ export let prepareBlockchain=async()=>{
 
     // Fill the FINALIZATION_STATS with the latest, locally stored data
 
-    await restoreMetadataCaches()
+    await restoreCachesForApprovementThread()
 
 }

@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {getVerifiedAggregatedFinalizationProofByBlockId} from '../../common_functions/work_with_proofs.js'
+
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 

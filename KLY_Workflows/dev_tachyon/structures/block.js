@@ -2,7 +2,7 @@ import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
-import {WORKING_THREADS} from '../blockchain_preparation.js'
+import {WORKING_THREADS} from '../globals.js'
 
 
 

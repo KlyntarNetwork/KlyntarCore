@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -205,7 +205,7 @@ FASTIFY_SERVER.get('/verification_thread_stats_per_epoch/:index',async(request,r
             }
 
 
-            let vtStatsPerEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS:${request.params.index}`).catch(()=>emptyTemplate)
+            let vtStatsPerEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS_PER_EPOCH:${request.params.index}`).catch(()=>emptyTemplate)
 
             response.send(vtStatsPerEpoch)
 
@@ -270,11 +270,7 @@ FASTIFY_SERVER.get('/historical_stats_per_epoch/:start_index/:limit',async(reque
 
         for(let i = 0 ; i < limit ; i++){
 
-            responseObject[startFromEpoch] = await BLOCKCHAIN_DATABASES.EPOCH_DATA
-
-                                                .get(`VT_STATS:${startFromEpoch}`)
-
-                                                .catch(()=>emptyTemplate)
+            responseObject[startFromEpoch] = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS_PER_EPOCH:${startFromEpoch}`).catch(()=>emptyTemplate)
 
             if(startFromEpoch === WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id){
 

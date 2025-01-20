@@ -1,14 +1,14 @@
-import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {checkAlrpChainValidity, getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
+import {getFromState, getUserAccountFromState, trackStateChange} from '../common_functions/state_interactions.js'
 
 import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
 
-import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+import {customLog, blake3Hash, logColors, gracefulStop} from '../../../KLY_Utils/utils.js'
 
-import {customLog, blake3Hash, logColors, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
 
-import {getFromState, getUserAccountFromState} from '../common_functions/state_interactions.js'
+import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
@@ -311,163 +311,6 @@ export let getMultipleBlocks = async (epochHandler,blockCreator,fromIndex) => {
 
 
 
-let checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
-
-    /*
-
-    Check the <agregatedLeaderRotationProof>(ALRP) signed by majority(2/3N+1) and aggregated
-    
-    ALRP structure is:
-    
-    {
-
-        firstBlockHash,
-
-        skipIndex,
-
-        skipHash,
-
-        proofs:{
-
-            quorumMemberPubKey0:hisEd25519Signa,
-            ...
-            quorumMemberPubKeyN:hisEd25519Signa
-
-        }
-
-    }
-
-        Check the signed string: `LEADER_ROTATION_PROOF:${poolPubKeyThatWasLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
-
-        Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
-
-        If skipIndex === -1 - skipHash and firstBlockHash will be default - '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-    */
-
-    
-    if(aggregatedLeaderRotationProof && typeof aggregatedLeaderRotationProof === 'object'){    
-
-        // Check the proofs
-    
-        let {firstBlockHash,skipIndex,skipHash,proofs} = aggregatedLeaderRotationProof
-
-        let majority = getQuorumMajority(epochHandler)
-
-        let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfSomePreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
- 
-        let okSignatures = 0
-
-        let unique = new Set()
-    
-    
-        for(let [signerPubKey,signa] of Object.entries(proofs)){
-
-            let isOk = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
-
-            if(isOk && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
-
-                unique.add(signerPubKey)
-
-                okSignatures++
-
-            }
-    
-        }
-
-        return okSignatures >= majority
-
-    }
-
-}
-
-
-
-
-export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSequence,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
-
-    /*
-    
-        Here we need to check the integrity of chain of proofs to make sure that we can get the obvious variant of a valid chain to verify
-
-        We need to check if <firstBlockInThisEpochByPool.extraData.aggregatedLeadersRotationProofs> contains all the ALRPs(aggregated leader rotation proofs)
-        
-            for pools from <position>(index of current pool in <leadersSequence>) to the first pool with non-zero ALRP
-
-        
-        So, we simply start the reverse enumeration in <leadersSequence> from <position> to the beginning of <leadersSequence> and extract the ALRPs
-
-        Once we met the ALRP with index not equal to -1 (>=0) - we can stop enumeration and return true
-    
-    */
-
-
-    let aggregatedLeaderesRotationProofsRef = firstBlockInThisEpochByPool.extraData?.aggregatedLeadersRotationProofs
-
-    let infoAboutFinalBlocksInThisEpoch = {}
-
-
-    if(aggregatedLeaderesRotationProofsRef && typeof aggregatedLeaderesRotationProofsRef === 'object'){
-
-
-        let arrayForIteration = leadersSequence.slice(0,position).reverse() // take all the pools till position of current pool and reverse it because in optimistic case we just need to find the closest pool to us with non-zero ALRP 
-
-        let arrayIndexer = 0
-
-        let bumpedWithPoolWhoCreatedAtLeastOneBlock = false
-
-
-        for(let poolPubKey of arrayForIteration){
-
-            let alrpForThisPool = aggregatedLeaderesRotationProofsRef[poolPubKey]
-    
-            if(alrpForThisPool && typeof alrpForThisPool === 'object'){
-
-                let signaIsOk = dontCheckSignature || await checkAggregatedLeaderRotationProofValidity(poolPubKey,alrpForThisPool,epochFullID,oldEpochHandler)
-
-                if(signaIsOk){
-
-                    infoAboutFinalBlocksInThisEpoch[poolPubKey] = {
-                        
-                        index:alrpForThisPool.skipIndex,
-                        
-                        hash:alrpForThisPool.skipHash,
-                        
-                        firstBlockHash:alrpForThisPool.firstBlockHash
-                    
-                    }
-
-                    arrayIndexer++
-
-                    if(alrpForThisPool.skipIndex>=0){
-
-                        bumpedWithPoolWhoCreatedAtLeastOneBlock = true
-
-                        break
-
-                    }
-
-                }else return {isOK:false}
-
-            } else return {isOK:false}
-    
-        }
-
-        // Returns true only in case if we checked ALRPs for all the previous pools in leaders sequence or untill the pool who created at least one block
-        if(arrayIndexer === position || bumpedWithPoolWhoCreatedAtLeastOneBlock){
-            
-            return {isOK:true,infoAboutFinalBlocksInThisEpoch}
-
-        } else return {isOK:false}
-    
-    } else return {isOK:false}
-
-}
-
-
-
-
-
 let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shardID,aefp) => {
 
     let emptyTemplate = {}
@@ -476,7 +319,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
     let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[shardID]
     
-    if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS = {}
+    if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = {}
 
     let infoAboutFinalBlocksByPool = new Map() // poolID => {poolThatWasLeader_A:ALRP,poolThatWasLeader_B:ALRP,...poolThatWasLeader_X:ALRP}
         
@@ -550,7 +393,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
     }
 
-    WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID] = emptyTemplate
+    WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[shardID] = emptyTemplate
 
 
         /*
@@ -570,7 +413,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
         Using this chains we'll finish the verification process
 
-        [1] WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS with structure:
+        [1] WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS with structure:
 
         {
             shard_0:{
@@ -597,7 +440,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
         ___________________________________ So ___________________________________
 
-        Using the order in EPOCH.leadersSequence finish the verification based on index:hash pairs in INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
+        Using the order in EPOCH.leadersSequence finish the verification based on index:hash pairs in INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS
         
         
         */
@@ -633,6 +476,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && delayedTransactions){
+
+        GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
+
+        GLOBAL_CACHES.STATE_CACHE.clear()
         
         
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
@@ -660,97 +507,6 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         //     }
 
         // }
-
-
-        // Unlock the coins and distribute to appropriate accounts
-
-        if(BLOCKCHAIN_GENESIS.UNLOCKS){
-
-            for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
-
-                if(unlocksTable[`${nextVtEpochIndex}`]){
-
-                    let tracker = WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`]
-
-                    if(!tracker) WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`] = {}
-
-
-                    if(recipient === 'mining') {
-
-                        WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable[`${nextVtEpochIndex}`]
-
-                        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`]["mining"] = 0
-
-                    }
-
-                    if(recipient.startsWith('0x') && recipient.length === 42){
-        
-                        let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
-        
-                        let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
-
-                        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`][recipient] = unlockAmount
-        
-                        let recipientAccount = await KLY_EVM.getAccount(recipient)
-        
-                        recipientAccount.balance += amountInWei
-        
-                        await KLY_EVM.updateAccount(recipient,recipientAccount)
-        
-                    }    
-
-                }
-    
-            }    
-
-        }
-
-        // Distribute rewards
-        
-        for(let leadersArray of Object.values(vtEpochHandler.leadersSequence)){
-
-            // Now iterate over pools who participated in blocks generation process
-
-            for(let leaderPubKey of leadersArray){
-
-                let shardWherePoolStorageLocated = BLOCKCHAIN_GENESIS.SHARD
-
-                let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+leaderPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-    
-                if(poolStorage){
-
-                    for(let stakerPubKey of Object.keys(poolStorage.stakers)){
-
-
-                        if(stakerPubKey.startsWith('0x') && stakerPubKey.length === 42){
-
-                            // Return the stake back tp EVM account
-            
-                            let rewardInWeiAsString = poolStorage.stakers[stakerPubKey].reward
-            
-                            let stakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
-              
-                            stakerEvmAccount.balance += BigInt(rewardInWeiAsString)
-              
-                            await KLY_EVM.updateAccount(stakerPubKey,stakerEvmAccount)
-
-                        } else {
-
-                            let stakerAccount = await getUserAccountFromState(shardWherePoolStorageLocated+':'+stakerPubKey)
-
-                            stakerAccount.balance += BigInt(poolStorage.stakers[stakerPubKey].reward)
-
-                        }
-
-                        poolStorage.stakers[stakerPubKey].reward = '0'
-
-                    }
-
-                }
-
-            }
-
-        }
     
 
         // Nullify values for the upcoming epoch
@@ -777,11 +533,11 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Finally - delete the AEFP metadata with info about hights and hashes per shard
 
-        delete WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
+        delete WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS
 
         // Delete the useless temporary info from previous epoch about indexes/hashes to verify on shards
         
-        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[vtEpochFullID]
+        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID]
 
 
         GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
@@ -792,8 +548,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Store the stats during verification thread work in this epoch
         
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
-
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
 
 
         // Finally - set the new index, hash, timestamp, quorum and assign validators for shards for next epoch
@@ -829,9 +584,51 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             },
 
             totalKlyStaked:0,
-            totalUnoStaked:0
+            totalUnoStaked:0,
+
+            coinsAllocations:{ blockRewards:0 }
         
         }
+
+        // Unlock the coins and distribute to appropriate accounts
+
+        if(BLOCKCHAIN_GENESIS.UNLOCKS){
+
+            for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
+
+                if(unlocksTable[`${nextVtEpochIndex}`]){
+
+                    if(recipient === 'blockRewards') {
+
+                        WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable[`${nextVtEpochIndex}`]
+
+                    }
+
+                    if(recipient.startsWith('0x') && recipient.length === 42){
+        
+                        let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
+        
+                        let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
+
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations[recipient] = unlockAmount
+        
+                        let recipientAccount = await KLY_EVM.getAccount(recipient)
+        
+                        recipientAccount.balance += amountInWei
+        
+                        await KLY_EVM.updateAccount(recipient,recipientAccount)
+        
+                    }    
+
+                }
+    
+            }    
+
+        }
+
+        // Update the KLY-EVM state root after allocations
+
+        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
         
         // Commit the changes of state using atomic batch
@@ -875,7 +672,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             customLog(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,logColors.YELLOW)
         
             // Stop the node to update the software
-            GRACEFUL_STOP()
+            gracefulStop()
         
         }
 
@@ -960,13 +757,13 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
             // Create empty template
 
-            if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS = {}
+            if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = {}
 
             for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
                 // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build metadata to finish VT thread for this epoch and shard
                 
-                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp)
+                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp)
 
             }
 
@@ -1436,16 +1233,16 @@ export let startVerificationThread=async()=>{
 
     
 
-    let tempInfoAboutFinalBlocksByPreviousPoolsOnShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
+    let tempInfoAboutFinalBlocksByPreviousPoolsOnShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
 
 
-    if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){
+    if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS?.[currentShardToCheck]){
         
         
         /*
         
-            In case we have .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS - it's a signal that the new epoch on APPROVEMENT_THREAD has started
-            In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS which has the structure
+            In case we have .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS - it's a signal that the new epoch on APPROVEMENT_THREAD has started
+            In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS which has the structure
 
             {
                 shard:{
@@ -1457,7 +1254,7 @@ export let startVerificationThread=async()=>{
                 }
             }
 
-            We just need to go through the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[currentShardToCheck] and start the cycle over vtEpochHandler.leadersSequence[currentShardToCheck] and verify all the blocks
+            We just need to go through the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[currentShardToCheck] and start the cycle over vtEpochHandler.leadersSequence[currentShardToCheck] and verify all the blocks
 
         */
 
@@ -1471,7 +1268,7 @@ export let startVerificationThread=async()=>{
         
         let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
 
-        let infoFromAefpAboutLastBlocksByPoolsOnShards = WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[currentShardToCheck] // {pool:{index,hash},...}
+        let infoFromAefpAboutLastBlocksByPoolsOnShards = WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[currentShardToCheck] // {pool:{index,hash},...}
 
         let localVtMetadataForPool, metadataFromAefpForThisPool
 
@@ -1690,7 +1487,7 @@ export let startVerificationThread=async()=>{
     }
 
 
-    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){
+    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS?.[currentShardToCheck]){
 
         await tryToFinishCurrentEpochOnVerificationThread(vtEpochHandler)
 
@@ -1726,15 +1523,15 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
         2) In this list (poolStorage.stakers) we have structure like:
 
             {
-                poolCreatorPubkey:{kly,uno,reward},
+                poolCreatorPubkey:{kly,uno},
                 ...
-                stakerPubkey:{kly,uno,reward}
+                stakerPubkey:{kly,uno}
                 ...
             }
 
         3) Send <stakingPoolStorage.percentage * totalFees> to block creator:
 
-            poolStorage.stakers[poolCreatorPubkey].reward += stakingPoolStorage.percentage * totalFees
+            poolCreatorAccount.balance += stakingPoolStorage.percentage * totalFees
 
         2) Distribute the rest among other stakers
 
@@ -1742,71 +1539,68 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
                 2.1) Go through poolStorage.stakers
 
-                2.2) Increase reward poolStorage.stakers[stakerPubkey].reward += totalStakerPowerPercentage * restOfFees
+                2.2) Increase balance - stakerAccount.balance += totalStakerPowerPercentage * restOfFees
     
     */
     
-    let blockReward = getBlockReward()
+    let blockRewardAsBigInt = getBlockReward()
 
-    let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations.blockRewards += Number(blockRewardAsBigInt)
 
-    if(!WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]){
+    let blockRewardAsBigIntInWei = blockRewardAsBigInt * BigInt(10) ** BigInt(18)
 
-        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`] = {}
-
-    }
-
-    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] += Number(blockReward)
-
-    blockReward *= BigInt(10) ** BigInt(18)
-
-    totalFees += blockReward
+    totalFees += blockRewardAsBigIntInWei
 
 
     let blockCreatorContractStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
 
+    let blockCreatorAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey)
+
     let poolTotalPower = BigInt(blockCreatorContractStorage.totalStakedKly) + BigInt(blockCreatorContractStorage.totalStakedUno)
 
-    // Transfer part of fees to account with pubkey associated with block creator
+    // 1. Transfer part of fees to account with pubkey associated with block creator
 
     let rewardForBlockCreator = 0n
 
     if(blockCreatorContractStorage.percentage !== 0){
 
-        if(!blockCreatorContractStorage.stakers[blockCreatorPubKey]) blockCreatorContractStorage.stakers[blockCreatorPubKey] = {kly:0,uno:0,reward:0}
+        rewardForBlockCreator = (BigInt(blockCreatorContractStorage.percentage) * totalFees) / BigInt(100)
 
-        blockCreatorContractStorage.stakers[blockCreatorPubKey].reward = BigInt(blockCreatorContractStorage.stakers[blockCreatorPubKey].reward)
-
-        let poolCreatorAccountForRewards = blockCreatorContractStorage.stakers[blockCreatorPubKey]
-
-
-        rewardForBlockCreator = (BigInt(blockCreatorContractStorage.percentage) * totalFees) / BigInt(100);
-
-        poolCreatorAccountForRewards.reward += rewardForBlockCreator
-
+        blockCreatorAccount.balance = BigInt(blockCreatorAccount.balance) + rewardForBlockCreator
+        
     }
 
+    // 2. Share the rest of fees among stakers due to their % part in total pool stake
+    
     let feesToDistributeAmongStakers = totalFees - rewardForBlockCreator
-
-    // Share the rest of fees among stakers due to their % part in total pool stake
 
     for(let stakerPubKey of Object.keys(blockCreatorContractStorage.stakers)){
 
-        if (stakerPubKey === blockCreatorPubKey) continue
-
         let stakerData = blockCreatorContractStorage.stakers[stakerPubKey]
 
-        stakerData = {
-
-            kly: BigInt(stakerData[stakerPubKey].kly),
-            uno: BigInt(stakerData[stakerPubKey].uno),
-            reward: BigInt(stakerData[stakerPubKey].reward)
-
-        }
+        stakerData = {kly: BigInt(stakerData.kly), uno: BigInt(stakerData.uno)}
 
         let stakerTotalPower = stakerData.kly + stakerData.uno
 
-        stakerData.reward += (stakerTotalPower * feesToDistributeAmongStakers) / poolTotalPower
+        let rewardInWei = (stakerTotalPower * feesToDistributeAmongStakers) / poolTotalPower
+
+        if(stakerPubKey.startsWith('0x') && stakerPubKey.length === 42){
+
+            // Return the stake back tp EVM account
+
+            let stakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
+
+            stakerEvmAccount.balance += rewardInWei
+
+            await KLY_EVM.updateAccount(stakerPubKey,stakerEvmAccount)
+
+        } else {
+
+            let stakerAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+stakerPubKey)
+
+            stakerAccount.balance = BigInt(stakerAccount.balance) + rewardInWei
+
+        }
 
     }
      
@@ -1829,6 +1623,8 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
             atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
+
+            trackStateChange('TX:'+txid,1,'put')
 
         }
 
@@ -1858,6 +1654,8 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
     
                 atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
     
+                trackStateChange('TX:'+txid,1,'put')
+
             }
 
             if(isOk) rewardsAndSuccessfulTxsCollector.successfulTxsCounter++
@@ -1887,6 +1685,10 @@ let verifyBlock = async(block,shardContext) => {
 
     if(overviewOk){
 
+        GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
+
+        GLOBAL_CACHES.STATE_CACHE.clear()
+
         // To calculate fees and split among pool-creator & stakers. Currently - general fees sum is 0. It will be increased each performed transaction
         
         let rewardsAndSuccessfulTxsCollector = {fees:0n, successfulTxsCounter:0}
@@ -1906,6 +1708,10 @@ let verifyBlock = async(block,shardContext) => {
 
         // Set the next block's parameters
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
+
+
+        trackStateChange('VERIFICATION_THREAD',WORKING_THREADS.VERIFICATION_THREAD,'update')
+
 
         // To change the state atomically
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
@@ -2009,25 +1815,23 @@ let verifyBlock = async(block,shardContext) => {
         }
 
 
-        
-        if(GLOBAL_CACHES.STATE_CACHE.size>=CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE) GLOBAL_CACHES.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
-
-
-
         let generalBlockIndexInShard = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
 
         atomicBatch.put(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
 
+        trackStateChange(`SID:${shardContext}:${generalBlockIndexInShard}`,1,'put')
+
+
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
 
-        // Try to set the pointer to the first block in epoch on specific shard
+        // Try to set the pointer to the first block in epoch
 
         if(block.index === 0){
 
             // Structure is {firstBlockCreator,firstBlockHash}
             
-            let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`).catch(()=>null)
+            let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`).catch(()=>false)
 
             // If no exists - it's obvious that it's the first block
             if(!handlerWithTheFirstBlockData){
@@ -2035,6 +1839,8 @@ let verifyBlock = async(block,shardContext) => {
                 handlerWithTheFirstBlockData = { firstBlockCreator: block.creator, firstBlockHash: blockHash }
 
                 atomicBatch.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData)
+
+                trackStateChange(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData,'put')
 
             }
 
@@ -2075,7 +1881,9 @@ let verifyBlock = async(block,shardContext) => {
 
             if(account && !extendedInfo){
 
-                atomicBatch.put('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,{shard:shardContext,gas:0})
+                atomicBatch.put('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,{gas:0})
+
+                trackStateChange('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,1,'put')
 
                 if(account.codeHash.toString('hex') === 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'){
 
@@ -2095,6 +1903,8 @@ let verifyBlock = async(block,shardContext) => {
                     WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
 
                     atomicBatch.put('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,{storageAbstractionLastPayment:currentEpochIndex})
+
+                    trackStateChange('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,1,'put')
 
                 }
 
@@ -2135,18 +1945,23 @@ let verifyBlock = async(block,shardContext) => {
 
         atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
+        trackStateChange(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,1,'put')
+
         atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
+
+        trackStateChange(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,1,'put')
 
         atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
 
+        trackStateChange(`${shardContext}:EVM_LOGS:${blockToStore.number}`,1,'put')
+
         atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{klyBlock:currentBlockID})
+
+        trackStateChange(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,1,'put')
+ 
+        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{sid:generalBlockIndexInShard})
         
-        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{
-
-            sid:generalBlockIndexInShard
-
-        })
-
+        trackStateChange(`BLOCK_RECEIPT:${currentBlockID}`,1,'put')
         
         //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
 
@@ -2154,8 +1969,11 @@ let verifyBlock = async(block,shardContext) => {
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
         await atomicBatch.write()
-        
+
         vtStatsLog(block.epoch,shardContext,block.creator,block.index,blockHash,block.transactions.length)
+
+        console.log('DEBUG: State changes => ',GLOBAL_CACHES.STATE_CHANGES_CACHE)
+        
 
     }
 

@@ -1,14 +1,14 @@
-import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
-
-import {checkAlrpChainValidity,getBlock} from '../verification_process/verification.js'
+import {checkAlrpChainValidity, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {WORKING_THREADS} from '../blockchain_preparation.js'
+import {getBlock} from '../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
 import {getRandomFromArray} from '../utils.js'
+
+import {WORKING_THREADS} from '../globals.js'
 
 import Block from '../structures/block.js'
 
@@ -22,7 +22,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
     
         [+] In this function we should time by time ask for ALRPs for pools to understand of how to continue VERIFICAION_THREAD
 
-        [+] Use VT.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
+        [+] Use VT.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS
 
 
         Based on current epoch in APPROVEMENT_THREAD - build the temporary info about index/hashes of pools on shards to keep work on verification thread
@@ -32,7 +32,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
     let verificationThread = WORKING_THREADS.VERIFICATION_THREAD
 
-    let tempInfoAboutLastBlocksByPreviousPoolsOnShards = verificationThread.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
+    let tempInfoAboutLastBlocksByPreviousPools = verificationThread.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS
 
     let vtEpochHandler = verificationThread.EPOCH
 
@@ -41,15 +41,15 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
     let vtLeadersSequences = vtEpochHandler.leadersSequence
 
 
-    if(!tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID]){
+    if(!tempInfoAboutLastBlocksByPreviousPools[vtEpochFullID]){
 
-        tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID] = {} // create empty template
+        tempInfoAboutLastBlocksByPreviousPools[vtEpochFullID] = {} // create empty template
 
         // Fill with data from here. Structure: shardID => [pool0,pool1,...,poolN]
 
         for(let shardID of Object.keys(vtLeadersSequences)){
 
-            tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID] = {
+            tempInfoAboutLastBlocksByPreviousPools[vtEpochFullID][shardID] = {
 
                 currentLeader:0,
                 
@@ -76,7 +76,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
     for(let shardID of Object.keys(vtEpochHandler.leadersSequence)){
 
-        localVersionOfCurrentLeaders[shardID] = tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID].currentLeader
+        localVersionOfCurrentLeaders[shardID] = tempInfoAboutLastBlocksByPreviousPools[vtEpochFullID][shardID].currentLeader
 
     }
 
@@ -296,7 +296,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
                                     // Update the data about last block index and hash
 
-                                    let tempReassignmentChain = tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID].infoAboutFinalBlocksInThisEpoch // poolPubKey => {index,hash}
+                                    let tempReassignmentChain = tempInfoAboutLastBlocksByPreviousPools[vtEpochFullID][shardID].infoAboutFinalBlocksInThisEpoch // poolPubKey => {index,hash}
 
 
                                     for(let reassignStats of collectionOfAlrpsFromAllThePreviousLeaders.reverse()){
@@ -313,7 +313,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
                                     // Finally, set the <currentLeader> to the new pointer
 
-                                    tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID].currentLeader = proposedIndexOfLeader
+                                    tempInfoAboutLastBlocksByPreviousPools[vtEpochFullID][shardID].currentLeader = proposedIndexOfLeader
 
 
                                 }
@@ -332,6 +332,6 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
     }
         
-    setTimeout(findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards,CONFIGURATION.NODE_LEVEL.TIMEOUT_TO_FIND_TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS)
+    setTimeout(findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards,CONFIGURATION.NODE_LEVEL.TIMEOUT_TO_FIND_TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS)
     
 }

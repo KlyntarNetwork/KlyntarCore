@@ -1,8 +1,8 @@
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
-import {GLOBAL_CACHES, WORKING_THREADS} from "../../blockchain_preparation.js"
-
 import {getFromState} from "../../common_functions/state_interactions.js"
+
+import {WORKING_THREADS} from "../../globals.js"
 
 
 
@@ -69,12 +69,6 @@ export let CONTRACT = {
 
                 let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-                if(!Array.isArray(delayedTransactions)){
-
-                    delayedTransactions = []
-
-                }
-
                 let templateToPush = {
 
                     type:'changeUnobtaniumAmount',
@@ -84,8 +78,6 @@ export let CONTRACT = {
                 }
 
                 delayedTransactions.push(templateToPush)
-
-                GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
                 return {isOk:true}
 

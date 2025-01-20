@@ -2,7 +2,7 @@
 
 import {getFromState, getUserAccountFromState} from '../../common_functions/state_interactions.js'
 
-import {GLOBAL_CACHES,WORKING_THREADS} from '../../blockchain_preparation.js'
+import {WORKING_THREADS} from '../../globals.js'
 
 
 
@@ -62,12 +62,6 @@ export let CONTRACT = {
 
             let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
             let templateToPush = {
 
                 type:'createStakingPool',
@@ -79,8 +73,6 @@ export let CONTRACT = {
             }
 
             delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
             return {isOk:true}
 
@@ -106,12 +98,6 @@ export let CONTRACT = {
 
             let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
             let templateToPush = {
 
                 type:'updateStakingPool',
@@ -123,8 +109,6 @@ export let CONTRACT = {
             }
 
             delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
             return {isOk:true}
 
@@ -166,12 +150,6 @@ export let CONTRACT = {
 
                 let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-                if(!Array.isArray(delayedTransactions)){
-
-                    delayedTransactions = []
-
-                }   
-
                 let templateToPush = {
 
                     type:'stake',
@@ -183,8 +161,6 @@ export let CONTRACT = {
                 }
 
                 delayedTransactions.push(templateToPush)
-
-                GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
                 return {isOk:true}
 
@@ -223,12 +199,6 @@ export let CONTRACT = {
 
             let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
             let templateToPush = {
 
                 type:'unstake',
@@ -240,8 +210,6 @@ export let CONTRACT = {
             }
 
             delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
             return {isOk:true}
 

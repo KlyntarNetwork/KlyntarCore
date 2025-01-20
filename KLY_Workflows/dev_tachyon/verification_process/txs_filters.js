@@ -7,9 +7,9 @@
 
 // You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
-import {getUserAccountFromState} from '../common_functions/state_interactions.js'
+import {verifyTxSignatureAndVersion} from '../common_functions/work_with_proofs.js'
 
-import {verifyTxSignatureAndVersion} from './txs_verifiers.js'
+import {getUserAccountFromState} from '../common_functions/state_interactions.js'
 
 
 

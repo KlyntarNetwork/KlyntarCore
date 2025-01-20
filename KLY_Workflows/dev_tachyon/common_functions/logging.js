@@ -1,4 +1,4 @@
-import {WORKING_THREADS} from '../blockchain_preparation.js'
+import {WORKING_THREADS} from '../globals.js'
 
 import {logColors} from '../../../KLY_Utils/utils.js'
 

@@ -1,12 +1,12 @@
-import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
+import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_transactions/delayed_transactions.js'
 
-import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../globals.js'
 
-import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
+import {blake3Hash, logColors, customLog, pathResolve, gracefulStop} from '../../../KLY_Utils/utils.js'
 
 import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
 
@@ -442,7 +442,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     console.log(fs.readFileSync(pathResolve('images/events/update.txt')).toString())
         
                     // Stop the node to update the software
-                    GRACEFUL_STOP()
+                    
+                    gracefulStop()
 
                 }
 

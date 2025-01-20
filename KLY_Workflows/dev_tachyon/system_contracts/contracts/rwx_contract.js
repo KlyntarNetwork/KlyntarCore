@@ -1,8 +1,8 @@
-import {getUserAccountFromState, getContractAccountFromState} from "../../common_functions/state_interactions.js"
+import {getUserAccountFromState, getContractAccountFromState, trackStateChange} from "../../common_functions/state_interactions.js"
 
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
-import {GLOBAL_CACHES, WORKING_THREADS} from "../../blockchain_preparation.js"
+import {GLOBAL_CACHES, WORKING_THREADS} from "../../globals.js"
 
 import {blake3Hash} from "../../../../KLY_Utils/utils.js"
 
@@ -88,7 +88,11 @@ export let CONTRACT = {
 
         atomicBatch.put(originShard+':'+contractID,futureRwxContractMetadataTemplate)
 
+        trackStateChange(originShard+':'+contractID,1,'put')
+
         atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',futureRwxContractSingleStorage)
+
+        trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1,'put')
 
 
         WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.rwxContracts.total++

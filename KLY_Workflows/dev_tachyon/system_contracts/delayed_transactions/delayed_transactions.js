@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 
-import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../blockchain_preparation.js"
+import { getFromState, getUserAccountFromState, trackStateChange } from "../../common_functions/state_interactions.js"
 
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
 
-import { getFromState, getUserAccountFromState } from "../../common_functions/state_interactions.js"
+import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../globals.js"
 
 import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
@@ -63,7 +63,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 shard: originShard,
 
-                stakers:{}, // Pubkey => {kly,uno,reward}
+                stakers:{}, // Pubkey => {kly,uno}
 
                 poolURL,
 
@@ -71,10 +71,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             }
 
-            // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0,reward:0}
-            // We need it to send rewards to this special address
+            // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0}
 
-            onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:'0',uno:'0',reward:'0'}
+            onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:'0',uno:'0'}
 
             if(threadContext === 'APPROVEMENT_THREAD'){
 
@@ -95,14 +94,17 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 if(!poolAlreadyExists){
 
-                    // Put metadata
+                    // Put metadata and default storage
                     
                     GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
 
-                    // Put storage
-                    // NOTE: We just need a simple storage with ID="POOL"
-
                     GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+
+                    trackStateChange(originShard+':'+creator+'(POOL)',1,'put')
+
+                    trackStateChange(originShard+':'+creator+'(POOL)_STORAGE_POOL',1,'put')
+
 
                 } else return {isOk:false}
 
@@ -263,7 +265,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             if(amountIsBiggerThanMinimalStake){
 
-                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0n, uno:0n, reward:0n}
+                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0n, uno:0n}
 
                 
                 poolStorage.stakers[staker].kly = BigInt(poolStorage.stakers[staker].kly) + amount
@@ -482,13 +484,12 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 let bigIntUnoWei = BigInt(valueOfUnoWei)
 
-                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0, reward:0}
+                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0}
                 
                 poolStorage.stakers[staker] = {
 
                     kly:BigInt(poolStorage.stakers[staker].kly),
-                    uno:BigInt(poolStorage.stakers[staker].uno),
-                    reward:BigInt(poolStorage.stakers[staker].reward)
+                    uno:BigInt(poolStorage.stakers[staker].uno)
 
                 }
 

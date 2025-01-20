@@ -1,9 +1,8 @@
 import {getFromApprovementThreadState} from './approvement_thread_related.js'
 
-import {WORKING_THREADS} from '../blockchain_preparation.js'
-
 import {blake3Hash} from '../../../KLY_Utils/utils.js'
 
+import {WORKING_THREADS} from '../globals.js'
 
 
 

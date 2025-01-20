@@ -2,7 +2,7 @@ import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../c
 
 import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
 import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 

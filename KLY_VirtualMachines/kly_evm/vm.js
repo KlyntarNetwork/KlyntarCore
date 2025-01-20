@@ -1,5 +1,3 @@
-import {getFromState} from '../../KLY_Workflows/dev_tachyon/common_functions/state_interactions.js'
-
 import {DefaultStateManager} from '@ethereumjs/statemanager'
 import {Address,Account} from '@ethereumjs/util'
 import {Transaction} from '@ethereumjs/tx'
@@ -47,21 +45,9 @@ const common = Common.custom({name,networkId,chainId},{hardfork})
 const web3 = new Web3()
 
 
-
-//_________________________________________________________ GLOBALS POOL _________________________________________________________
-
-
-global.GET_EVM_ACCOUNT_DATA = async addressAsString => {
-
-    let accountAdditionalData = await getFromState('EVM_ACCOUNT:'+addressAsString)
-
-    return accountAdditionalData
-
-}
-
-
 // Need this object inside EVM
-global.KLY_EVM_OPTIONS = { coinbase, gasPriceInWeiAndHex, protocolVersionInHex, chainId, clientVersion, networkId}
+
+global.KLY_EVM_OPTIONS = {coinbase, gasPriceInWeiAndHex, protocolVersionInHex, chainId, clientVersion, networkId}
 
 
 /*
