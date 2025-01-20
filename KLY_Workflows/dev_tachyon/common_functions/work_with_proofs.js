@@ -1,8 +1,16 @@
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
+import {verifyEd25519, verifyEd25519Sync, blake3Hash} from '../../../KLY_Utils/utils.js'
+
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
-import {verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
+import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
+
+import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
+
+import {getUserAccountFromState} from './state_interactions.js'
+
+import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 
 import {getAllKnownPeers} from '../utils.js'
 
@@ -13,6 +21,59 @@ import Block from '../structures/block.js'
 
 
 
+
+
+export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,originShard) => {
+
+    
+    if(WORKING_THREADS[threadID].CORE_MAJOR_VERSION === tx.v){
+
+        // Sender sign concatenated NETWORK_ID(to prevent cross-chains attacks and reuse nonce & signatures), core version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
+        
+        let signedData = BLOCKCHAIN_GENESIS.NETWORK_ID + tx.v + originShard + tx.type + JSON.stringify(tx.payload) + tx.nonce + tx.fee
+    
+
+        if(tx.sigType==='D') return verifyEd25519(signedData,tx.sig,tx.creator)
+        
+        if(tx.sigType==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
+        
+        if(tx.sigType==='P/D') {
+
+            let isOk = false
+
+            try{
+
+                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+
+                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyDilithiumSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
+            
+            }catch{ isOk = false }
+
+            return isOk
+            
+        }
+        
+        if(tx.sigType==='P/B'){
+          
+            let isOk = false
+
+            try{
+
+                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+
+                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyBlissSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
+            
+            }catch{ isOk = false }
+
+            return isOk
+
+        }
+        
+        if(tx.sigType==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t)     
+
+    } else return false
+
+}
 
 
 
