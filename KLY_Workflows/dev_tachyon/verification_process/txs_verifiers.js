@@ -555,6 +555,8 @@ export let VERIFIERS = {
 
             }
 
+            if(tx.payload.contractID?.startsWith('system/') && Array.isArray(tx.payload.touchedAccounts)) return {isOk:false,reason:'Parallelization of system smart contracts are disabled for a while'}
+
             
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
@@ -564,7 +566,7 @@ export let VERIFIERS = {
 
                     let execResultWithStatusAndReason
 
-                    if(tx.payload.contractID?.startsWith('system/') && !Array.isArray(tx.payload.touchedAccounts)){
+                    if(tx.payload.contractID?.startsWith('system/')){
 
                         // Call system smart-contract
         
