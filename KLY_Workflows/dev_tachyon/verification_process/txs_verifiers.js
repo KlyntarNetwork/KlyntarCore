@@ -564,7 +564,7 @@ export let VERIFIERS = {
 
                     let execResultWithStatusAndReason
 
-                    if(tx.payload.contractID?.startsWith('system/')){
+                    if(tx.payload.contractID?.startsWith('system/') && !Array.isArray(tx.payload.touchedAccounts)){
 
                         // Call system smart-contract
         
