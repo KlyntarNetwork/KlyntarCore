@@ -150,19 +150,29 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPools=async()=>{
 
         if(metadata && typeof metadata==='object'){
 
-            let {proposedIndexOfLeader,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader} = metadata
+            let {
+                
+                proposedIndexOfLeader,
+                
+                firstBlockByCurrentLeader: firstBlockByProposedLeader,
+                
+                afpForSecondBlockByCurrentLeader: secondBlockAFPByProposedLeader
+            
+            } = metadata            
 
-            let bothNotNull = firstBlockByCurrentLeader && afpForSecondBlockByCurrentLeader
+
+            let bothNotNull = firstBlockByProposedLeader && secondBlockAFPByProposedLeader
     
-            if(typeof proposedIndexOfLeader === 'number' && bothNotNull && typeof firstBlockByCurrentLeader === 'object' && typeof afpForSecondBlockByCurrentLeader==='object'){
+            
+            if(typeof proposedIndexOfLeader === 'number' && bothNotNull && typeof firstBlockByProposedLeader === 'object' && typeof secondBlockAFPByProposedLeader==='object'){
                   
-                if(localVersionOfCurrentLeader <= proposedIndexOfLeader && firstBlockByCurrentLeader.index === 0){
+                if(localVersionOfCurrentLeader.proposedIndex <= proposedIndexOfLeader && firstBlockByProposedLeader.index === 0){
 
                     // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
     
-                    let afpIsOk = await verifyAggregatedFinalizationProof(afpForSecondBlockByCurrentLeader,vtEpochHandler)
+                    let afpIsOk = await verifyAggregatedFinalizationProof(secondBlockAFPByProposedLeader,vtEpochHandler)
     
-                    afpIsOk &&= afpForSecondBlockByCurrentLeader.prevBlockHash === Block.genHash(firstBlockByCurrentLeader)
+                    afpIsOk &&= secondBlockAFPByProposedLeader.prevBlockHash === Block.genHash(firstBlockByProposedLeader)
 
                     if(afpIsOk){
 
@@ -170,7 +180,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPools=async()=>{
     
                         let {isOK,infoAboutFinalBlocksInThisEpoch} = await checkAlrpChainValidity(
                                 
-                            firstBlockByCurrentLeader, vtLeadersSequence, proposedIndexOfLeader, vtEpochFullID, vtEpochHandler, true
+                            firstBlockByProposedLeader, vtLeadersSequence, proposedIndexOfLeader, vtEpochFullID, vtEpochHandler, true
                             
                         )
 
@@ -209,7 +219,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPools=async()=>{
                                 // eslint-disable-next-line no-constant-condition
                                 while(true){
 
-                                    for(; position >= localVersionOfCurrentLeader ; position--){
+                                    for(; position >= localVersionOfCurrentLeader.proposedIndex ; position--){
 
                                         let poolOnThisPosition = vtLeadersSequence[position]
     

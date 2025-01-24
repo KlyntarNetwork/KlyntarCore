@@ -55,13 +55,13 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
         let objectToReturn = {}
 
-        let currentLeaderInfo = currentEpochMetadata.CURRENT_LEADER_INFO
+        let indexOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INFO?.index
 
-        if(currentLeaderInfo && epochHandler.leadersSequence){
+        if(typeof indexOfCurrentLeader === 'number' && epochHandler.leadersSequence){
 
             // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
 
-            let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[currentLeaderInfo.index]
+            let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[indexOfCurrentLeader]
 
             let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
 
@@ -78,7 +78,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
                     objectToReturn = {
                             
-                        proposedIndexOfLeader:currentLeaderInfo.index,
+                        proposedIndexOfLeader:indexOfCurrentLeader,
                             
                         firstBlockByCurrentLeader,
                             

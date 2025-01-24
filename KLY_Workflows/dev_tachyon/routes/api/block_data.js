@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
-
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
 
 import Block from '../../structures/block.js'
 
