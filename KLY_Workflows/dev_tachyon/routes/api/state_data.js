@@ -84,7 +84,7 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
                     response.send(formatCompatibleReceipt)
 
-                } else response.send(txReceipt)
+                } else response.send({shard: BLOCKCHAIN_GENESIS.SHARD, ...txReceipt})
 
             }
 
