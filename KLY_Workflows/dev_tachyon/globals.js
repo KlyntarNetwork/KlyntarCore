@@ -102,7 +102,9 @@ export let WORKING_THREADS = {
             },
 
             totalKlyStaked:0,
-            totalUnoStaked:0
+            totalUnoStaked:0,
+
+            coinsAllocated:0
 
         },
 

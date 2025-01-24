@@ -267,6 +267,7 @@ let setGenesisToState=async()=>{
         
                         let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
         
+                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.coinsAllocated += unlockAmount
                         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations[recipient] = unlockAmount
     
                         let recipientAccount = await KLY_EVM.getAccount(recipient)

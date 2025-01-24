@@ -579,6 +579,8 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         
                         let amountInWei = BigInt(unlockAmount) * (BigInt(10) ** BigInt(18))
 
+                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.coinsAllocated += unlockAmount
+
                         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations[recipient] = unlockAmount
         
                         let recipientAccount = await KLY_EVM.getAccount(recipient)
@@ -1484,7 +1486,11 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
     
     let blockRewardAsBigInt = getBlockReward()
 
-    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations.blockRewards += Number(blockRewardAsBigInt)
+    let blockRewardAsNumber = Number(blockRewardAsBigInt)
+
+    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.coinsAllocated += blockRewardAsNumber
+
+    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations.blockRewards += blockRewardAsNumber
 
     let blockRewardAsBigIntInWei = blockRewardAsBigInt * BigInt(10) ** BigInt(18)
 
@@ -1650,7 +1656,7 @@ let verifyBlock = async block => {
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
 
 
-        trackStateChange('VERIFICATION_THREAD',WORKING_THREADS.VERIFICATION_THREAD,'update')
+        trackStateChange('VT',WORKING_THREADS.VERIFICATION_THREAD,'update')
 
 
         // To change the state atomically
@@ -1908,11 +1914,16 @@ let verifyBlock = async block => {
 
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
+        atomicBatch.put(`STATE_CHANGES:${generalBlockHeight}:${generalBlockHeight+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)
+
         await atomicBatch.write()
 
         vtStatsLog(block.epoch,block.creator,block.index,blockHash,block.transactions.length)
 
         // console.log('DEBUG: State changes => ',GLOBAL_CACHES.STATE_CHANGES_CACHE)
+
+
+        if(block.index === 0) process.exit()
         
 
     }
