@@ -75,8 +75,8 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1
       web1337:
-        specifier: ^5.0.0
-        version: 5.0.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+        specifier: ^5.3.0
+        version: 5.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       websocket:
         specifier: ^1.0.34
         version: 1.0.34
@@ -2710,8 +2710,8 @@ packages:
   web-worker@1.2.0:
     resolution: {integrity: sha512-PgF341avzqyx60neE9DD+XS26MMNMoUQRz9NOZwW32nPQrF6p77f1htcnjBSEV8BGMKZ16choqUG4hyI0Hx7mA==}
 
-  web1337@5.0.0:
-    resolution: {integrity: sha512-4aoLehjXBODC52P9OupwAQacCHU6uA9qW62WVYGnST37pkQR/84h/eAtz9L1Vd9z7IWyDUS393JU51Ved9pAhA==}
+  web1337@5.3.0:
+    resolution: {integrity: sha512-fTouoJmlwipqwqDVNm/NeTUDaDJ0yJAMLwDq1W+4Ah7MhlMUptrXWWJ1i0LPmg0aaH1oQhFdsGFzaunB5Dtkkg==}
 
   web3-bzz@1.10.4:
     resolution: {integrity: sha512-ZZ/X4sJ0Uh2teU9lAGNS8EjveEppoHNQiKlOXAjedsrdWuaMErBPdLQjXfcrYvN6WM6Su9PMsAxf3FXXZ+HwQw==}
@@ -6019,7 +6019,7 @@ snapshots:
 
   web-worker@1.2.0: {}
 
-  web1337@5.0.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
+  web1337@5.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       base-58: 0.0.1
       blake3-wasm: 2.1.5

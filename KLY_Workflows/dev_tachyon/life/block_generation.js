@@ -97,7 +97,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
         const fee = 0.2
 
-        const amountInWei = 2
+        const amount = 2
 
         let signedTx
 
@@ -105,7 +105,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
             to: recipient,
 
-            amount: amountInWei,
+            amount,
 
             touchedAccounts: [pubKey, recipient]
 
@@ -119,9 +119,10 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
             
             let singleSig = web1337.signDataForMultisigTransaction('TX',privateKey,nonce,fee,payload)
 
-            let signature = singleSig
+            let signature = singleSig    
 
             signedTx = await web1337.createMultisigTransaction(from,'TX',signature,nonce,fee,payload)
+            
 
         } else {
 
@@ -152,14 +153,14 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
     const fee = 0.2
 
-    const amountInWei = 2
+    const amount = 2
 
     
     let payload = {
 
         to: recipient,
 
-        amount: amountInWei,
+        amount: amount,
 
         touchedAccounts: [from, recipient]
 
