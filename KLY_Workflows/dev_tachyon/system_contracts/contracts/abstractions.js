@@ -20,7 +20,7 @@ export let gasUsedByMethod=methodID=>{
 export let CONTRACT = {
 
 
-    changeGasAmount:async(originShard,transaction)=>{
+    changeGasAmount:async transaction => {
 
         /*
 
@@ -50,7 +50,7 @@ export let CONTRACT = {
 
         if(typeof targetAccount === 'string' && typeof gasAmount === 'number' && typeof action === 'string' && quorumAgreements && typeof quorumAgreements === 'object'){
 
-            let accountToModifyGasAmount = await getFromState(originShard+':'+targetAccount)
+            let accountToModifyGasAmount = await getFromState(targetAccount)
 
             if(accountToModifyGasAmount){
 
@@ -70,7 +70,7 @@ export let CONTRACT = {
     },
 
     
-    chargePaymentForStorageUsedByContract:async(originShard,transaction,atomicBatch)=>{
+    chargePaymentForStorageUsedByContract:async(transaction,atomicBatch)=>{
 
         /*
 

@@ -6,11 +6,11 @@ import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_w
 
 import {getUserAccountFromState} from '../common_functions/state_interactions.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
-
 import {signEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
+
+import {CONFIGURATION} from '../../../klyn74r.js'
 
 import {getAllKnownPeers} from '../utils.js'
 
@@ -38,7 +38,7 @@ export let blocksGenerationProcess=async()=>{
 
     await generateBlocksPortion()
 
-    setTimeout(blocksGenerationProcess,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)
+    setTimeout(blocksGenerationProcess,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)    
  
 }
 
@@ -74,7 +74,7 @@ let postQuantumBlissKeypair = {
 
 let nonces = new Map()
 
-let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
+let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
     const recipient = 'Cw4MjAsm5gRQh7JaiYXvJ9kzgt5xemhe1789kvcXY1Pz';
 
@@ -85,7 +85,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
         const myPrivateKey = privateKey;
 
-        let nonce = nonces.get(shardID+':'+pubKey) || await getUserAccountFromState(shardID+':'+pubKey).then(acc=>{
+        let nonce = nonces.get(pubKey) || await getUserAccountFromState(pubKey).then(acc=>{
 
             return acc.nonce
 
@@ -93,11 +93,11 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
         nonce += 1
 
-        nonces.set(shardID+':'+pubKey,nonce)
+        nonces.set(pubKey,nonce)
 
-        const fee = (BigInt(2)*BigInt(10**17)).toString();
+        const fee = 0.2
 
-        const amountInWei = (BigInt(2) * BigInt(10**18)).toString();
+        const amountInWei = 2
 
         let signedTx
 
@@ -117,7 +117,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
             
             payload.afk = []
             
-            let singleSig = web1337.signDataForMultisigTransaction(shardID,'TX',privateKey,nonce,fee,payload)
+            let singleSig = web1337.signDataForMultisigTransaction('TX',privateKey,nonce,fee,payload)
 
             let signature = singleSig
 
@@ -125,7 +125,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
         } else {
 
-            signedTx = await web1337.createEd25519Transaction(shardID,'TX',from,myPrivateKey,nonce,fee,payload);
+            signedTx = await web1337.createEd25519Transaction('TX',from,myPrivateKey,nonce,fee,payload);
 
         }
 
@@ -140,7 +140,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     const myPrivateKey = postQuantumBlissKeypair.privateKey;
 
-    let nonce = nonces.get(shardID+':'+from) || await getUserAccountFromState(shardID+':'+from).then(acc=>{
+    let nonce = nonces.get(from) || await getUserAccountFromState(from).then(acc=>{
 
         return acc.nonce
 
@@ -148,11 +148,11 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     nonce += 1
 
-    nonces.set(shardID+':'+from,nonce)
+    nonces.set(from,nonce)
 
-    const fee = (BigInt(2)*BigInt(10**17)).toString();
+    const fee = 0.2
 
-    const amountInWei = (BigInt(2) * BigInt(10**18)).toString();
+    const amountInWei = 2
 
     
     let payload = {
@@ -165,7 +165,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     }
 
-    let signedPqcTx = await web1337.createPostQuantumTransaction(shardID,'TX','bliss',from,myPrivateKey,nonce,fee,payload)
+    let signedPqcTx = await web1337.createPostQuantumTransaction('TX','bliss',from,myPrivateKey,nonce,fee,payload)
 
     console.log(`PQC TXID is => `,web1337.blake3(signedPqcTx.sig))
 
@@ -178,7 +178,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
 /*
 
-Function to find the AGGREGATED_EPOCH_FINALIZATION_PROOFS for appropriate shard
+Function to find the AGGREGATED_EPOCH_FINALIZATION_PROOFS
 
 Ask the network in special order:
 
@@ -187,7 +187,7 @@ Ask the network in special order:
     3) Other known peers
 
 */
-let getAggregatedEpochFinalizationProofForPreviousEpoch = async (shardID,epochHandler) => {
+let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => {
 
 
     let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
@@ -204,7 +204,7 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async (shardID,epochHa
 
     // First of all - try to find it locally
 
-    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${previousEpochIndex}:${shardID}`).catch(()=>null)
+    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${previousEpochIndex}`).catch(()=>null)
 
     if(aefpProof) return aefpProof
 
@@ -216,11 +216,11 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async (shardID,epochHa
 
             setTimeout(() => controller.abort(), 2000)
 
-            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${previousEpochIndex}/${shardID}`
+            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${previousEpochIndex}`
     
             let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{signal:controller.signal}).then(r=>r.json()).catch(()=>false)
     
-            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === shardID && await verifyAggregatedEpochFinalizationProof(
+            let aefpProof = await verifyAggregatedEpochFinalizationProof(
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
@@ -244,12 +244,7 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async (shardID,epochHa
 
 
 
-let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
-
-    /*
-        This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
-        on this shard till the pool which created at least one block
-    */
+let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence) => {
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -310,8 +305,6 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
     let messageToSend = JSON.stringify({
 
         route:'get_leader_rotation_proof',
-     
-        shard:shardID,
 
         afpForFirstBlock: futureAlrpMetadata.afpForFirstBlock,
 
@@ -357,8 +350,7 @@ let generateBlocksPortion = async() => {
 
     let epochIndex = epochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)    
 
     if(!currentEpochMetadata) return
 
@@ -369,16 +361,11 @@ let generateBlocksPortion = async() => {
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
-
-    // Must be string value
-
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
-    // Safe "if" branch to prevent unnecessary blocks generation
+    // Safe "if" branch to prevent unnecessary blocks generation    
     
-    if(typeof canGenerateBlocksNow === 'string'){
+    if(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
-        generateBatchOfMockTransactionsAndPushToMempool(BLOCKCHAIN_GENESIS.SHARD)
+        generateBatchOfMockTransactionsAndPushToMempool()
 
         // Check if <epochFullID> is the same in APPROVEMENT_THREAD and in GENERATION_THREAD
 
@@ -388,7 +375,7 @@ let generateBlocksPortion = async() => {
 
             if(epochIndex !== 0){
 
-                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(BLOCKCHAIN_GENESIS.SHARD,epochHandler)
+                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(epochHandler)
 
                 // If we can't find a proof - try to do it later
                 // Only in case it's initial epoch(index is -1) - no sense to push it
@@ -439,19 +426,16 @@ let generateBlocksPortion = async() => {
         if(WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
 
             // Build the template to insert to the extraData of block. Structure is {pool0:ALRP,...,poolN:ALRP}
-
-            let leadersSequenceForShard = epochHandler.leadersSequence[BLOCKCHAIN_GENESIS.SHARD]
     
-            let myIndexInLeadersSequenceForShard = leadersSequenceForShard.indexOf(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+            let myIndexInLeadersSequence = epochHandler.leadersSequence.indexOf(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
     
-
             // Get all previous pools - from zero to <my_position>
 
-            let pubKeysOfAllThePreviousPools = leadersSequenceForShard.slice(0,myIndexInLeadersSequenceForShard).reverse()
+            let pubKeysOfAllThePreviousPools = epochHandler.leadersSequence.slice(0,myIndexInLeadersSequence).reverse()
 
-            let indexOfPreviousLeaderInSequence = myIndexInLeadersSequenceForShard-1
+            let indexOfPreviousLeaderInSequence = myIndexInLeadersSequence-1
 
-            let previousLeaderPubkey = leadersSequenceForShard[indexOfPreviousLeaderInSequence]
+            let previousLeaderPubkey = epochHandler.leadersSequence[indexOfPreviousLeaderInSequence]
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________
@@ -483,7 +467,7 @@ let generateBlocksPortion = async() => {
                 if(leaderPubKey !== previousLeaderPubkey && proofThatAtLeastFirstBlockWasCreated) break
 
 
-                let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,leaderPubKey,indexOfPreviousLeaderInSequence,BLOCKCHAIN_GENESIS.SHARD)
+                let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,leaderPubKey,indexOfPreviousLeaderInSequence)
                 
                 if(aggregatedLeaderRotationProof){                    
 

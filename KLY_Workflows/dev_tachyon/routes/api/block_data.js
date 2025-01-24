@@ -1,6 +1,6 @@
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import Block from '../../structures/block.js'
 
@@ -90,10 +90,10 @@ FASTIFY_SERVER.get('/multiple_blocks/:epoch_index/:pool_id/:from_index',async(re
 
 
 
-// 0 - shardID - ed25519 identifier of shard
-// 1 - index
 
-FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
+// 0 - index
+
+FASTIFY_SERVER.get('/block_by_sid/:sid',(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
 
@@ -102,13 +102,10 @@ FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
             .header('Access-Control-Allow-Origin','*')
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.BLOCK_BY_SID}`)
             
-
-        let shardContext = request.params.shard
         
-        let indexOfBlockOnShard = request.params.sid
+        let absoluteHeight = request.params.sid
 
-
-        BLOCKCHAIN_DATABASES.STATE.get(`SID:${shardContext}:${indexOfBlockOnShard}`).then(blockID =>
+        BLOCKCHAIN_DATABASES.STATE.get(`SID:${absoluteHeight}`).then(blockID =>
 
             BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).then(
                 
@@ -127,15 +124,14 @@ FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
 
 /*
 
-0 - shard identifier
-1 - start from (indexation by SID)
-2 - limit (20 by default)
+0 - start from (indexation by SID)
+1 - limit (20 by default)
 
 Returns array of blocks sorted by SID in reverse order
 
 */
 
-FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,response)=>{
+FASTIFY_SERVER.get('/latest_n_blocks/:start_index/:limit',async(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
 
@@ -148,11 +144,11 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
 
         let promises = []
 
-        // In case <start_index> is equal to "x" - this is a signal that requestor doesn't know the latest block on shard, so we set it manually based on this node data
+        // In case <start_index> is equal to "x" - this is a signal that requestor doesn't know the latest block height, so we set it manually based on this node data
 
         if(request.params.start_index === "x"){
 
-            request.params.start_index = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[request.params.shard] - 1 // -1 because value in tracker point to the next block
+            request.params.start_index = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER - 1 // -1 because value in tracker point to the next block
 
         }
 
@@ -161,7 +157,7 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
 
             let index = request.params.start_index - i
 
-            let sid = request.params.shard+':'+index
+            let sid = index
 
             let blockPromise = BLOCKCHAIN_DATABASES.STATE.get('SID:'+sid).then(
             
@@ -169,7 +165,7 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
 
                     block.hash = Block.genHash(block)
 
-                    block.sid = sid
+                    block.sid = BLOCKCHAIN_GENESIS.SHARD+':'+sid
 
                     return block
 
@@ -216,7 +212,7 @@ FASTIFY_SERVER.get('/verification_thread_stats',(_,response)=>{
 
 To return AGGREGATED_FINALIZATION_PROOF related to some block PubX:Index
 
-Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid shard and will be included to epoch
+Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid version of chain and will be included to epoch
 
 Params:
 

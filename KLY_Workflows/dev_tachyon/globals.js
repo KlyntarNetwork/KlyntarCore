@@ -70,12 +70,12 @@ export let WORKING_THREADS = {
 
         KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
 
-        KLY_EVM_METADATA:{}, // shardID => {nextBlockIndex,parentHash,timestamp}
+        KLY_EVM_METADATA:{}, // {nextBlockIndex,parentHash,timestamp}
 
 
         TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS:{},
 
-        SID_TRACKER:{}, // shardID => index
+        SID_TRACKER:{}, // index
 
 
         TOTAL_STATS:{

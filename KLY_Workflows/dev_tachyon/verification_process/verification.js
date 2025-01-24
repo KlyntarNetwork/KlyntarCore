@@ -1,4 +1,4 @@
-import {checkAlrpChainValidity, getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {checkAlrpChainValidity, getFirstBlockInEpoch, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {getFromState, getUserAccountFromState, trackStateChange} from '../common_functions/state_interactions.js'
 
@@ -40,12 +40,10 @@ let getBlockReward = () => {
     else {
 
         let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS / 30
-
-        let perShardAllocationPerEpoch = perEpochAllocation / WORKING_THREADS.VERIFICATION_THREAD.EPOCH.shardsRegistry.length
     
-        let blocksPerShardPerEpoch = Math.floor(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
+        let blocksPerEpoch = Math.floor(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
     
-        let blockReward = perShardAllocationPerEpoch / blocksPerShardPerEpoch
+        let blockReward = perEpochAllocation / blocksPerEpoch
 
     
         return BigInt(Math.floor(blockReward))
@@ -311,13 +309,13 @@ export let getMultipleBlocks = async (epochHandler,blockCreator,fromIndex) => {
 
 
 
-let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shardID,aefp) => {
+let findInfoAboutLastBlocksByPreviousLeaders = async (vtEpochHandler,aefp) => {
 
     let emptyTemplate = {}
 
     let vtEpochIndex = vtEpochHandler.id
 
-    let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[shardID]
+    let oldLeadersSequence = vtEpochHandler.leadersSequence
     
     if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = {}
 
@@ -326,7 +324,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
     // Start the cycle in reverse order from <aefp.lastLeader>
 
-    let lastLeaderPoolPubKey = oldLeadersSequenceForShard[aefp.lastLeader]
+    let lastLeaderPoolPubKey = oldLeadersSequence[aefp.lastLeader]
 
     emptyTemplate[lastLeaderPoolPubKey] = {
         
@@ -340,7 +338,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
     for(let position = aefp.lastLeader; position > 0; position--){
 
-        let poolPubKey = oldLeadersSequenceForShard[position]
+        let poolPubKey = oldLeadersSequence[position]
 
         // In case we know that pool on this position created 0 block - don't return from function and continue the cycle iterations
 
@@ -360,7 +358,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
             let {isOK,infoAboutFinalBlocksInThisEpoch} = await checkAlrpChainValidity(
             
-                firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true
+                firstBlockInThisEpochByPool,oldLeadersSequence,position,null,null,true
             
             )
 
@@ -377,7 +375,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
     }
 
-    for(let poolPubKey of oldLeadersSequenceForShard){
+    for(let poolPubKey of oldLeadersSequence){
 
         if(infoAboutFinalBlocksByPool.has(poolPubKey)){
 
@@ -393,7 +391,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
     }
 
-    WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[shardID] = emptyTemplate
+    WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = emptyTemplate
 
 
         /*
@@ -401,40 +399,18 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
         
         After execution of this function we have:
 
-        [0] WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence with structure:
+        [0] WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence with structure: [Pool0A,Pool1A,....,PoolNA]
         
-        {
-            shard_0:[Pool0A,Pool1A,....,PoolNA],
-            
-            shard_1:[Pool0B,Pool1B,....,PoolNB]
-        
-            ...
-        }
-
         Using this chains we'll finish the verification process
 
         [1] WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS with structure:
 
         {
-            shard_0:{
 
-                Pool0A:{index,hash},
-                Pool1A:{index,hash},
-                ....,
-                PoolNA:{index,hash}
-
-            },
-            
-            shard_1:{
-
-                Pool0B:{index,hash},
-                Pool1B:{index,hash},
-                ....,
-                PoolNB:{index,hash}
-
-            }
-
-            ...
+            Pool0A:{index,hash},
+            Pool1A:{index,hash},
+            ....,
+            PoolNA:{index,hash}
         
         }
 
@@ -500,11 +476,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // if(overPreviousEpochHandler) {
 
-        //     for(let shardID of overPreviousEpochHandler.shardsRegistry){
-
-        //         atomicBatch.del(`DELAYED_TRANSACTIONS:${vtEpochHandler.id}:${shardID}`)
-
-        //     }
+        //         atomicBatch.del(`DELAYED_TRANSACTIONS:${vtEpochHandler.id}`)
 
         // }
     
@@ -531,16 +503,13 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         }
 
-        // Finally - delete the AEFP metadata with info about hights and hashes per shard
+        // Finally - delete the AEFP metadata with info about hights and hashes
 
         delete WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS
 
-        // Delete the useless temporary info from previous epoch about indexes/hashes to verify on shards
+        // Delete the useless temporary info from previous epoch about indexes/hashes
         
         delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID]
-
-
-        GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
 
         customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
@@ -551,7 +520,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
 
 
-        // Finally - set the new index, hash, timestamp, quorum and assign validators for shards for next epoch
+        // Finally - set the new index, hash, timestamp, quorum and assign validators for next epoch
 
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
 
@@ -658,7 +627,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochOldIndex-1}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochOldIndex-1}`).catch(()=>{})
 
 
 
@@ -710,62 +679,51 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
 
-        let handlerWithFirstBlocksPerShardOnNextEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
-
-        let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
+        let handlerWithFirstBlocksOnNextEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`).catch(()=>false) || {} // {firstBlockCreator,firstBlockHash}
 
         // Find the first blocks for epoch X+1
-        
-        for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
-            totalNumberOfShards++
+        if(!handlerWithFirstBlocksOnNextEpoch) handlerWithFirstBlocksOnNextEpoch = {}
 
-            if(!handlerWithFirstBlocksPerShardOnNextEpoch[shardID]) handlerWithFirstBlocksPerShardOnNextEpoch[shardID]={}
+        if(!handlerWithFirstBlocksOnNextEpoch.firstBlockCreator){
 
-            if(!handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator){
+            let findResult = await getFirstBlockInEpoch('VERIFICATION_THREAD',nextEpochHandlerTemplate,getBlock)
 
-                let findResult = await getFirstBlockOnEpochOnSpecificShard('VERIFICATION_THREAD',nextEpochHandlerTemplate,shardID,getBlock)
+            if(findResult){
 
-                if(findResult){
+                handlerWithFirstBlocksOnNextEpoch.firstBlockCreator = findResult.firstBlockCreator
 
-                    handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator = findResult.firstBlockCreator
-
-                    handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockHash = findResult.firstBlockHash
-
-                }
-
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochIndex}`,handlerWithFirstBlocksPerShardOnNextEpoch).catch(()=>{})
+                handlerWithFirstBlocksOnNextEpoch.firstBlockHash = findResult.firstBlockHash
 
             }
 
-            //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the data for VT to finish epoch X____________
-
-            let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator,0)
-
-            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockHash){
-
-                handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
-
-            }
-
-            if(handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp) totalNumberOfShardsReadyForMove++
+            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`,handlerWithFirstBlocksOnNextEpoch).catch(()=>{})
 
         }
 
+        //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the data for VT to finish epoch X____________
 
-        if(totalNumberOfShards === totalNumberOfShardsReadyForMove){
+        let firstBlockInThisEpoch = await getBlock(nextEpochIndex,handlerWithFirstBlocksOnNextEpoch.firstBlockCreator,0)
+
+        if(firstBlockInThisEpoch && Block.genHash(firstBlockInThisEpoch) === handlerWithFirstBlocksOnNextEpoch.firstBlockHash){
+
+            handlerWithFirstBlocksOnNextEpoch.aefp = firstBlockInThisEpoch.extraData.aefpForPreviousEpoch
+
+        }
+
+        if(handlerWithFirstBlocksOnNextEpoch.aefp){
 
             // Create empty template
 
-            if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = {}
+            if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS){
 
-            for(let shardID of Object.keys(nextEpochLeadersSequences)){
+                // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build metadata to finish VT thread for this epoch
 
-                // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build metadata to finish VT thread for this epoch and shard
-                
-                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp)
+                WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = {}
 
-            }
+                await findInfoAboutLastBlocksByPreviousLeaders(vtEpochHandler,handlerWithFirstBlocksOnNextEpoch.aefp)
+            
+            }                
 
         }
 
@@ -789,7 +747,7 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epoch
 
     if(!endpointURL){
 
-        let poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
+        let poolStorage = await getFromState(poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
         
         if(poolStorage) endpointURL = poolStorage.wssPoolURL
     
@@ -928,7 +886,7 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epoch
                                 }
 
                             
-                                // If we have size - add blocks here. The reserve is 5000 blocks per shard
+                                // If we have size - add blocks here. The reserve is 5000 blocks
 
                                 if(handler.cache.size+parsedData.blocks.length<=5000 && !breaked){
 
@@ -1224,19 +1182,14 @@ export let startVerificationThread=async()=>{
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
-    let vtEpochIndex = vtEpochHandler.id
+    let vtEpochIndex = vtEpochHandler.id    
+
+    let tempInfoAboutFinalBlocksByPreviousPools = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
+
+    let shouldMoveToNextEpoch = false
 
 
-    let shardsIdentifiers = vtEpochHandler.shardsRegistry
-
-    let currentShardToCheck = shardsIdentifiers[0]
-
-    
-
-    let tempInfoAboutFinalBlocksByPreviousPoolsOnShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
-
-
-    if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS?.[currentShardToCheck]){
+    if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS){
         
         
         /*
@@ -1245,30 +1198,23 @@ export let startVerificationThread=async()=>{
             In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS which has the structure
 
             {
-                shard:{
 
-                    pool0:{index,hash},
-                    ...
-                    poolN:{index,hash}
+                pool0:{index,hash},
+                ...
+                poolN:{index,hash}
 
-                }
             }
 
-            We just need to go through the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[currentShardToCheck] and start the cycle over vtEpochHandler.leadersSequence[currentShardToCheck] and verify all the blocks
+            We just need to go through the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS and start the cycle over vtEpochHandler.leadersSequence and verify all the blocks
 
         */
 
-
-        if(!GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',new Map())
-
-        if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:0})
-
-
-        let shardsReadyToNewEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mapping(shardID=>boolean)
+        if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH')) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH',{indexOfCurrentPoolToVerify:0})
         
-        let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
 
-        let infoFromAefpAboutLastBlocksByPoolsOnShards = WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[currentShardToCheck] // {pool:{index,hash},...}
+        let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get('CURRENT_TO_FINISH') // {indexOfCurrentPoolToVerify:int}
+
+        let infoFromAefpAboutLastBlocksByPools = WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS // {pool:{index,hash},...}
 
         let localVtMetadataForPool, metadataFromAefpForThisPool
 
@@ -1277,11 +1223,11 @@ export let startVerificationThread=async()=>{
         // eslint-disable-next-line no-constant-condition
         while(true){            
 
-            let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify]
+            let poolPubKey = vtEpochHandler.leadersSequence[handlerWithIndexToVerify.indexOfCurrentPoolToVerify]
 
             localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
-            metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+            metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPools[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
             let weFinishedToVerifyPool = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
@@ -1289,12 +1235,12 @@ export let startVerificationThread=async()=>{
 
             if(weFinishedToVerifyPool){
 
-                let itsTheLastPoolInSequence = vtEpochHandler.leadersSequence[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify + 1
+                let itsTheLastPoolInSequence = vtEpochHandler.leadersSequence.length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify + 1
 
 
                 if(itsTheLastPoolInSequence) {
 
-                    GLOBAL_CACHES.STUFF_CACHE.delete('CURRENT_TO_FINISH:'+currentShardToCheck)
+                    GLOBAL_CACHES.STUFF_CACHE.delete('CURRENT_TO_FINISH')
 
                     break
 
@@ -1316,7 +1262,7 @@ export let startVerificationThread=async()=>{
 
             let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-            GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey])
+            GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,infoFromAefpAboutLastBlocksByPools[poolPubKey])
 
             if(tunnelHandler){
             
@@ -1325,8 +1271,6 @@ export let startVerificationThread=async()=>{
                 let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
 
                 if(stepsForWhile <= 0){
-
-                    // Break the outer <while> cycle to try to find blocks & finish this epoch on another shard
 
                     break
 
@@ -1346,7 +1290,7 @@ export let startVerificationThread=async()=>{
         
                     if(block){
         
-                        await verifyBlock(block,currentShardToCheck)
+                        await verifyBlock(block)
 
                         tunnelHandler.cache.delete(blockIdToGet)
 
@@ -1366,7 +1310,7 @@ export let startVerificationThread=async()=>{
     
                         if(block.index === localVtMetadataForPool.index+1){
     
-                            await verifyBlock(block,currentShardToCheck)
+                            await verifyBlock(block)
     
                         }
     
@@ -1379,36 +1323,34 @@ export let startVerificationThread=async()=>{
         }
 
 
-        let allBlocksWereVerifiedInPreviousEpoch = vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
+        let allBlocksWereVerifiedInPreviousEpoch = vtEpochHandler.leadersSequence.length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
 
         let finishedToVerifyTheLastPoolInSequence = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
 
-        let thisShardWasAccounted = shardsReadyToNewEpoch.has(currentShardToCheck)
 
+        if(allBlocksWereVerifiedInPreviousEpoch && finishedToVerifyTheLastPoolInSequence){
 
-        if(allBlocksWereVerifiedInPreviousEpoch && finishedToVerifyTheLastPoolInSequence && !thisShardWasAccounted){
-
-            shardsReadyToNewEpoch.set(currentShardToCheck,true)
+            shouldMoveToNextEpoch = true
 
         }
 
         
-    }else if(currentEpochIsFresh && tempInfoAboutFinalBlocksByPreviousPoolsOnShard){
+    }else if(currentEpochIsFresh && tempInfoAboutFinalBlocksByPreviousPools){
 
         // Take the pool by it's position
         
-        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[currentShardToCheck][tempInfoAboutFinalBlocksByPreviousPoolsOnShard.currentToVerify]
+        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[tempInfoAboutFinalBlocksByPreviousPools.currentToVerify]
         
         let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash}
 
-        let infoAboutLastBlockByThisPool = tempInfoAboutFinalBlocksByPreviousPoolsOnShard.infoAboutFinalBlocksInThisEpoch[poolToVerifyRightNow] // {index,hash}
+        let infoAboutLastBlockByThisPool = tempInfoAboutFinalBlocksByPreviousPools.infoAboutFinalBlocksInThisEpoch[poolToVerifyRightNow] // {index,hash}
 
         
         if(infoAboutLastBlockByThisPool && verificationStatsOfThisPool.index === infoAboutLastBlockByThisPool.index){
 
             // Move to next one
             
-            tempInfoAboutFinalBlocksByPreviousPoolsOnShard.currentToVerify++
+            tempInfoAboutFinalBlocksByPreviousPools.currentToVerify++
 
 
             if(!currentEpochIsFresh){
@@ -1454,7 +1396,7 @@ export let startVerificationThread=async()=>{
     
                 if(block){
     
-                    await verifyBlock(block,currentShardToCheck)
+                    await verifyBlock(block)
 
                     tunnelHandler.cache.delete(blockIdToGet)
 
@@ -1474,7 +1416,7 @@ export let startVerificationThread=async()=>{
 
                     if(block.index === verificationStatsOfThisPool.index+1){
 
-                        await verifyBlock(block,currentShardToCheck)
+                        await verifyBlock(block)
 
                     }
 
@@ -1487,19 +1429,16 @@ export let startVerificationThread=async()=>{
     }
 
 
-    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS?.[currentShardToCheck]){
+    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS){
 
         await tryToFinishCurrentEpochOnVerificationThread(vtEpochHandler)
 
     }
 
 
-    if(GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')){
+    if(shouldMoveToNextEpoch){
 
-        let mapOfShardsReadyToNextEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mappping(shardID=>boolean)
-
-        // We move to the next epoch (N+1) only in case we finish the verification on all the shards in this epoch (N)
-        if(mapOfShardsReadyToNextEpoch.size === shardsIdentifiers.length) await setUpNewEpochForVerificationThread(vtEpochHandler)
+        await setUpNewEpochForVerificationThread(vtEpochHandler)
 
     }
             
@@ -1552,9 +1491,9 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
     totalFees += blockRewardAsBigIntInWei
 
 
-    let blockCreatorContractStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
+    let blockCreatorContractStorage = await getFromState(blockCreatorPubKey+'(POOL)_STORAGE_POOL')
 
-    let blockCreatorAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+blockCreatorPubKey)
+    let blockCreatorAccount = await getUserAccountFromState(blockCreatorPubKey)
 
     let poolTotalPower = BigInt(blockCreatorContractStorage.totalStakedKly) + BigInt(blockCreatorContractStorage.totalStakedUno)
 
@@ -1596,7 +1535,7 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
         } else {
 
-            let stakerAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+stakerPubKey)
+            let stakerAccount = await getUserAccountFromState(stakerPubKey)
 
             stakerAccount.balance = BigInt(stakerAccount.balance) + rewardInWei
 
@@ -1609,20 +1548,21 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
 
 
-let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
+let executeTransaction = async (currentBlockID,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
+    
 
     if(VERIFIERS[transaction.type]){
 
         let txCopy = JSON.parse(JSON.stringify(transaction))
 
-        let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
+        let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[transaction.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
 
         // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
         if(reason!=='EVM' && reason!=='Replay: You need to increase the nonce'){
 
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
-            atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
+            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
 
             trackStateChange('TX:'+txid,1,'put')
 
@@ -1637,7 +1577,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
 
 
-let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
+let executeGroupOfTransaction = async (currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
 
     for(let txFromIndependentGroup of independentGroup){
 
@@ -1645,14 +1585,14 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
 
             let txCopy = JSON.parse(JSON.stringify(txFromIndependentGroup))
     
-            let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
+            let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[txFromIndependentGroup.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
     
             // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
             if(reason!=='EVM'){
     
                 let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
     
-                atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
+                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
     
                 trackStateChange('TX:'+txid,1,'put')
 
@@ -1669,7 +1609,7 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
 
 
 
-let verifyBlock = async(block,shardContext) => {
+let verifyBlock = async block => {
 
 
     let blockHash = Block.genHash(block),
@@ -1704,7 +1644,7 @@ let verifyBlock = async(block,shardContext) => {
         //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
         
-        let klyEvmMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
+        let klyEvmMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA // {nextBlockIndex,parentHash,timestamp}
 
         // Set the next block's parameters
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
@@ -1723,7 +1663,7 @@ let verifyBlock = async(block,shardContext) => {
             //___________________________________________START TO EXECUTE TXS____________________________________________
 
 
-            // First of all - split the transactions for groups that can be executed simultaneously
+            // First of all - split the transactions for groups that can be executed simultaneously            
 
             let txsPreparedForParallelization = getPreparedTxsForParallelization(block.transactions)
 
@@ -1736,7 +1676,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let independentTransaction of txsPreparedForParallelization.independentTransactions){
 
-                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping))
+                txsPromises.push(executeTransaction(currentBlockID,independentTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping))
 
             }
 
@@ -1748,7 +1688,7 @@ let verifyBlock = async(block,shardContext) => {
                 
                 txsPromises.push(
 
-                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
+                    executeGroupOfTransaction(currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
 
                 )
 
@@ -1760,7 +1700,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let sequentialTransaction of txsPreparedForParallelization.syncTransactions){
 
-                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
+                await executeTransaction(currentBlockID,sequentialTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
 
             }        
 
@@ -1815,14 +1755,14 @@ let verifyBlock = async(block,shardContext) => {
         }
 
 
-        let generalBlockIndexInShard = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
+        let generalBlockHeight = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER
 
-        atomicBatch.put(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
+        atomicBatch.put(`SID:${generalBlockHeight}`,currentBlockID)
 
-        trackStateChange(`SID:${shardContext}:${generalBlockIndexInShard}`,1,'put')
+        trackStateChange(`SID:${generalBlockHeight}`,1,'put')
 
 
-        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
+        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER++
 
 
         // Try to set the pointer to the first block in epoch
@@ -1831,16 +1771,16 @@ let verifyBlock = async(block,shardContext) => {
 
             // Structure is {firstBlockCreator,firstBlockHash}
             
-            let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`).catch(()=>false)
+            let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochIndex}`).catch(()=>false)
 
             // If no exists - it's obvious that it's the first block
             if(!handlerWithTheFirstBlockData){
 
                 handlerWithTheFirstBlockData = { firstBlockCreator: block.creator, firstBlockHash: blockHash }
 
-                atomicBatch.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData)
+                atomicBatch.put(`FIRST_BLOCK:${currentEpochIndex}`,handlerWithTheFirstBlockData)
 
-                trackStateChange(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData,'put')
+                trackStateChange(`FIRST_BLOCK:${currentEpochIndex}`,handlerWithTheFirstBlockData,'put')
 
             }
 
@@ -1943,23 +1883,23 @@ let verifyBlock = async(block,shardContext) => {
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
 
 
-        atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
+        atomicBatch.put(`EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
-        trackStateChange(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,1,'put')
+        trackStateChange(`EVM_BLOCK:${blockToStore.number}`,1,'put')
 
-        atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
+        atomicBatch.put(`EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
 
-        trackStateChange(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,1,'put')
+        trackStateChange(`EVM_INDEX:${blockToStore.hash}`,1,'put')
 
-        atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
+        atomicBatch.put(`EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-        trackStateChange(`${shardContext}:EVM_LOGS:${blockToStore.number}`,1,'put')
+        trackStateChange(`EVM_LOGS:${blockToStore.number}`,1,'put')
 
-        atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{klyBlock:currentBlockID})
+        atomicBatch.put(`EVM_BLOCK_RECEIPT:${blockToStore.number}`,{klyBlock:currentBlockID})
 
-        trackStateChange(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,1,'put')
+        trackStateChange(`EVM_BLOCK_RECEIPT:${blockToStore.number}`,1,'put')
  
-        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{sid:generalBlockIndexInShard})
+        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{sid:generalBlockHeight})
         
         trackStateChange(`BLOCK_RECEIPT:${currentBlockID}`,1,'put')
         
@@ -1970,9 +1910,9 @@ let verifyBlock = async(block,shardContext) => {
 
         await atomicBatch.write()
 
-        vtStatsLog(block.epoch,shardContext,block.creator,block.index,blockHash,block.transactions.length)
+        vtStatsLog(block.epoch,block.creator,block.index,blockHash,block.transactions.length)
 
-        console.log('DEBUG: State changes => ',GLOBAL_CACHES.STATE_CHANGES_CACHE)
+        // console.log('DEBUG: State changes => ',GLOBAL_CACHES.STATE_CHANGES_CACHE)
         
 
     }

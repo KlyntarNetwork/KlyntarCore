@@ -65,7 +65,7 @@ let getFunctionsToInject = (arrayOfImports,contractHandlerToBind) => {
 
 
 
-let performStakingActionsForEVM = async (originShard,txCreator,transferValue,parsedData) => {
+let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => {
 
 
     /*
@@ -97,7 +97,7 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
             let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
 
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
 
             
             let templateToPush = { type:'stake', staker: txCreator, poolPubKey, amount }
@@ -117,7 +117,7 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
             let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
 
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
 
             
             let templateToPush = { type:'unstake', unstaker: txCreator, poolPubKey, amount }
@@ -136,7 +136,7 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
 
 
-let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccounts)=>{
+let trackTransactionsList=async(txid,txType,sigType,fee,touchedAccounts)=>{
 
     // Function to allow to fill the list of transaction per address
 
@@ -145,7 +145,7 @@ let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccou
 
     for(let account of touchedAccounts){
 
-        let txsListForAccount = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(()=>[])
+        let txsListForAccount = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${account}`).catch(()=>[])
 
         txsListForAccount.push(dataToPush)
 
@@ -157,7 +157,7 @@ let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccou
 
         }
 
-        await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${account}`,txsListForAccount)        
+        await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${account}`,txsListForAccount)        
 
     }
 
@@ -286,15 +286,15 @@ export let VERIFIERS = {
     
     */
 
-    TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector,_atomicBatch)=>{
+    TX:async(tx,rewardsAndSuccessfulTxsCollector,_atomicBatch)=>{
 
-        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(tx.creator)
         
-        let recipientAccount = await getFromState(originShard+':'+tx.payload.to)    
+        let recipientAccount = await getFromState(tx.payload.to)
 
         
-        tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
-
+        tx = await TXS_FILTERS.TX(tx) // pass through the filter
+        
 
         if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
@@ -330,9 +330,9 @@ export let VERIFIERS = {
 
                 else if(tx.payload.pqcPub) recipientAccount.pqcPub = tx.payload.pqcPub
 
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
+                GLOBAL_CACHES.STATE_CACHE.set(tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
 
-                trackStateChange(originShard+':'+tx.payload.to,1,'put')
+                trackStateChange(tx.payload.to,1,'put')
 
                 WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
 
@@ -364,8 +364,6 @@ export let VERIFIERS = {
 
                     if(tx.payload.to.startsWith('0x') && tx.payload.to.length === 42){
 
-                        // Check if recipient is binded to same shard
-
                         let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
 
                         let evmAccountMetadata = await getFromState(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`)
@@ -392,7 +390,7 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
-                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,touchedAccounts)
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,touchedAccounts)
         
                     return {isOk:true}        
 
@@ -439,13 +437,13 @@ export let VERIFIERS = {
 
     */
 
-    WVM_CONTRACT_DEPLOY:async (originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    WVM_CONTRACT_DEPLOY:async (tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         if(tx) return {isOk:false,reason:`Contract deployment to WASM vm disabled for a while`}
 
-        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(tx.creator)
 
-        tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
+        tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx) // pass through the filter
 
 
         if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
@@ -464,7 +462,7 @@ export let VERIFIERS = {
 
                 if(senderAccount.balance - spendData.amountToSpend >= 0n && BigInt(senderAccount.gas) - spendData.gasToSpend >= 0n){
 
-                    let contractID = `0x${blake3Hash(originShard+tx.creator+tx.nonce)}`
+                    let contractID = `0x${blake3Hash(tx.creator+tx.nonce)}`
 
                     let contractMetadataTemplate = {
         
@@ -477,17 +475,17 @@ export let VERIFIERS = {
         
                     }
                 
-                    atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
+                    atomicBatch.put(contractID,contractMetadataTemplate)
 
-                    trackStateChange(originShard+':'+contractID,1,'put')
+                    trackStateChange(contractID,1,'put')
 
-                    atomicBatch.put(originShard+':'+contractID+'_BYTECODE',tx.payload.bytecode)
+                    atomicBatch.put(contractID+'_BYTECODE',tx.payload.bytecode)
 
-                    trackStateChange(originShard+':'+contractID+'_BYTECODE',1,'put')
+                    trackStateChange(contractID+'_BYTECODE',1,'put')
     
-                    atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
+                    atomicBatch.put(contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
 
-                    trackStateChange(originShard+':'+contractID+'_STORAGE_DEFAULT',1,'put')
+                    trackStateChange(contractID+'_STORAGE_DEFAULT',1,'put')
 
 
                     WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
@@ -504,7 +502,7 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
-                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,contractID])
 
                     return {isOk:true, createdContractAddress: contractID}
 
@@ -535,12 +533,12 @@ export let VERIFIERS = {
 
 
     */
-    WVM_CALL:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    WVM_CALL:async(tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
 
-        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(tx.creator)
 
-        tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
+        tx = await TXS_FILTERS.WVM_CALL(tx) // pass through the filter
        
 
         if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
@@ -576,7 +574,7 @@ export let VERIFIERS = {
         
                             let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
                             
-                            execResultWithStatusAndReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
+                            execResultWithStatusAndReason = await systemContract[tx.payload.method](tx,atomicBatch) // result is {isOk:true/false, reason:''}
         
                         } else execResultWithStatusAndReason = {isOk:false,reason:`No such type of system contract`}
                 
@@ -586,9 +584,9 @@ export let VERIFIERS = {
         
                         // Otherwise it's attempt to call custom contract
         
-                        let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
+                        let contractMetadata = await getFromState(tx.payload.contractID)
 
-                        let contractBytecode = await getFromState(originShard+':'+tx.payload.contractID+'_BYTECODE')
+                        let contractBytecode = await getFromState(tx.payload.contractID+'_BYTECODE')
         
                         if(contractMetadata){
         
@@ -605,7 +603,7 @@ export let VERIFIERS = {
         
                             // Before call - get the contract default storage from state DB
         
-                            let contractStorage = await getFromState(originShard+':'+tx.payload.contractID+'_STORAGE_DEFAULT')
+                            let contractStorage = await getFromState(tx.payload.contractID+'_STORAGE_DEFAULT')
 
                             
                             
@@ -617,7 +615,7 @@ export let VERIFIERS = {
 
                                 contractAccount:  contractMetadata,
 
-                                recipientAccount: await getFromState(originShard+':'+tx.payload.to) // in case you plan to call <transferNativeCoins> function - you need to get account of recipient first
+                                recipientAccount: await getFromState(tx.payload.to) // in case you plan to call <transferNativeCoins> function - you need to get account of recipient first
 
                             }
 
@@ -667,7 +665,7 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
-                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,tx.payload.contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,tx.payload.contractID])
 
                     return execResultWithStatusAndReason
 
@@ -687,7 +685,7 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(originShard,txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    EVM_CALL:async(txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         let evmResult = await KLY_EVM.callEVM(txWithPayload.payload)
 
@@ -718,7 +716,7 @@ export let VERIFIERS = {
 
                 let returnToReceipt
 
-                atomicBatch.put('TX:'+tx.hash,{tx,receipt,originShard})
+                atomicBatch.put('TX:'+tx.hash,{tx,receipt})
 
                 trackStateChange('TX:'+tx.hash,1,'put')
 
@@ -763,7 +761,7 @@ export let VERIFIERS = {
                         
                         */
                         
-                        returnToReceipt = await performStakingActionsForEVM(originShard,tx.from,transferValue,parsedData)
+                        returnToReceipt = await performStakingActionsForEVM(tx.from,transferValue,parsedData)
 
                     
                     } else if(parsedData.to){
@@ -771,7 +769,7 @@ export let VERIFIERS = {
                         if(Array.isArray(parsedData.touchedAccounts) && !parsedData.touchedAccounts.includes(parsedData.to)) return {isOk:false,reason:'EVM'}
 
 
-                        let accountToTransfer = await getUserAccountFromState(originShard+':'+parsedData.to)
+                        let accountToTransfer = await getUserAccountFromState(parsedData.to)
 
                         // Transfer coins
 
@@ -789,7 +787,7 @@ export let VERIFIERS = {
             
                             else if(parsedData.pqcPub) accountToTransfer.pqcPub = tx.payload.pqcPub
                 
-                            GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+parsedData.to,accountToTransfer) // add to cache to collapse after all events in block
+                            GLOBAL_CACHES.STATE_CACHE.set(parsedData.to,accountToTransfer) // add to cache to collapse after all events in block
                         
                         }
 
@@ -803,7 +801,7 @@ export let VERIFIERS = {
 
                 }
 
-                trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',propsedFee,touchedAccounts)
+                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',propsedFee,touchedAccounts)
 
                 return returnToReceipt || {isOk:true,reason:'EVM'}
 

@@ -2,9 +2,9 @@ import {getFromApprovementThreadState} from './common_functions/approvement_thre
 
 import { EPOCH_METADATA_MAPPING, WORKING_THREADS, NODE_METADATA } from './globals.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
-
 import {getUtcTimestamp} from '../../KLY_Utils/utils.js'
+
+import {CONFIGURATION} from '../../klyn74r.js'
 
 
 
@@ -30,7 +30,7 @@ export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].CORE_MAJOR
 export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETWORK_PARAMETERS.EPOCH_TIME > getUtcTimestamp()
 
 
-export let getCurrentShardLeaderURL = async () => {
+export let getCurrentLeaderURL = async () => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -40,22 +40,17 @@ export let getCurrentShardLeaderURL = async () => {
 
     if(!currentEpochMetadata) return
 
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+    let canGenerateBlocksNow = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
 
-    if(canGenerateBlocksNow) return {isMeShardLeader:true}
+    if(canGenerateBlocksNow) return {isMeLeader:true}
 
     else {
 
-        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(BLOCKCHAIN_GENESIS.SHARD) // {currentLeader:<id>}
+        // Get the url of current leader
 
-        let currentLeaderPubkey = epochHandler.leadersSequence[BLOCKCHAIN_GENESIS.SHARD][indexOfCurrentLeaderForShard.currentLeader]
+        let poolStorage = await getFromApprovementThreadState(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-        // Get the url of current shard leader on some shard
-
-        let poolStorage = await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-
-        if(poolStorage) return {isMeShardLeader:false,url:poolStorage.poolURL}
+        if(poolStorage) return {isMeLeader:false,url:poolStorage.poolURL}
         
     }
     
@@ -64,4 +59,4 @@ export let getCurrentShardLeaderURL = async () => {
 
 // Required by KLY-EVM JSON-RPC API, so make it available via global
 
-global.getCurrentShardLeaderURL = getCurrentShardLeaderURL
+global.getCurrentLeaderURL = getCurrentLeaderURL

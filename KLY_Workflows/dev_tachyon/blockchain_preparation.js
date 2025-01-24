@@ -4,7 +4,7 @@ import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quoru
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from './globals.js'
 
-import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
+import {setLeadersSequence} from './life/leaders_monitoring.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -45,19 +45,7 @@ let restoreCachesForApprovementThread=async()=>{
 
     }
 
-    for(let shardID of WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.shardsRegistry){
-
-        let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+shardID).catch(()=>({currentLeader:0}))
-
-        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,leadersHandler)
-
-        // Using pointer - find the current leader
-
-        let currentLeaderPubKey = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[shardID][leadersHandler.currentLeader]
-
-        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,shardID)
-        
-    }
+    currentEpochMetadata.CURRENT_LEADER_INFO = await currentEpochMetadata.DATABASE.get('CURRENT_LEADER_INFO').catch(()=>({index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]}))
 
     // Finally, once we've started the "next epoch" process - restore it
 
@@ -96,7 +84,7 @@ let setGenesisToState=async()=>{
 
 
 
-    WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[BLOCKCHAIN_GENESIS.SHARD] = 0
+    WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER = 0
 
     shardsRegistry.push(BLOCKCHAIN_GENESIS.SHARD)
 
@@ -104,8 +92,6 @@ let setGenesisToState=async()=>{
 
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(BLOCKCHAIN_GENESIS.POOLS)){
-
-        let bindToShard = BLOCKCHAIN_GENESIS.SHARD
 
         // Create the value in VT
 
@@ -131,9 +117,9 @@ let setGenesisToState=async()=>{
         
         // Store all info about pool(account data + storage) to state
 
-        verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
+        verificationThreadAtomicBatch.put(poolPubKey+'(POOL)',contractMetadataTemplate)
     
-        verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
+        verificationThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
 
         // Do the same for approvement thread
 
@@ -192,7 +178,7 @@ let setGenesisToState=async()=>{
 
     }
 
-    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[BLOCKCHAIN_GENESIS.SHARD] = {
+    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA = {
 
         nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
 
@@ -206,8 +192,6 @@ let setGenesisToState=async()=>{
     //_______________________ Now add the data to state _______________________
 
     for(let [accountID, accountData] of Object.entries(BLOCKCHAIN_GENESIS.STATE)){
-
-        let shardID = BLOCKCHAIN_GENESIS.SHARD
 
         if(accountData.type === 'contract'){
 
@@ -228,9 +212,9 @@ let setGenesisToState=async()=>{
 
             // Write metadata first
             
-            verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
+            verificationThreadAtomicBatch.put(accountID,contractMeta)
 
-            verificationThreadAtomicBatch.put(shardID+':'+accountID+'_BYTECODE',bytecode)
+            verificationThreadAtomicBatch.put(accountID+'_BYTECODE',bytecode)
 
             WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
 
@@ -240,7 +224,7 @@ let setGenesisToState=async()=>{
 
             for(let storageID of storages){
 
-                verificationThreadAtomicBatch.put(shardID+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
+                verificationThreadAtomicBatch.put(accountID+'_STORAGE_'+storageID,accountData[storageID])
 
             }
 
@@ -251,7 +235,7 @@ let setGenesisToState=async()=>{
 
             accountData.balance = (BigInt(accountData.balance) * (BigInt(10) ** BigInt(18))).toString()
 
-            verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
+            verificationThreadAtomicBatch.put(accountID,accountData)
 
             WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
 
@@ -356,7 +340,7 @@ let setGenesisToState=async()=>{
 
         quorum:[], // [pool0,pool1,...,poolN]
 
-        leadersSequence:{} // shardID => [pool0,pool1,...,poolN]
+        leadersSequence:[] // [pool0,pool1,...,poolN]
     
     }
     
@@ -375,7 +359,7 @@ let setGenesisToState=async()=>{
 
         quorum:[], // [pool0,pool1,...,poolN]
 
-        leadersSequence:{} // shardID => [pool0,pool1,...,poolN]
+        leadersSequence:[] // [pool0,pool1,...,poolN]
     
     }
 
@@ -394,9 +378,9 @@ let setGenesisToState=async()=>{
 
 
 
-    // Finally, assign validators to shards for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
+    // Finally, assign sequence of leaders for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
-    await setLeadersSequenceForShards(atEpochHandler,initEpochHash)
+    await setLeadersSequence(atEpochHandler,initEpochHash)
 
     vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(atEpochHandler.leadersSequence))
 
@@ -543,7 +527,7 @@ export let prepareBlockchain=async()=>{
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
-        SHARDS_LEADERS_HANDLERS:new Map(), // shardID => {currentLeader:<number>} | Pool => shardID
+        CURRENT_LEADER_INFO:{}, // {index,pubKey}
 
 
         //____________________Mapping which contains temporary databases for____________________

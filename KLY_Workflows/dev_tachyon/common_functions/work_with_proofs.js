@@ -23,15 +23,15 @@ import Block from '../structures/block.js'
 
 
 
-export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,originShard) => {
+export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject) => {
 
     
     if(WORKING_THREADS[threadID].CORE_MAJOR_VERSION === tx.v){
 
-        // Sender sign concatenated NETWORK_ID(to prevent cross-chains attacks and reuse nonce & signatures), core version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
+        // Sender sign concatenated NETWORK_ID(to prevent cross-chains attacks and reuse nonce & signatures), core version, tx type, JSON'ed payload,nonce and fee
         
-        let signedData = BLOCKCHAIN_GENESIS.NETWORK_ID + tx.v + originShard + tx.type + JSON.stringify(tx.payload) + tx.nonce + tx.fee
-    
+        let signedData = BLOCKCHAIN_GENESIS.NETWORK_ID + tx.v + tx.type + JSON.stringify(tx.payload) + tx.nonce + tx.fee
+        
 
         if(tx.sigType==='D') return verifyEd25519(signedData,tx.sig,tx.creator)
         
@@ -43,7 +43,7 @@ export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,o
 
             try{
 
-                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+                let appropriatePqcUserAccount = await getUserAccountFromState(tx.creator)
 
                 isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyDilithiumSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
             
@@ -59,7 +59,7 @@ export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,o
 
             try{
 
-                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+                let appropriatePqcUserAccount = await getUserAccountFromState(tx.creator)
 
                 isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyBlissSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
             
@@ -86,8 +86,6 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
         &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.shard === 'string'
-        &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastLeader === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
@@ -109,8 +107,7 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
             The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
             {
-                shard,
-                lastLeader:<index of Ed25519 pubkey of some pool in sequences of validators for this shard in current epoch>,
+                lastLeader:<index of Ed25519 pubkey of some pool in sequences of validators>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
                 hashOfFirstBlockByLastLeader,
@@ -130,9 +127,9 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
         */
 
-        let {shard,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
+        let {lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
 
-        let dataThatShouldBeSigned = `EPOCH_DONE:${shard}:${lastLeader}:${lastIndex}:${lastHash}:${hashOfFirstBlockByLastLeader}:${epochFullID}`
+        let dataThatShouldBeSigned = `EPOCH_DONE:${lastLeader}:${lastIndex}:${lastHash}:${hashOfFirstBlockByLastLeader}:${epochFullID}`
         
         let okSignatures = 0
 
@@ -158,7 +155,7 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
             return {
             
-                shard,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
+                lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
         
                 proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
 
@@ -268,23 +265,23 @@ export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epoc
 
 
 
-export let getFirstBlockOnEpochOnSpecificShard = async(threadID,epochHandler,shardID,getBlockFunction) => {
+export let getFirstBlockInEpoch = async(threadID,epochHandler,getBlockFunction) => {
 
     // Check if we already tried to find first block by finding pivot in cache
 
-    let idOfHandlerWithFirstBlockPerShard = `${threadID}:${epochHandler.id}:${shardID}`
+    let idOfHandlerWithFirstBlock = `${threadID}:${epochHandler.id}`
 
     let cache = threadID === 'VERIFICATION_THREAD' ? GLOBAL_CACHES.STUFF_CACHE : GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE
 
-    let pivotShardData = cache.get(idOfHandlerWithFirstBlockPerShard) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
+    let pivotData = cache.get(idOfHandlerWithFirstBlock) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
 
-    if(!pivotShardData){
+    if(!pivotData){
 
         // Ask known peers about first block assumption
 
-        let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
+        let arrayOfPools = epochHandler.leadersSequence
 
-        // Get all known peers and call GET /first_block_assumption/:epoch_index/:shard
+        // Get all known peers and call GET /first_block_assumption/:epoch_index
 
         let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...getAllKnownPeers()]
 
@@ -297,7 +294,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(threadID,epochHandler,sha
 
             setTimeout(() => controller.abort(), 2000)
             
-            promises.push(fetch(node+'/first_block_assumption/'+epochHandler.id+'/'+shardID,{signal:controller.signal}).then(r=>r.json()).catch(()=>null))
+            promises.push(fetch(node+'/first_block_assumption/'+epochHandler.id,{signal:controller.signal}).then(r=>r.json()).catch(()=>null))
 
         }
 
@@ -310,7 +307,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(threadID,epochHandler,sha
 
         for(let proposition of propositions){
 
-            let firstBlockCreator = arrayOfPoolsForShard[proposition.indexOfFirstBlockCreator]
+            let firstBlockCreator = arrayOfPools[proposition.indexOfFirstBlockCreator]
 
             if(firstBlockCreator && await verifyAggregatedFinalizationProof(proposition.afpForSecondBlock,epochHandler)){
 
@@ -332,7 +329,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(threadID,epochHandler,sha
 
         let position = minimalIndexOfLeader
 
-        let pivotPubKey = arrayOfPoolsForShard[position]
+        let pivotPubKey = arrayOfPools[position]
         
         let firstBlockByPivot = await getBlockFunction(epochHandler.id,pivotPubKey,0)
 
@@ -345,53 +342,53 @@ export let getFirstBlockOnEpochOnSpecificShard = async(threadID,epochHandler,sha
 
             let pivotTemplate = {position, pivotPubKey, firstBlockByPivot, firstBlockHash}
 
-            cache.set(idOfHandlerWithFirstBlockPerShard,pivotTemplate)
+            cache.set(idOfHandlerWithFirstBlock,pivotTemplate)
 
         }
 
     }
 
     
-    pivotShardData = cache.get(idOfHandlerWithFirstBlockPerShard)
+    pivotData = cache.get(idOfHandlerWithFirstBlock)
 
 
-    if(pivotShardData){
+    if(pivotData){
 
         // In pivot we have first block created in epoch by some pool
 
-        // Try to move closer to the beginning of the epochHandler.leadersSequence[shardID] to find the real first block
+        // Try to move closer to the beginning of the epochHandler.leadersSequence to find the real first block
 
         // Based on ALRP in pivot block - find the real first block
 
-        let blockToEnumerateAlrp = pivotShardData.firstBlockByPivot
+        let blockToEnumerateAlrp = pivotData.firstBlockByPivot
 
-        let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
+        let arrayOfPools = epochHandler.leadersSequence
 
 
-        if(pivotShardData.position === 0){
+        if(pivotData.position === 0){
 
-            cache.delete(idOfHandlerWithFirstBlockPerShard)
+            cache.delete(idOfHandlerWithFirstBlock)
 
-            return {firstBlockCreator:pivotShardData.pivotPubKey,firstBlockHash:pivotShardData.firstBlockHash}
+            return {firstBlockCreator:pivotData.pivotPubKey,firstBlockHash:pivotData.firstBlockHash}
 
         }
 
 
-        for(let position = pivotShardData.position-1 ; position >= 0 ; position--){
+        for(let position = pivotData.position-1 ; position >= 0 ; position--){
 
         
-            let previousPoolInLeadersSequence = arrayOfPoolsForShard[position]
+            let previousPoolInLeadersSequence = arrayOfPools[position]
     
             let leaderRotationProofForPreviousPool = blockToEnumerateAlrp.extraData.aggregatedLeadersRotationProofs[previousPoolInLeadersSequence]
 
 
             if(position === 0){
 
-                cache.delete(idOfHandlerWithFirstBlockPerShard)
+                cache.delete(idOfHandlerWithFirstBlock)
 
                 if(leaderRotationProofForPreviousPool.skipIndex === -1){
 
-                    return {firstBlockCreator:pivotShardData.pivotPubKey,firstBlockHash:pivotShardData.firstBlockHash}
+                    return {firstBlockCreator:pivotData.pivotPubKey,firstBlockHash:pivotData.firstBlockHash}
 
                 } else return {firstBlockCreator:previousPoolInLeadersSequence,firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash}
 
@@ -416,7 +413,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(threadID,epochHandler,sha
     
                     }
 
-                    cache.set(idOfHandlerWithFirstBlockPerShard,newPivotTemplate)
+                    cache.set(idOfHandlerWithFirstBlock,newPivotTemplate)
 
                     break
 

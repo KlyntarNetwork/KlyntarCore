@@ -107,6 +107,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
 
     let {block,previousBlockAFP} = parsedData
+    
 
     let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !currentEpochMetadata.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+block.creator)
 
@@ -120,16 +121,13 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     }else if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+block.creator)){
     
         // Smth like mutex
+
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
-            
-        let shardID
 
-        if(epochHandler.poolsRegistry.includes(block.creator) && typeof currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
-            
-            shardID = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator)
+        let allGood = epochHandler.poolsRegistry.includes(block.creator) && currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === block.creator
 
-        } else {
-
+        if(!allGood){
+        
             connection.close()
 
             currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
@@ -226,7 +224,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
             
                             legacyEpochFullID
                                 
-                        ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.shard === shardID
+                        ).catch(()=>false)
 
                     }
                         
@@ -234,15 +232,15 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                     //_________________________________________2_________________________________________
                    
 
-                    let leadersSequenceForThisShardAndEpoch = epochHandler.leadersSequence[shardID]
+                    let leadersSequenceForThisEpoch = epochHandler.leadersSequence
 
-                    let positionOfBlockCreatorInLeadersSequence = leadersSequenceForThisShardAndEpoch.indexOf(block.creator)
+                    let positionOfBlockCreatorInLeadersSequence = leadersSequenceForThisEpoch.indexOf(block.creator)
 
                     let alrpChainIsOk = await checkAlrpChainValidity(
         
                         block,
 
-                        leadersSequenceForThisShardAndEpoch,
+                        leadersSequenceForThisEpoch,
         
                         positionOfBlockCreatorInLeadersSequence,
         
@@ -297,19 +295,19 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                     if(block.index === 2) {
 
-                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`).catch(()=>false)
+                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`).catch(()=>false)
 
                         if(!firstBlockAssumptionAlreadyExists){
 
                             let objectToStore = {
 
-                                indexOfFirstBlockCreator: epochHandler.leadersSequence[shardID].indexOf(block.creator),
+                                indexOfFirstBlockCreator: epochHandler.leadersSequence.indexOf(block.creator),
 
                                 afpForSecondBlock: previousBlockAFP
 
                             }
 
-                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`,objectToStore).catch(()=>{})
+                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`,objectToStore).catch(()=>{})
 
                         }
 
@@ -444,7 +442,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
         
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
 
-        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && typeof currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(blockCreator) === 'string'
+        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === blockCreator
     
         
         if(!thisLeaderCanGenerateBlocksNow){
@@ -560,21 +558,19 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
 
                     if(blockIndex === 2) {
 
-                        let shardID = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(blockCreator)
-
-                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`).catch(()=>false)
+                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`).catch(()=>false)
 
                         if(!firstBlockAssumptionAlreadyExists){
 
                             let objectToStore = {
 
-                                indexOfFirstBlockCreator: epochHandler.leadersSequence[shardID].indexOf(blockCreator),
+                                indexOfFirstBlockCreator: epochHandler.leadersSequence.indexOf(blockCreator),
 
                                 afpForSecondBlock: previousBlockAFP
 
                             }
 
-                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`,objectToStore).catch(()=>{})
+                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`,objectToStore).catch(()=>{})
 
                         }
 
@@ -682,8 +678,6 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
         {
 
-            shard,
-
             poolPubKey,
 
             hisIndexInLeadersSequence,
@@ -771,11 +765,9 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
 
     let overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
-    
-        overviewIsOk &&= epochHandler.leadersSequence[requestForLeaderRotationProof.shard] // make sure that shard exists
 
-        overviewIsOk &&= currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(requestForLeaderRotationProof.shard)?.currentLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of shard leader is bigger/equal to requested
-
+        overviewIsOk &&= currentEpochMetadata.CURRENT_LEADER_INFO.index > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of leader is bigger/equal to requested
+        
 
     if(overviewIsOk){
         
