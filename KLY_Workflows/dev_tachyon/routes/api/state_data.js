@@ -21,8 +21,7 @@ import {SYSTEM_CONTRACTS} from '../../system_contracts/root.js'
  * 
  * ### Params
  * 
- *  + 0 - shardID - Base58 encoded 32-byte Ed25519 public key which is also ID of shard
- *  + 1 - cellID - identifier of what you want to get - contract ID, account address(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on), etc.
+ *  + 0 - cellID - identifier of what you want to get - contract ID, account address(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on), etc.
  * 
  * 
  * ### Returns
@@ -31,19 +30,12 @@ import {SYSTEM_CONTRACTS} from '../../system_contracts/root.js'
  * 
  *  
  * */
-FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
+FASTIFY_SERVER.get('/state/:cellID',async(request,response)=>{
 
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.FROM_STATE){
 
-        let shardContext = request.params.shardID
-
-        let cellID = request.params.cellID
-
-        let fullID = shardContext === 'x' ? cellID : shardContext+':'+cellID
-
-        let data = await BLOCKCHAIN_DATABASES.STATE.get(fullID).catch(()=>null)
-
+        let data = await BLOCKCHAIN_DATABASES.STATE.get(request.params.cellID).catch(()=>null)
 
         response
 
@@ -74,11 +66,11 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
                 if(request.params.txID.startsWith('0x')){
 
-                    let blockIdWithThisTx = await BLOCKCHAIN_DATABASES.STATE.get(`${txReceipt.originShard}:EVM_BLOCK_RECEIPT:${txReceipt.receipt.blockNumber}`).then(pointer=>pointer.klyBlock).catch(err=>err)
+                    let blockIdWithThisTx = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_BLOCK_RECEIPT:${txReceipt.receipt.blockNumber}`).then(pointer=>pointer.klyBlock).catch(err=>err)
 
                     let formatCompatibleReceipt = {
 
-                        shard: txReceipt.originShard,
+                        shard: BLOCKCHAIN_GENESIS.SHARD,
 
                         blockID: blockIdWithThisTx,
 
@@ -92,7 +84,7 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
                     response.send(formatCompatibleReceipt)
 
-                } else response.send(txReceipt)
+                } else response.send({shard: BLOCKCHAIN_GENESIS.SHARD, ...txReceipt})
 
             }
 
@@ -107,16 +99,14 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
 
 
-FASTIFY_SERVER.get('/txs_list/:shardID/:accountID',async(request,response)=>{
+FASTIFY_SERVER.get('/txs_list/:accountID',async(request,response)=>{
 
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.FROM_STATE){
 
-        let shardID = request.params.shardID
-
         let accountID = request.params.accountID
 
-        let txsList = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:`+shardID+':'+accountID).catch(()=>([]))
+        let txsList = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${accountID}`).catch(()=>([]))
 
 
         response
@@ -143,9 +133,9 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
         let poolOriginShard = BLOCKCHAIN_GENESIS.SHARD
 
-        let poolMetadata = await getFromState(`${poolOriginShard}:${request.params.poolID}`)
+        let poolMetadata = await getFromState(`${request.params.poolID}`)
 
-        let poolStorage = await getFromState(`${poolOriginShard}:${request.params.poolID}_STORAGE_POOL`)
+        let poolStorage = await getFromState(`${request.params.poolID}_STORAGE_POOL`)
 
         let poolPubKey = request.params.poolID.split('(')[0]
 
@@ -168,12 +158,10 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
 
 
-FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
+FASTIFY_SERVER.get('/account/:accountID',async(request,response)=>{
 
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.FROM_STATE){
-
-        let shardID = request.params.shardID
 
         let accountID = request.params.accountID
 
@@ -181,7 +169,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
         // First - check if request for system smart contract
 
-        if(shardID === 'x' && SYSTEM_CONTRACTS.has(accountID)){
+        if(SYSTEM_CONTRACTS.has(accountID)){
 
             data = {
                         
@@ -229,7 +217,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             } else data = {}
 
-        } else data = await BLOCKCHAIN_DATABASES.STATE.get(shardID+':'+accountID).catch(()=>({err:'Not found'}))
+        } else data = await BLOCKCHAIN_DATABASES.STATE.get(accountID).catch(()=>({err:'Not found'}))
  
 
         response

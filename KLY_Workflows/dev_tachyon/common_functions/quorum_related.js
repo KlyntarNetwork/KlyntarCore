@@ -71,7 +71,7 @@ export let getPseudoRandomSubsetFromQuorumByTicketId=(ticketID,epochHandler)=>{
             
                 The probability that >=33% of 256 will be bad actors is 1 case per 1M epoches. In case epoch is 1 day - this chance is equal to 1 case per 2739 years
 
-            3) Now, to force shards leaders to send their blocks only to 21 validators we must accept the fact that all 21 randomly choosen validators from 256 should be fair
+            3) Now, to force leaders to send their blocks only to 21 validators we must accept the fact that all 21 randomly choosen validators from 256 should be fair
             
                 and response with a valid signature to aggregate it and send as a proof to the rest of quorum:
 
@@ -79,13 +79,13 @@ export let getPseudoRandomSubsetFromQuorumByTicketId=(ticketID,epochHandler)=>{
 
                 P(chance that in group of 21 all will be bad actors) = C(84,21) / C(256,21) what is 1.03 * 10^-9 %
 
-            4) Now, let each shard leader can choose random subminorities with size of 21 from quorum, saying 10 000 times
+            4) Now, let each leader can choose random subminorities with size of 21 from quorum, saying 10 000 times
 
                 This gives us that total chance to find a subset with 21 fair validators will be equal to 153 %,
                 
                     while chance that in subset will be no at least one fair validator is equal to 1.03 * 10^-5 % - or approximately 1 case per 273 years 
 
-            5) That's why, based on <quorum> and <ticketID>(in range 0-9999) we find the subset in quorum where the shard leader should send blocks
+            5) That's why, based on <quorum> and <ticketID>(in range 0-9999) we find the subset in quorum where the leader should send blocks
 
 
 

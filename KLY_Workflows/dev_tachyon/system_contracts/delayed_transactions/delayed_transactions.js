@@ -25,14 +25,14 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         
         creator: transaction.creator,
 
-        originShard, percentage, poolURL, wssPoolURL
+        percentage, poolURL, wssPoolURL
     }
     
     
     */
     createStakingPool:async (threadContext,delayedTransaction) => {
 
-        let {creator,originShard,percentage,poolURL,wssPoolURL} = delayedTransaction
+        let {creator,percentage,poolURL,wssPoolURL} = delayedTransaction
 
         let typeCheckIsOk = typeof poolURL === 'string' && typeof wssPoolURL === 'string'
 
@@ -61,8 +61,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 totalStakedUno: '0',
 
-                shard: originShard,
-
                 stakers:{}, // Pubkey => {kly,uno}
 
                 poolURL,
@@ -90,20 +88,20 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             } else {
 
-                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+creator+'(POOL)').catch(()=>null)
+                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(creator+'(POOL)').catch(()=>null)
 
                 if(!poolAlreadyExists){
 
                     // Put metadata and default storage
                     
-                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
+                    GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)',contractMetadataTemplate)
 
-                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                    GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
 
-                    trackStateChange(originShard+':'+creator+'(POOL)',1,'put')
+                    trackStateChange(creator+'(POOL)',1,'put')
 
-                    trackStateChange(originShard+':'+creator+'(POOL)_STORAGE_POOL',1,'put')
+                    trackStateChange(creator+'(POOL)_STORAGE_POOL',1,'put')
 
 
                 } else return {isOk:false}
@@ -128,7 +126,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         
         creator: transaction.creator,
 
-        originShard, activated, percentage, poolURL, wssPoolURL
+        activated, percentage, poolURL, wssPoolURL
     }
     
     */
@@ -165,7 +163,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             } else {
 
-                poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+                poolStorage = await getFromState(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
 
                 if(poolStorage){
 
@@ -245,7 +243,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         } else {
         
-            poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            poolStorage = await getFromState(poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         }
 
@@ -312,7 +310,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             } else {
 
-                let txCreatorAccount = await getUserAccountFromState(BLOCKCHAIN_GENESIS.SHARD+':'+staker)
+                let txCreatorAccount = await getUserAccountFromState(staker)
 
                 if(txCreatorAccount){
         
@@ -355,7 +353,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         } else {
 
-            poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            poolStorage = await getFromState(poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         }
 
@@ -403,7 +401,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
             
                         } else {
 
-                            let unstakerAccount = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+unstaker)
+                            let unstakerAccount = await getFromState(unstaker)
     
                             if(unstakerAccount){
     
@@ -470,7 +468,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         } else {
         
-            poolStorage = await getFromState(BLOCKCHAIN_GENESIS.SHARD+':'+targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
+            poolStorage = await getFromState(targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         }
 

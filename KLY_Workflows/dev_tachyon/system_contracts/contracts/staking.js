@@ -46,7 +46,7 @@ export let CONTRACT = {
         [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
 
     */
-    createStakingPool:async (originShard,transaction) => {
+    createStakingPool:async transaction => {
 
         let {percentage,poolURL,wssPoolURL} = transaction.payload.params
 
@@ -60,7 +60,7 @@ export let CONTRACT = {
 
             let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
 
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
 
             let templateToPush = {
 
@@ -68,7 +68,7 @@ export let CONTRACT = {
 
                 creator: transaction.creator,
 
-                originShard, percentage, poolURL, wssPoolURL
+                percentage, poolURL, wssPoolURL
 
             }
 
@@ -82,7 +82,7 @@ export let CONTRACT = {
 
 
 
-    updateStakingPool:async (originShard,transaction) => {
+    updateStakingPool:async transaction => {
 
         let {activated,percentage,poolURL,wssPoolURL} = transaction.payload.params
 
@@ -96,7 +96,7 @@ export let CONTRACT = {
 
             let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
 
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
 
             let templateToPush = {
 
@@ -104,7 +104,7 @@ export let CONTRACT = {
 
                 creator: transaction.creator,
 
-                originShard, activated, percentage, poolURL, wssPoolURL
+                activated, percentage, poolURL, wssPoolURL
 
             }
 
@@ -130,9 +130,9 @@ export let CONTRACT = {
     
     */
     
-    stake:async(originShard,transaction) => {
+    stake:async transaction => {
 
-        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
+        let txCreatorAccount = await getUserAccountFromState(transaction.creator)
 
         let {poolPubKey,amount} = transaction.payload.params
 
@@ -148,7 +148,7 @@ export let CONTRACT = {
 
                 let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
 
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
 
                 let templateToPush = {
 
@@ -183,9 +183,9 @@ export let CONTRACT = {
     }
     
     */
-    unstake:async (originShard,transaction) => {
+    unstake:async transaction => {
 
-        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
+        let txCreatorAccount = await getUserAccountFromState(transaction.creator)
 
         let {poolPubKey,amount} = transaction.payload.params
 
@@ -197,7 +197,7 @@ export let CONTRACT = {
 
             let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
 
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
 
             let templateToPush = {
 
@@ -217,7 +217,7 @@ export let CONTRACT = {
  
     }
     
-    // slashing:async(originShard,transaction) => {
+    // slashing:async(transaction) => {
 
 
     // }

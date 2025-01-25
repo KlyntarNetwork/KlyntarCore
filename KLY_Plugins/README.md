@@ -1,7 +1,3 @@
-<div align="center">
-
-### 😈 Place for your custom modules to run them in <b>KLYNTAR</b> node process 😇
-
-</div>
+### Location for plugins to run them for <b>Klyntar</b>
 
 We'll add instructions soon

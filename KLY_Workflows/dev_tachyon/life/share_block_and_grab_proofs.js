@@ -252,7 +252,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
 
 
-let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
+let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {    
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -514,11 +514,9 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     }
 
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
     // If we don't generate the blocks - skip this function
     
-    if(typeof canGenerateBlocksNow !== 'string'){
+    if(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
         setTimeout(shareBlocksAndGetFinalizationProofs,2000)
 

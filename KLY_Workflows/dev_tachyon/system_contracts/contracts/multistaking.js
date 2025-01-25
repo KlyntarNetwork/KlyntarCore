@@ -17,7 +17,7 @@ export let gasUsedByMethod=methodID=>{
 export let CONTRACT = {
 
 
-    changeUnobtaniumAmount:async (originShard,transaction)=>{
+    changeUnobtaniumAmount:async transaction => {
 
         /*
         
@@ -59,7 +59,7 @@ export let CONTRACT = {
 
             let majorityApproved = verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)
 
-            let targetPoolExists = await getFromState(originShard+':'+targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
+            let targetPoolExists = await getFromState(targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(majorityApproved && targetPoolExists){
 
@@ -67,7 +67,7 @@ export let CONTRACT = {
 
                 let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id + 2
 
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
 
                 let templateToPush = {
 

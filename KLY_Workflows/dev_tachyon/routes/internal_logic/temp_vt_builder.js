@@ -10,32 +10,27 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 [Info]:
 
-    Accept indexes of leaders on shards by requester version and return required data to define finalization pair for previous leaders (height+hash)
+    Accept indexes of leaders by requester version and return required data to define finalization pair for previous leaders (height+hash)
 
 [Accept]:
 
     {
-        shardID:<index of current leader on shard by requester version>
-        ...
+        
+        proposedIndex: <index of current leader by requester version>
+
     }
 
 [Returns]:
 
-   {
-
-        shard_0:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
-
-        shard_1:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
-
-        ...
-
-        shard_N:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader}
+    {
+        
+        proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader
 
     }
 
 */
 
-// Function to return info about current leaders on shards and afpsForSecondBlock to help nodes to know the last blocks by previous leaders and let VT continue to work✅
+// Function to return info about current leaders and afpsForSecondBlock to help nodes to know the last blocks by previous leaders and let VT continue to work✅
 
 FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
@@ -53,48 +48,42 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
     }
 
 
-    let proposedIndexesOfLeadersPerShard = JSON.parse(request.body) // format {shardID:index}
+    let proposedIndexOfLeader = JSON.parse(request.body) // format {proposedIndex:index}
 
 
-    if(typeof proposedIndexesOfLeadersPerShard === 'object'){
+    if(typeof proposedIndexOfLeader === 'object'){
 
         let objectToReturn = {}
 
-        for(let shardID of Object.keys(proposedIndexesOfLeadersPerShard)){
+        let indexOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INFO?.index
 
-            // Try to get the current leader on shard
+        if(typeof indexOfCurrentLeader === 'number' && epochHandler.leadersSequence){
 
-            let leaderHandlerForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID)
+            // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
 
-            if(leaderHandlerForShard && epochHandler.leadersSequence[shardID]){
+            let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[indexOfCurrentLeader]
 
-                // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
+            let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
 
-                let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[shardID][leaderHandlerForShard.currentLeader]
-
-                let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
-
-                let firstBlockByCurrentLeader = await BLOCKCHAIN_DATABASES.BLOCKS.get(firstBlockID).catch(()=>null)
+            let firstBlockByCurrentLeader = await BLOCKCHAIN_DATABASES.BLOCKS.get(firstBlockID).catch(()=>null)
 
 
-                if(firstBlockByCurrentLeader){
+            if(firstBlockByCurrentLeader){
 
-                    let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
+                let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
 
-                    let afpForSecondBlockByCurrentLeader = await getVerifiedAggregatedFinalizationProofByBlockId(secondBlockID,epochHandler).catch(()=>null)
+                let afpForSecondBlockByCurrentLeader = await getVerifiedAggregatedFinalizationProofByBlockId(secondBlockID,epochHandler).catch(()=>null)
 
-                    if(afpForSecondBlockByCurrentLeader){
+                if(afpForSecondBlockByCurrentLeader){
 
-                        objectToReturn[shardID] = {
+                    objectToReturn = {
                             
-                            proposedIndexOfLeader:leaderHandlerForShard.currentLeader,
+                        proposedIndexOfLeader:indexOfCurrentLeader,
                             
-                            firstBlockByCurrentLeader,
+                        firstBlockByCurrentLeader,
                             
-                            afpForSecondBlockByCurrentLeader
+                        afpForSecondBlockByCurrentLeader
                         
-                        }
-
                     }
 
                 }
