@@ -1921,8 +1921,9 @@ let verifyBlock = async block => {
 
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
-        atomicBatch.put(`STATE_CHANGES:${generalBlockHeight}:${generalBlockHeight+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)
+        atomicBatch.put(`STATE_CHANGES:${generalBlockHeight}:${generalBlockHeight+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)        
 
+        
         await atomicBatch.write()
 
         vtStatsLog(block.epoch,block.creator,block.index,blockHash,block.transactions.length)        
