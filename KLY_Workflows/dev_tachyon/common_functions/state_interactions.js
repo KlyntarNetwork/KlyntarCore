@@ -77,20 +77,6 @@ export let getFromState = async recordID => {
             return GLOBAL_CACHES.STATE_CACHE.get(recordID)
  
     
-        }).catch(()=>{
-
-            if(recordID.startsWith('DELAYED_TRANSACTIONS')){
-
-                trackStateChange(recordID,1,'put')
-
-                GLOBAL_CACHES.STATE_CACHE.set(recordID,[])
-
-                return GLOBAL_CACHES.STATE_CACHE.get(recordID)
-
-            }
-
-            return null
-
-        })
+        }).catch(()=>null)
 
 }

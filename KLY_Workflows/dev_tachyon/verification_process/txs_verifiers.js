@@ -94,16 +94,8 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
         if(typeof poolPubKey === 'string' && typeof amount === 'string' && amount === transferValue){
             
             // Now add it to delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
-            
+            // TODO
             let templateToPush = { type:'stake', staker: txCreator, poolPubKey, amount }
-
-
-            delayedTransactions.push(templateToPush)
 
             return {isOk:true,reason:'EVM'}
 
@@ -114,16 +106,8 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
         if(typeof poolPubKey === 'string' && typeof amount === 'string'){
 
             // Now add it to delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
-            
+            // TODO
             let templateToPush = { type:'unstake', unstaker: txCreator, poolPubKey, amount }
-
-            
-            delayedTransactions.push(templateToPush)
 
             return {isOk:true,reason:'EVM'}
 

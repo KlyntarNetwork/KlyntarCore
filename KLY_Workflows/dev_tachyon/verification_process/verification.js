@@ -445,7 +445,6 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
 
-
     // Get the epoch edge transactions that we need to execute
 
     let delayedTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>null)
@@ -473,17 +472,6 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             await executeDelayedTransaction('VERIFICATION_THREAD',delayedTransaction).catch(()=>{})
     
         }
-
-        // Now delete the delayed transactions array
-
-        // let overPreviousEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${vtEpochHandler.id-2}`).catch(()=>null)
-
-        // if(overPreviousEpochHandler) {
-
-        //         atomicBatch.del(`DELAYED_TRANSACTIONS:${vtEpochHandler.id}`)
-
-        // }
-    
 
         // Nullify values for the upcoming epoch
 

@@ -2,8 +2,6 @@ import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_pro
 
 import {getFromState} from "../../common_functions/state_interactions.js"
 
-import {WORKING_THREADS} from "../../globals.js"
-
 
 
 
@@ -64,10 +62,7 @@ export let CONTRACT = {
             if(majorityApproved && targetPoolExists){
 
                 // Now add it to delayed operations
-
-                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id + 2
-
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
+                // TODO
 
                 let templateToPush = {
 
@@ -76,8 +71,6 @@ export let CONTRACT = {
                     targetPool, changesPerAccounts
 
                 }
-
-                delayedTransactions.push(templateToPush)
 
                 return {isOk:true}
 

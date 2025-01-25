@@ -1,8 +1,6 @@
 /* eslint-disable no-unused-vars */
 
-import {getFromState, getUserAccountFromState} from '../../common_functions/state_interactions.js'
-
-import {WORKING_THREADS} from '../../globals.js'
+import {getUserAccountFromState} from '../../common_functions/state_interactions.js'
 
 
 
@@ -57,11 +55,7 @@ export let CONTRACT = {
         if(typeCheckIsOk && percentageIsOk){
 
             // Get the array of delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
+            // TODO
             let templateToPush = {
 
                 type:'createStakingPool',
@@ -71,8 +65,6 @@ export let CONTRACT = {
                 percentage, poolURL, wssPoolURL
 
             }
-
-            delayedTransactions.push(templateToPush)
 
             return {isOk:true}
 
@@ -93,11 +85,7 @@ export let CONTRACT = {
         if(typeCheckIsOk && percentageIsOk){
 
             // Get the array of delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
+            // TODO
             let templateToPush = {
 
                 type:'updateStakingPool',
@@ -107,8 +95,6 @@ export let CONTRACT = {
                 activated, percentage, poolURL, wssPoolURL
 
             }
-
-            delayedTransactions.push(templateToPush)
 
             return {isOk:true}
 
@@ -145,11 +131,7 @@ export let CONTRACT = {
                 txCreatorAccount.balance -= amount
 
                 // Now add it to delayed operations
-
-                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
+                // TODO
                 let templateToPush = {
 
                     type:'stake',
@@ -159,8 +141,6 @@ export let CONTRACT = {
                     poolPubKey, amount: amount.toString()
 
                 }
-
-                delayedTransactions.push(templateToPush)
 
                 return {isOk:true}
 
@@ -194,11 +174,7 @@ export let CONTRACT = {
         if(txCreatorAccount && typeof poolPubKey === 'string'){
 
             // Now add it to delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
+            // TODO
             let templateToPush = {
 
                 type:'unstake',
@@ -208,8 +184,6 @@ export let CONTRACT = {
                 poolPubKey, amount: amount.toString()
 
             }
-
-            delayedTransactions.push(templateToPush)
 
             return {isOk:true}
 
