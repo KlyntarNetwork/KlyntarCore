@@ -456,6 +456,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
 
         GLOBAL_CACHES.STATE_CACHE.clear()
+
+        // Store the value of VERIFICATION_THREAD to state changes object
+
+        trackStateChange('VT',WORKING_THREADS.VERIFICATION_THREAD,'update')
         
         
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
@@ -519,10 +523,11 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
 
+        trackStateChange(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,1,'put')
 
         // Finally - set the new index, hash, timestamp, quorum and assign validators for next epoch
 
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = nextVtEpochIndex
 
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
 
@@ -611,6 +616,8 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         )
 
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
+
+        atomicBatch.put(`STATE_CHANGES:FROM_EPOCH${vtEpochOldIndex}:${nextVtEpochIndex}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)
 
         await atomicBatch.write()
 
@@ -1918,13 +1925,7 @@ let verifyBlock = async block => {
 
         await atomicBatch.write()
 
-        vtStatsLog(block.epoch,block.creator,block.index,blockHash,block.transactions.length)
-
-        // console.log('DEBUG: State changes => ',GLOBAL_CACHES.STATE_CHANGES_CACHE)
-
-
-        if(block.index === 0) process.exit()
-        
+        vtStatsLog(block.epoch,block.creator,block.index,blockHash,block.transactions.length)        
 
     }
 

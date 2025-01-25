@@ -80,7 +80,7 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
 
             poolPubKey:<Format is Ed25519_pubkey>,
                                 
-            amount:<amount in KLY>,
+            amount:<amount in wei>,
                             
         }
                         
@@ -91,7 +91,7 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
 
     if(method === 'stake'){
 
-        if(typeof poolPubKey === 'string' && typeof amount === 'number' && amount === transferValue){
+        if(typeof poolPubKey === 'string' && typeof amount === 'string' && amount === transferValue){
             
             // Now add it to delayed operations
 
@@ -111,7 +111,7 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
 
     } else if(method === 'unstake') {
 
-        if(typeof poolPubKey === 'string' && typeof amount === 'number'){
+        if(typeof poolPubKey === 'string' && typeof amount === 'string'){
 
             // Now add it to delayed operations
 
@@ -739,7 +739,7 @@ export let VERIFIERS = {
                     
                     // In case it's staking/unstaking
 
-                    let transferValue = Number(web3.utils.fromWei(tx.value,'ether'))
+                    let transferValueInWei = web3.utils.fromWei(tx.value,'ether')
 
                     if(parsedData.contractID === 'system/staking'){
 
@@ -761,7 +761,7 @@ export let VERIFIERS = {
                         
                         */
                         
-                        returnToReceipt = await performStakingActionsForEVM(tx.from,transferValue,parsedData)
+                        returnToReceipt = await performStakingActionsForEVM(tx.from,transferValueInWei,parsedData)
 
                     
                     } else if(parsedData.to){
