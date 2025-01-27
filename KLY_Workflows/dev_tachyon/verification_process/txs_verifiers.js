@@ -120,11 +120,11 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
 
 
 
-let trackTransactionsList=async(txid,txType,sigType,fee,touchedAccounts)=>{
+let trackTransactionsList=async(txid,txType,sigType,proposedFee,realFee,touchedAccounts)=>{
 
     // Function to allow to fill the list of transaction per address
 
-    let dataToPush = {txid,txType,sigType,fee}
+    let dataToPush = {txid,txType,sigType,proposedFee,realFee}
 
 
     for(let account of touchedAccounts){
@@ -152,9 +152,11 @@ let trackTransactionsList=async(txid,txType,sigType,fee,touchedAccounts)=>{
 
 let calculateAmountToSpendAndGasToBurn = tx => {
 
-    let amountToSpend = 0n
+    let withdrawFromSender = 0n
 
-    let gasToSpend = 0n
+    let pureFee = 0n
+
+    let abstractGasToSpend = 0n
 
     let transferAmount = tx.payload.amount || 0n
 
@@ -163,35 +165,37 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         // In this case creator pays fee in native KLY currency
 
-        amountToSpend = getCostPerSignatureType(tx) + transferAmount + tx.fee
+        pureFee = getCostPerSignatureType(tx) + tx.fee
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
-            amountToSpend += 2000n * BigInt(tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
+            pureFee += 2000n * BigInt(tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
 
-            amountToSpend += 2_000_000n * BigInt(JSON.stringify(tx.payload.constructorParams.initStorage).length)
+            pureFee += 2_000_000n * BigInt(JSON.stringify(tx.payload.constructorParams.initStorage).length)
 
         } else if(tx.type === 'WVM_CALL'){
 
             let totalSize = JSON.stringify(tx.payload).length
 
-            amountToSpend += 2_000_000n * BigInt(totalSize)
+            pureFee += 2_000_000n * BigInt(totalSize)
 
-            amountToSpend += BigInt(tx.payload.gasLimit)
+            pureFee += BigInt(tx.payload.gasLimit)
 
         } // TODO: Add EVM_CALL type
+
+        withdrawFromSender = pureFee + transferAmount
 
     } else if(tx.fee === 0n && tx.payload.abstractionBoosts){
 
         // In this case creator pays using boosts. This should be signed by current quorum
 
-        amountToSpend = transferAmount
+        withdrawFromSender = transferAmount
 
         let dataThatShouldBeSignedForBoost = `BOOST:${tx.creator}:${tx.nonce}` // TODO: Fix data that should be signed - sign payload(mb +epoch) instead of just creator+nonce
 
         if(verifyQuorumMajoritySolution(dataThatShouldBeSignedForBoost,tx.payload.abstractionBoosts?.quorumAgreements)){
 
-            gasToSpend = BigInt(tx.payload.abstractionBoosts.proposedGasToBurn)
+            abstractGasToSpend = BigInt(tx.payload.abstractionBoosts.proposedGasToBurn)
 
         } return {errReason:`Majority verification failed in attempt to use boost`}
 
@@ -199,28 +203,28 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         // Otherwise - it's AA 2.0 usage and we just should reduce the gas amount from account
 
-        amountToSpend = transferAmount
+        withdrawFromSender = transferAmount
 
-        gasToSpend = getCostPerSignatureType(tx) * 2n
+        abstractGasToSpend = getCostPerSignatureType(tx) * 2n
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
-            gasToSpend += BigInt(tx.payload.bytecode.length/2)
+            abstractGasToSpend += BigInt(tx.payload.bytecode.length/2)
 
         } else if(tx.type === 'WVM_CALL'){
 
             let totalSize = JSON.stringify(tx.payload)
 
-            gasToSpend += BigInt(totalSize)
+            abstractGasToSpend += BigInt(totalSize)
 
-            gasToSpend += BigInt(tx.payload.gasLimit)
+            abstractGasToSpend += BigInt(tx.payload.gasLimit)
 
         } // TODO: Add EVM_CALL type
 
     }
 
 
-    return {amountToSpend, gasToSpend}
+    return {withdrawFromSender, abstractGasToSpend, pureFee}
 
 }
 
@@ -336,9 +340,9 @@ export let VERIFIERS = {
             
             if(!spendData.errReason){
 
-                if(senderAccount.balance - spendData.amountToSpend >= 0n && BigInt(senderAccount.gas) - spendData.gasToSpend >= 0n){
+                if(senderAccount.balance - spendData.withdrawFromSender >= 0n && BigInt(senderAccount.gas) - spendData.abstractGasToSpend >= 0n){
                             
-                    senderAccount.balance -= spendData.amountToSpend
+                    senderAccount.balance -= spendData.withdrawFromSender
 
 
                     let touchedAccounts = [tx.creator,tx.payload.to]
@@ -368,13 +372,13 @@ export let VERIFIERS = {
 
                     }
     
-                    senderAccount.gas -= Number(spendData.gasToSpend)
+                    senderAccount.gas -= Number(spendData.abstractGasToSpend)
                 
                     senderAccount.nonce = tx.nonce
                     
-                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                    rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,touchedAccounts)
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,touchedAccounts)
         
                     return {isOk:true}        
 
@@ -444,7 +448,7 @@ export let VERIFIERS = {
 
             if(!spendData.errReason){
 
-                if(senderAccount.balance - spendData.amountToSpend >= 0n && BigInt(senderAccount.gas) - spendData.gasToSpend >= 0n){
+                if(senderAccount.balance - spendData.withdrawFromSender >= 0n && BigInt(senderAccount.gas) - spendData.abstractGasToSpend >= 0n){
 
                     let contractID = `0x${blake3Hash(tx.creator+tx.nonce)}`
 
@@ -477,16 +481,15 @@ export let VERIFIERS = {
                     WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
 
 
-                    senderAccount.balance -= spendData.amountToSpend
+                    senderAccount.balance -= spendData.withdrawFromSender
 
-
-                    senderAccount.gas -= Number(spendData.gasToSpend)
+                    senderAccount.gas -= Number(spendData.abstractGasToSpend)
             
                     senderAccount.nonce = tx.nonce
                     
-                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                    rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,contractID])
 
                     return {isOk:true, createdContractAddress: contractID}
 
@@ -540,11 +543,11 @@ export let VERIFIERS = {
             if(tx.payload.contractID?.startsWith('system/') && Array.isArray(tx.payload.touchedAccounts)) return {isOk:false,reason:'Parallelization of system smart contracts are disabled for a while'}
 
             
-            let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
+            let spendData = calculateAmountToSpendAndGasToBurn(tx)
 
-            if(!goingToSpend.errReason){
+            if(!spendData.errReason){
 
-                if(senderAccount.balance - goingToSpend.amountToSpend >= 0n && BigInt(senderAccount.gas) - goingToSpend.gasToSpend >= 0n){
+                if(senderAccount.balance - spendData.withdrawFromSender >= 0n && BigInt(senderAccount.gas) - spendData.abstractGasToSpend >= 0n){
 
                     let execResultWithStatusAndReason
 
@@ -641,21 +644,21 @@ export let VERIFIERS = {
         
                     }
 
-                    senderAccount.balance -= goingToSpend.amountToSpend
+                    senderAccount.balance -= spendData.withdrawFromSender
 
-                    senderAccount.gas -= Number(goingToSpend.gasToSpend)
+                    senderAccount.gas -= Number(spendData.abstractGasToSpend)
             
-                    senderAccount.nonce = tx.nonce
+                    senderAccount.nonce = tx.nonces
                     
-                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                    rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,tx.payload.contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,tx.payload.contractID])
 
                     return execResultWithStatusAndReason
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
-            } else return {isOk:false,reason:goingToSpend.errReason}
+            } else return {isOk:false,reason:spendData.errReason}
 
         } else return {isOk:false,reason:`Can't get filtered value of tx`}
 
@@ -704,7 +707,9 @@ export let VERIFIERS = {
 
                 trackStateChange('TX:'+tx.hash,1,'put')
 
-                let propsedFee = Number(web3.utils.fromWei((tx.gasLimit * tx.gasPrice).toString(),'ether'))
+                let proposedFee = tx.gasLimit * tx.gasPrice
+
+                let realFee = receipt.gasUsed
                                 
                 let touchedAccounts = [tx.from, tx.to]
 
@@ -785,7 +790,7 @@ export let VERIFIERS = {
 
                 }
 
-                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',propsedFee,touchedAccounts)
+                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',proposedFee,realFee,touchedAccounts)
 
                 return returnToReceipt || {isOk:true,reason:'EVM'}
 

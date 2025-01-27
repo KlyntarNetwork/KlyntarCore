@@ -151,7 +151,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
     nonces.set(from,nonce)
 
-    const fee = 0.2
+    const fee = 0.3
 
     const amount = 2
 
