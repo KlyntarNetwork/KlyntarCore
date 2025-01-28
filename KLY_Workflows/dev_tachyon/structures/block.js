@@ -1,6 +1,6 @@
-import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
-
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
+
+import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
 import {WORKING_THREADS} from '../globals.js'
 

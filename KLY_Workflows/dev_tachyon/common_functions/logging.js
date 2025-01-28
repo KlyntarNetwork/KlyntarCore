@@ -1,10 +1,8 @@
-import {WORKING_THREADS} from '../globals.js'
-
 import {logColors} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyntar_core.js'
 
-
+import {WORKING_THREADS} from '../globals.js'
 
 
 
