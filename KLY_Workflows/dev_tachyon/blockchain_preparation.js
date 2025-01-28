@@ -376,10 +376,6 @@ let setGenesisToState=async()=>{
     atEpochHandler.quorum = await getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,initEpochHash)
 
 
-    // WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME = Math.floor(WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME/atEpochHandler.quorum.length)
-
-
-
     // Finally, assign sequence of leaders for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
     await setLeadersSequence(atEpochHandler,initEpochHash)

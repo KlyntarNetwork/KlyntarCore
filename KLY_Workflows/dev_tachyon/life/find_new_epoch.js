@@ -334,8 +334,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
 
-                // WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME = Math.floor(WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME/WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.length)
-
                 epochMetadataAtomicBatch.put(`EPOCH_QUORUM:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum)
                 
                 // Create new temporary db for the next epoch

@@ -342,6 +342,13 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
 
 
+let getBatchOfApprovedDelayedTxsByQuorum = async () => {
+
+    return []
+
+}
+
+
 
 let generateBlocksPortion = async() => {
 
@@ -409,22 +416,22 @@ let generateBlocksPortion = async() => {
 
         let extraData = {}
 
-        //___________________ Add the AEFP to the first block of epoch ___________________
-
-        if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0 && WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
-
-            // Add the AEFP for previous epoch
-
-            extraData.aefpForPreviousEpoch = WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch
-
-            if(!extraData.aefpForPreviousEpoch) return
-
-
-        }
 
         // Do it only for the first block in epoch(with index 0)
 
         if(WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
+
+            //___________________ Add the AEFP to the first block of epoch ___________________
+
+            if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0){
+
+                // Add the AEFP for previous epoch
+
+                extraData.aefpForPreviousEpoch = WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch
+
+                if(!extraData.aefpForPreviousEpoch) return
+
+            }
 
             // Build the template to insert to the extraData of block. Structure is {pool0:ALRP,...,poolN:ALRP}
     
@@ -437,6 +444,9 @@ let generateBlocksPortion = async() => {
             let indexOfPreviousLeaderInSequence = myIndexInLeadersSequence-1
 
             let previousLeaderPubkey = epochHandler.leadersSequence[indexOfPreviousLeaderInSequence]
+
+
+            extraData.delayedTransactions = await getBatchOfApprovedDelayedTxsByQuorum()
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________
