@@ -1,6 +1,6 @@
-import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
+import {getFromState, setToDelayedTransactions} from "../../common_functions/state_interactions.js"
 
-import {getFromState} from "../../common_functions/state_interactions.js"
+import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
 
 
@@ -62,7 +62,6 @@ export let CONTRACT = {
             if(majorityApproved && targetPoolExists){
 
                 // Now add it to delayed operations
-                // TODO
 
                 let templateToPush = {
 
@@ -71,6 +70,8 @@ export let CONTRACT = {
                     targetPool, changesPerAccounts
 
                 }
+
+                await setToDelayedTransactions(templateToPush)
 
                 return {isOk:true}
 

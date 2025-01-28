@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import {getUserAccountFromState, getFromState, trackStateChange} from '../common_functions/state_interactions.js'
+import {getUserAccountFromState, getFromState, trackStateChange, setToDelayedTransactions} from '../common_functions/state_interactions.js'
 
 import * as functionsToInjectToVm from '../../../KLY_VirtualMachines/common_modules.js'
 
@@ -97,6 +97,8 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
             // TODO
             let templateToPush = { type:'stake', staker: txCreator, poolPubKey, amount }
 
+            await setToDelayedTransactions(templateToPush)
+
             return {isOk:true,reason:'EVM'}
 
         } else return {isOk:false, reason: `EVM`}
@@ -108,6 +110,8 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
             // Now add it to delayed operations
             // TODO
             let templateToPush = { type:'unstake', unstaker: txCreator, poolPubKey, amount }
+
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true,reason:'EVM'}
 

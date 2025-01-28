@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 
-import {getUserAccountFromState} from '../../common_functions/state_interactions.js'
+import {getUserAccountFromState, setToDelayedTransactions} from '../../common_functions/state_interactions.js'
 
 
 
@@ -53,9 +53,7 @@ export let CONTRACT = {
         let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
 
         if(typeCheckIsOk && percentageIsOk){
-
-            // Get the array of delayed operations
-            // TODO
+            
             let templateToPush = {
 
                 type:'createStakingPool',
@@ -65,6 +63,8 @@ export let CONTRACT = {
                 percentage, poolURL, wssPoolURL
 
             }
+
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
@@ -85,7 +85,7 @@ export let CONTRACT = {
         if(typeCheckIsOk && percentageIsOk){
 
             // Get the array of delayed operations
-            // TODO
+
             let templateToPush = {
 
                 type:'updateStakingPool',
@@ -95,6 +95,8 @@ export let CONTRACT = {
                 activated, percentage, poolURL, wssPoolURL
 
             }
+
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
@@ -142,6 +144,8 @@ export let CONTRACT = {
 
                 }
 
+                await setToDelayedTransactions(templateToPush)
+
                 return {isOk:true}
 
             } else return {isOk:false, reason: `Not enough on balance`}
@@ -184,6 +188,8 @@ export let CONTRACT = {
                 poolPubKey, amount: amount.toString()
 
             }
+
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
