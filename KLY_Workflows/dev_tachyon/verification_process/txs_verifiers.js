@@ -124,11 +124,11 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
 
 
 
-let trackTransactionsList=async(txid,txType,sigType,proposedFee,realFee,touchedAccounts)=>{
+let trackTransactionsList=async(txid,txType,sigType,priorityFee,totalFee,touchedAccounts)=>{
 
     // Function to allow to fill the list of transaction per address
 
-    let dataToPush = {txid,txType,sigType,proposedFee,realFee}
+    let dataToPush = {txid,txType,sigType,priorityFee,totalFee}
 
 
     for(let account of touchedAccounts){
@@ -384,7 +384,7 @@ export let VERIFIERS = {
 
                     trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,touchedAccounts)
         
-                    return {isOk:true}        
+                    return {isOk:true, priorityFee: tx.fee, totalFee: spendData.pureFee}
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
@@ -495,7 +495,7 @@ export let VERIFIERS = {
 
                     trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,contractID])
 
-                    return {isOk:true, createdContractAddress: contractID}
+                    return {isOk:true, createdContractAddress: contractID, priorityFee: tx.fee, totalFee: spendData.pureFee}
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
@@ -658,6 +658,10 @@ export let VERIFIERS = {
 
                     trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,tx.payload.contractID])
 
+                    execResultWithStatusAndReason.priorityFee = tx.fee
+
+                    execResultWithStatusAndReason.totalFee = spendData.pureFee
+
                     return execResultWithStatusAndReason
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
@@ -706,14 +710,6 @@ export let VERIFIERS = {
                 let {tx,receipt} = possibleReceipt
 
                 let returnToReceipt
-
-                atomicBatch.put('TX:'+tx.hash,{tx,receipt})
-
-                trackStateChange('TX:'+tx.hash,1,'put')
-
-                let proposedFee = tx.gasLimit * tx.gasPrice
-
-                let realFee = receipt.gasUsed
                                 
                 let touchedAccounts = [tx.from, tx.to]
 
@@ -794,7 +790,15 @@ export let VERIFIERS = {
 
                 }
 
-                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',proposedFee,realFee,touchedAccounts)
+                let priorityFee = tx.gasLimit * tx.gasPrice
+
+                let totalFee = receipt.gasUsed
+
+                atomicBatch.put('TX:'+tx.hash,{tx,receipt,priorityFee,totalFee})
+
+                trackStateChange('TX:'+tx.hash,1,'put')
+
+                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',priorityFee,totalFee,touchedAccounts)
 
                 return returnToReceipt || {isOk:true,reason:'EVM'}
 
