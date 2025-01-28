@@ -28,15 +28,15 @@ import web3 from 'web3'
 
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.sigType==='D') return 5000n
+    if(transaction.sigType==='D') return 5000000000000000n
     
-    if(transaction.sigType==='T') return 10000n
+    if(transaction.sigType==='T') return 10000000000000000n
 
-    if(transaction.sigType==='P/D') return 15000n
+    if(transaction.sigType==='P/D') return 15000000000000000n
 
-    if(transaction.sigType==='P/B') return 15000n
+    if(transaction.sigType==='P/B') return 15000000000000000n
 
-    if(transaction.sigType==='M') return 7000n + BigInt(transaction.payload.afk.length) * 1000n
+    if(transaction.sigType==='M') return (7000n + BigInt(transaction.payload.afk.length) * 1000n) * BigInt('1000000000000')
 
     return 0n
 
