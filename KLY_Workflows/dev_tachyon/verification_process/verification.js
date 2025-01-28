@@ -1726,9 +1726,9 @@ let verifyBlock = async block => {
         //________________________________________________COMMIT STATE__________________________________________________    
         
         
-        GLOBAL_CACHES.STATE_CACHE.forEach((account,storageCellID)=>
+        GLOBAL_CACHES.STATE_CACHE.forEach((dataValue,dataKey)=>
         
-            atomicBatch.put(storageCellID,account)
+            atomicBatch.put(dataKey,dataValue)
         
         )
         

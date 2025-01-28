@@ -133,7 +133,7 @@ export let CONTRACT = {
                 txCreatorAccount.balance -= amount
 
                 // Now add it to delayed operations
-                // TODO
+            
                 let templateToPush = {
 
                     type:'stake',
@@ -178,7 +178,7 @@ export let CONTRACT = {
         if(txCreatorAccount && typeof poolPubKey === 'string'){
 
             // Now add it to delayed operations
-            // TODO
+
             let templateToPush = {
 
                 type:'unstake',

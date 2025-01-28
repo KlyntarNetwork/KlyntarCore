@@ -94,7 +94,7 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
         if(typeof poolPubKey === 'string' && typeof amount === 'string' && amount === transferValue){
             
             // Now add it to delayed operations
-            // TODO
+            
             let templateToPush = { type:'stake', staker: txCreator, poolPubKey, amount }
 
             await setToDelayedTransactions(templateToPush)
@@ -108,7 +108,7 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
         if(typeof poolPubKey === 'string' && typeof amount === 'string'){
 
             // Now add it to delayed operations
-            // TODO
+
             let templateToPush = { type:'unstake', unstaker: txCreator, poolPubKey, amount }
 
             await setToDelayedTransactions(templateToPush)

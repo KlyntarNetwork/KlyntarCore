@@ -89,7 +89,13 @@ export let setToDelayedTransactions = async delayedTx => {
     
     let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
     
-    if(!Array.isArray(delayedTransactions)) delayedTransactions = []
+    if(!Array.isArray(delayedTransactions)) {
+
+        delayedTransactions = []
+
+        trackStateChange(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`,1,'put')
+
+    }
 
     delayedTransactions.push(delayedTx)
 
