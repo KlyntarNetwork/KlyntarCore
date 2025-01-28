@@ -1,6 +1,6 @@
 import {pathResolve,blake3Hash} from '../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import level from 'level'
 

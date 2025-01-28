@@ -8,7 +8,7 @@ import {setLeadersSequence} from './life/leaders_monitoring.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import {isMyCoreVersionOld} from './utils.js'
 

@@ -143,7 +143,7 @@ build_kly_evm.bat
 cd ../../
 
 // Set appropriate access (Linux only)
-chmod 700 klyn74r.js
+chmod 700 klyntar_core.js
 ```
 
 # Prepare configuration and genesis files
@@ -175,17 +175,11 @@ Follow us to get the news & updates ASAP. Discuss, share ideas, advices, help ne
 <a href="https://klyntar.medium.com/">
   <img src="https://img.shields.io/badge/Medium-12100E?style=for-the-badge&logo=medium&logoColor=white"/>
 </a>
-<a href="https://www.tiktok.com/@klyn74r">
-  <img src="https://img.shields.io/badge/TikTok-000000?style=for-the-badge&logo=tiktok&logoColor=white"/>
-</a>
 
 <br/>
 
 <a href="https://www.instagram.com/KlyntarNetwork/">
   <img src="https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white"/>
-</a>
-  <a href="https://www.pinterest.com/klyn74r">
-  <img src="https://img.shields.io/badge/Pinterest-%23E60023.svg?&style=for-the-badge&logo=Pinterest&logoColor=white"/>
 </a>
   <a href="https://dev.to/klyntar">
   <img src="https://img.shields.io/badge/dev.to-0A0A0A?style=for-the-badge&logo=devdotto&logoColor=white"/>
@@ -216,9 +210,6 @@ Follow us to get the news & updates ASAP. Discuss, share ideas, advices, help ne
 </a>
 <a href="https://gitlab.com/KLYNTAR">
   <img src="https://img.shields.io/badge/GitLab-330F63?style=for-the-badge&logo=gitlab&logoColor=white"/>
-</a>
-<a href="https://klyn74r.tumblr.com/">
-  <img src="https://img.shields.io/badge/Tumblr-%2336465D.svg?&style=for-the-badge&logo=Tumblr&logoColor=white"/>
 </a>
 <a href="">
   <img src="https://img.shields.io/badge/Stack_Overflow-FE7A16?style=for-the-badge&logo=stack-overflow&logoColor=white"/>

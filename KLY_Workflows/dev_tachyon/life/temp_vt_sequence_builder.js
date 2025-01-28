@@ -4,7 +4,7 @@ import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import {getRandomFromArray} from '../utils.js'
 

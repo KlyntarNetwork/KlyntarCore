@@ -2,7 +2,7 @@ import {WORKING_THREADS} from '../globals.js'
 
 import {logColors} from '../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 
 

@@ -1,4 +1,4 @@
-import {CONFIGURATION} from '../../klyn74r.js'
+import {CONFIGURATION} from '../../klyntar_core.js'
 
 import loader from '@assemblyscript/loader'
 

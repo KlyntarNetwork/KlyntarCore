@@ -15,7 +15,7 @@ import {SYSTEM_CONTRACTS} from '../system_contracts/root.js'
 
 import {blake3Hash} from '../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import {TXS_FILTERS} from './txs_filters.js'
 

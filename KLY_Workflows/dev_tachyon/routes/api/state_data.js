@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
 import {getFromState} from '../../common_functions/state_interactions.js'
 

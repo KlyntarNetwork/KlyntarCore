@@ -8,7 +8,7 @@ import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../
 
 import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
-import {CONFIGURATION} from '../../../../klyn74r.js'
+import {CONFIGURATION} from '../../../../klyntar_core.js'
 
 import Block from '../../structures/block.js'
 

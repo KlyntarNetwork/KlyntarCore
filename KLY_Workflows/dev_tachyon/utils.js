@@ -4,7 +4,7 @@ import { EPOCH_METADATA_MAPPING, WORKING_THREADS, NODE_METADATA } from './global
 
 import {getUtcTimestamp} from '../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../klyn74r.js'
+import {CONFIGURATION} from '../../klyntar_core.js'
 
 
 

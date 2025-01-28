@@ -14,7 +14,7 @@
   MP'        ~YMMMba._ YOOOOPVVVVVYOOOOP  _,adMMMMP~       `YM             *******************************************************************************************************************
   YMb           ~YMMMM\`OOOOI`````IOOOOO'/MMMMP~           dMP             *                                                                                                                 *
    `Mb.           `YMMMb`OOOI,,,,,IOOOO'dMMMP'           ,dM'              *   Your node was stopped. It's because KLY community have voted for a new version. Please, update the software   *
-     `'                  `OObNNNNNdOO'                   `'                *               For details, visit the https://github.com/KLYN74R/KlyntarCore/blob/main/CHANGELOG.md              *
+     `'                  `OObNNNNNdOO'                   `'                *               For details, visit the https://github.com/KlyntarNetwork/KlyntarCore/blob/main/CHANGELOG.md              *
                            `~OOOOO~'                                       *                                                                                                                 *
                                                                            *******************************************************************************************************************
 

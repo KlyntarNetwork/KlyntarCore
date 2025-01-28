@@ -1,15 +1,15 @@
 {
   "name": "klyntar",
   "version": "1.0.0",
-  "description": "KLYNTAR core for everything in endless space!",
-  "main": "klyn74r.js",
+  "description": "Klyntar core for everything in endless space!",
+  "main": "klyntar_core.js",
   "type": "module",
   "scripts": {
-    "init": "npm ci --only=production && node klyn74r.js",
+    "init": "npm ci --only=production && node klyntar_core.js",
     "postinstall": "node ./npm_scripts/script.js"
   },
   "bin": {
-    "klyntar": "klyn74r.js"
+    "klyntar": "klyntar_core.js"
   },
   "repository": {
     "type": "git",

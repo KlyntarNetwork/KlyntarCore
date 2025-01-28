@@ -10,7 +10,7 @@ import {signEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import {getAllKnownPeers} from '../utils.js'
 

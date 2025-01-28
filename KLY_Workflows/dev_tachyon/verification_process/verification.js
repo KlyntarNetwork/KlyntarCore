@@ -10,7 +10,7 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.j
 
 import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
 
 import {executeDelayedTransaction} from '../life/find_new_epoch.js'
 

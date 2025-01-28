@@ -15,7 +15,7 @@ Here will be the implementation of WASM-VM for KLYNTAR to allow workflows to imp
 
 
 
-import {CONFIGURATION} from '../../klyn74r.js'
+import {CONFIGURATION} from '../../klyntar_core.js'
 
 import ContractInstance from './rustBase.js'
 

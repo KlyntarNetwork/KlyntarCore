@@ -8,7 +8,7 @@ import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_p
 
 import {logColors,verifyEd25519,customLog} from '../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
 

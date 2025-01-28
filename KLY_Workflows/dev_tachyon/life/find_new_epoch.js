@@ -14,7 +14,7 @@ import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
 
 import {setLeadersSequence} from './leaders_monitoring.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
 

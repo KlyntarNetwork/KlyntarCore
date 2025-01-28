@@ -1,4 +1,4 @@
-import {FASTIFY_SERVER} from '../klyn74r.js'
+import {FASTIFY_SERVER} from '../klyntar_core.js'
 
 import cryptoModule from 'crypto'
 

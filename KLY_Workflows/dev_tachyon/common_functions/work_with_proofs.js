@@ -10,7 +10,7 @@ import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {getUserAccountFromState} from './state_interactions.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS} from '../../../klyntar_core.js'
 
 import {getAllKnownPeers} from '../utils.js'
 
