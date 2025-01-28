@@ -437,20 +437,17 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     let nextVtEpochIndex = vtEpochOldIndex + 1
 
-    // Stuff related for next epoch
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HASH:${nextVtEpochIndex}`).catch(()=>{})
+    // Data related for next epoch
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_QUORUM:${nextVtEpochIndex}`).catch(()=>{})
-
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
-
-    // Get the epoch edge transactions that we need to execute
-
-    let delayedTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>null)
+    let nextEpochData = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(`EPOCH_DATA:${nextVtEpochIndex}`).catch(()=>{})
 
     
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && delayedTransactions){
+    if(nextEpochData){
+
+        // Destruct the object
+
+        let {nextEpochHash, nextEpochPoolsRegistry, nextEpochQuorum, nextEpochLeadersSequence, delayedTransactions} = nextEpochData
 
         GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
 
@@ -473,6 +470,20 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
     
         }
 
+        // Make epoch handler the same as on APPROVEMENT_THREAD
+
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = nextVtEpochIndex
+        
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
+
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.poolsRegistry = nextEpochPoolsRegistry
+
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
+
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
+                
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequence
+        
         // Nullify values for the upcoming epoch
 
         WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL = {}
@@ -507,23 +518,13 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
 
 
+
         // Store the stats during verification thread work in this epoch
         
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochOldIndex}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
 
-        trackStateChange(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,1,'put')
+        trackStateChange(`VT_STATS_PER_EPOCH:${vtEpochOldIndex}`,1,'put')
 
-        // Finally - set the new index, hash, timestamp, quorum and assign validators for next epoch
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = nextVtEpochIndex
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
-                
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
 
         
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH = {
@@ -616,13 +617,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Now we can delete useless data from EPOCH_DATA db
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_HASH:${nextVtEpochIndex}`).catch(()=>{})
-
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_QUORUM:${nextVtEpochIndex}`).catch(()=>{})
-
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
-
-        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
+        await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.del(`EPOCH_DATA:${nextVtEpochIndex}`).catch(()=>{})
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochOldIndex-1}`).catch(()=>{})
 
@@ -655,26 +650,22 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     let nextEpochIndex = vtEpochIndex+1
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HASH:${nextEpochIndex}`).catch(()=>{})
-
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_QUORUM:${nextEpochIndex}`).catch(()=>{})
-
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_LEADERS_SEQUENCES:${nextEpochIndex}`).catch(()=>{})
-
-    let nextEpochHandlerTemplate = {
-
-        id:nextEpochIndex,
-        
-        hash:nextEpochHash,
-
-        quorum:nextEpochQuorum,
-
-        leadersSequence:nextEpochLeadersSequences
-
-    }
+    let nextEpochData = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(`EPOCH_DATA:${nextEpochIndex}`).catch(()=>{})
 
 
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
+    if(nextEpochData){
+
+        let nextEpochHandlerTemplate = {
+
+            id: nextEpochIndex,
+            
+            hash: nextEpochData.nextEpochHash,
+    
+            quorum: nextEpochData.nextEpochQuorum,
+    
+            leadersSequence: nextEpochData.nextEpochLeadersSequence
+    
+        }
 
         let handlerWithFirstBlocksOnNextEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`).catch(()=>false) || {} // {firstBlockCreator,firstBlockHash}
 
@@ -731,7 +722,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
 
 
-let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epochHandler) => {
+let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith, epochHandler) => {
 
     /* 
     

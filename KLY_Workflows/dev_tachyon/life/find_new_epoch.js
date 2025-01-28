@@ -243,11 +243,10 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 firstBlocksHashes.push(aefpAndFirstBlockData.firstBlockHash)
 
-                let epochMetadataAtomicBatch = BLOCKCHAIN_DATABASES.EPOCH_DATA.batch()
-
+                
                 // For API - store the whole epoch handler object by epoch numerical index
 
-                epochMetadataAtomicBatch.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler).catch(()=>{})
 
 
                 let daoVotingContractCalls = [], slashingContractCalls = [], changeUnobtaniumAmountCalls = [], allTheRestContractCalls = []
@@ -278,11 +277,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(changeUnobtaniumAmountCalls).concat(allTheRestContractCalls)
 
 
-                // Store the delayed transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
-                // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these transactions(already in priority order)
-                epochMetadataAtomicBatch.put(`DELAYED_TRANSACTIONS:${currentEpochFullID}`,delayedTransactions)
-
-
                 for(let delayedTransaction of delayedTransactionsOrderByPriority){
         
                     await executeDelayedTransaction('APPROVEMENT_THREAD',delayedTransaction).catch(()=>{})
@@ -295,11 +289,17 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             
                     if(storageCellID.includes('(POOL)_STORAGE_POOL')){
 
-                        atomicBatch.put(storageCellID,value)
+                        atomicBatch.put(storageCellID, value)
 
                     }
             
                 })
+
+
+                customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${currentEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
+
+
+                //_______________________ Update the values for new epoch _______________________
 
                 // Now, after the execution we can change the epoch id and get the new hash + prepare new temporary object
                 
@@ -309,32 +309,35 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 let nextEpochFullID = nextEpochHash+'#'+nextEpochId
 
-
-                epochMetadataAtomicBatch.put(`EPOCH_HASH:${nextEpochId}`,nextEpochHash)
-
-
                 // After execution - assign new sequence of leaders
 
                 await setLeadersSequence(currentEpochHandler,nextEpochHash)
-
-                
-                epochMetadataAtomicBatch.put(`EPOCH_LEADERS_SEQUENCES:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence)
-
-
-                customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${currentEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
-
-
-                //_______________________ Update the values for new epoch _______________________
-
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash = nextEpochHash
 
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
+
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
 
-                epochMetadataAtomicBatch.put(`EPOCH_QUORUM:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum)
+
+                let nextEpochDataToStore = {
+
+                    nextEpochHash,
+
+                    nextEpochPoolsRegistry: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,
+
+                    nextEpochQuorum: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum,
+
+                    nextEpochLeadersSequence: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence,
+
+                    delayedTransactions: delayedTransactionsOrderByPriority
+
+                }
+                
+
+                atomicBatch.put(`EPOCH_DATA:${nextEpochId}`,nextEpochDataToStore)
                 
                 // Create new temporary db for the next epoch
 
@@ -343,9 +346,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 // Commit changes
 
                 atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
-
-
-                await epochMetadataAtomicBatch.write()
 
                 await atomicBatch.write()
 
