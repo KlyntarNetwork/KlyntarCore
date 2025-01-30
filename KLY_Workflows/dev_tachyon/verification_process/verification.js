@@ -593,7 +593,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Update the KLY-EVM state root after allocations
 
-        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA.root = await KLY_EVM.getStateRoot()
 
         
         // Commit the changes of state using atomic batch
@@ -1636,7 +1636,7 @@ let verifyBlock = async block => {
         //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
         
-        let klyEvmMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA // {nextBlockIndex,parentHash,timestamp}
+        let klyEvmMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA // {root,nextBlockIndex,parentHash,timestamp}
 
         // Set the next block's parameters
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
@@ -1850,25 +1850,20 @@ let verifyBlock = async block => {
 
         //___________________ Update the KLY-EVM ___________________
 
-        // Update stateRoot
-        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
-
-        // Increase block index
-        let nextIndex = BigInt(klyEvmMetadata.nextBlockIndex)+BigInt(1)
-
-        klyEvmMetadata.nextBlockIndex = Web3.utils.toHex(nextIndex.toString())
-
         // Store previous hash
         let currentHash = KLY_EVM.getCurrentBlock().hash()
-    
-        klyEvmMetadata.parentHash = currentHash.toString('hex')
-        
 
-        // Imagine that it's 1 block per 1 second
-        let nextTimestamp = klyEvmMetadata.timestamp+1
-    
-        klyEvmMetadata.timestamp = nextTimestamp
-        
+        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA = {
+
+            root: await KLY_EVM.getStateRoot(),
+
+            nextBlockIndex: Web3.utils.toHex((BigInt(klyEvmMetadata.nextBlockIndex)+BigInt(1)).toString()),
+
+            parentHash: currentHash.toString('hex'),
+
+            timestamp: klyEvmMetadata.timestamp+1
+
+        }    
 
         // Finally, store the block
 

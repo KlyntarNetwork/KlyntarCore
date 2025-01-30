@@ -322,7 +322,7 @@ let setGenesisToState=async()=>{
 
 
 
-    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA.root = await KLY_EVM.getStateRoot()
 
 
     let initEpochHash = blake3Hash('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'+BLOCKCHAIN_GENESIS.NETWORK_ID)
@@ -463,9 +463,11 @@ export let prepareBlockchain=async()=>{
 
     //________________________________________Set the state of KLY-EVM______________________________________________
 
+    let {root,nextBlockIndex,parentHash,timestamp} = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA
 
-    await KLY_EVM.setStateRoot(WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT)
+    await KLY_EVM.setStateRoot(root)
 
+    KLY_EVM.setCurrentBlockParams(nextBlockIndex,timestamp,parentHash)
 
     //_______________________________Check the version of AT and VT and if need - update________________________________
     
