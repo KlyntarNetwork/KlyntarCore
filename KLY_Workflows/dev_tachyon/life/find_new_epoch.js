@@ -6,7 +6,7 @@ import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_tra
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../globals.js'
 
-import {blake3Hash, logColors, customLog, pathResolve, gracefulStop} from '../../../KLY_Utils/utils.js'
+import {blake3Hash, logColors, customLog, pathResolve, gracefulStop, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
@@ -58,17 +58,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
-        let verificationThreadEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
         let currentEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-
-        if(currentEpochHandler.id - verificationThreadEpochHandler.id >= 2){
-
-            setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
-    
-            return
-
-        }
 
         let currentEpochFullID = currentEpochHandler.hash+"#"+currentEpochHandler.id
     
@@ -237,7 +227,63 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
             if(firstBlock && Block.genHash(firstBlock) === aefpAndFirstBlockData.firstBlockHash){
 
-                let delayedTransactions = firstBlock.extraData.delayedTransactions || []
+                // 3. Verify that quorum agreed batch of delayed transactions
+
+                let delayedTransactionsToExecute = []
+
+                let latestBatchIndex = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('LATEST_BATCH_INDEX').catch(()=>0)
+
+
+
+                if(firstBlock.extraData?.delayedTxsBatch){
+
+                    let {epochIndex,delayedTransactions,proofs} = firstBlock.extraData.delayedTxsBatch
+
+                    if(typeof epochIndex === 'number' && Array.isArray(delayedTransactions) && typeof proofs === 'object') {
+
+                        // 4. Verify signatures
+
+                        let dataThatShouldBeSigned = `SIG_DELAYED_OPERATIONS:${epochIndex}:${JSON.stringify(delayedTransactions)}`
+
+                        let okSignatures = 0
+
+                        let unique = new Set()
+
+
+                        for(let [signerPubKey,signa] of Object.entries(proofs)){
+
+                            let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
+
+                            if(isOK && currentEpochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+
+                                unique.add(signerPubKey)
+
+                                okSignatures++
+
+                            }
+
+                        }
+
+                        if(okSignatures >= majority){
+
+                            // 5. Finally - check if this batch has bigger index than already executed
+
+                            // 6. Only in case it's indeed new batch - execute it
+
+                            if(epochIndex > latestBatchIndex){
+
+                                latestBatchIndex = epochIndex
+
+                                delayedTransactionsToExecute = delayedTransactions
+
+                            }
+
+                        } 
+
+                    }
+
+                }
+
 
                 let firstBlocksHashes = []
 
@@ -249,32 +295,21 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler).catch(()=>{})
 
 
-                let daoVotingContractCalls = [], slashingContractCalls = [], changeUnobtaniumAmountCalls = [], allTheRestContractCalls = []
+                let daoVotingContractCalls = [], allTheRestContractCalls = []
 
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
                 
-                for(let delayedTransaction of delayedTransactions){
+                for(let delayedTransaction of delayedTransactionsToExecute){
 
-                    let itsDaoVoting = delayedTransaction.type === 'votingAccept'
-
-                    let itsSlashing = delayedTransaction.type === 'slashing'
-
-                    let itsUnoChangingTx = delayedTransaction.type === 'changeUnobtaniumAmount'
-
-
-                    if(itsDaoVoting) daoVotingContractCalls.push(delayedTransaction)
-
-                    else if(itsSlashing) slashingContractCalls.push(delayedTransaction)
-
-                    else if(itsUnoChangingTx) changeUnobtaniumAmountCalls.push(delayedTransaction)
+                    if(delayedTransaction.type === 'votingAccept') daoVotingContractCalls.push(delayedTransaction)
 
                     else allTheRestContractCalls.push(delayedTransaction)
 
                 }
 
                 
-                let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(changeUnobtaniumAmountCalls).concat(allTheRestContractCalls)
+                let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(allTheRestContractCalls)
 
 
                 for(let delayedTransaction of delayedTransactionsOrderByPriority){
@@ -338,6 +373,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 
 
                 atomicBatch.put(`EPOCH_DATA:${nextEpochId}`,nextEpochDataToStore)
+
+                atomicBatch.put('LATEST_BATCH_INDEX',latestBatchIndex)
                 
                 // Create new temporary db for the next epoch
 

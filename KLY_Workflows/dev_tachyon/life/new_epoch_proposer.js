@@ -250,7 +250,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         //Descriptor is {url,pubKey}
 
-        for(let descriptor of quorumMembers){      
+        for(let descriptor of quorumMembers){
             
             const controller = new AbortController()
 
@@ -341,7 +341,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
             
 
 
-        let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')// signer => signature
+        let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
 
         if(agreementsForEpochManager.size >= majority){
         

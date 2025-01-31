@@ -13,8 +13,6 @@ export let gasUsedByMethod=methodID=>{
 
     else if(methodID==='unstake') return 10000
 
-    else if(methodID==='slashing') return 10000
-
 }
 
 
@@ -196,10 +194,5 @@ export let CONTRACT = {
         } else return {isOk:false, reason: `Failed with input verification`}
  
     }
-    
-    // slashing:async(transaction) => {
-
-
-    // }
 
 }

@@ -6,7 +6,7 @@ import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_w
 
 import {getUserAccountFromState} from '../common_functions/state_interactions.js'
 
-import {signEd25519} from '../../../KLY_Utils/utils.js'
+import {signEd25519, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
 
@@ -342,9 +342,99 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
 
 
-let getBatchOfApprovedDelayedTxsByQuorum = async () => {
+let getBatchOfApprovedDelayedTxsByQuorum = async indexOfLeader => {
 
-    return []
+    // Get the batch of delayed operations from storage
+
+    let epochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+
+    if(indexOfLeader !== 0) return {epochIndex,delayedTransactions:[],proofs:{}}
+
+    
+    let delayedTransactions = await BLOCKCHAIN_DATABASES.STATE.get(`DELAYED_TRANSACTIONS:${epochIndex}`).catch(()=>null)
+
+    if(Array.isArray(delayedTransactions)){
+
+        // Ask quorum majority to sign this batch
+
+        let majority = getQuorumMajority(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
+
+        let quorumMembers = await getQuorumUrlsAndPubkeys(true,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
+
+        let optionsToSend = {
+            
+            method:'POST',
+            
+            body:JSON.stringify({epochIndex, delayedTransactions})
+        
+        }
+
+        let agreements = new Map() // validator => signa
+
+        let dataThatShouldBeSigned = `SIG_DELAYED_OPERATIONS:${epochIndex}:${JSON.stringify(delayedTransactions)}`
+
+        // Descriptor is {url,pubKey}
+
+        let promises = []
+
+        for(let descriptor of quorumMembers){
+            
+            const controller = new AbortController()
+
+            setTimeout(() => controller.abort(), 2000)
+
+            optionsToSend.signal = controller.signal
+
+            promises.push(fetch(descriptor.url+'/sign_delayed_ops_batch',optionsToSend).then(r=>r.json()).then(async possibleAgreement => {
+
+                /*
+                
+                    possibleAgreements structure is:
+
+                    {
+                        sig: SIG(dataThatShouldBeSigned)
+                    }
+                    
+                
+                */
+
+                if(possibleAgreement && typeof possibleAgreement === 'object'){
+                    
+                    if(possibleAgreement){
+
+                        if(verifyEd25519Sync(dataThatShouldBeSigned,possibleAgreement.sig,descriptor.pubKey)){
+
+                            agreements.set(descriptor.pubKey,possibleAgreement.sig)
+
+                        }
+
+                    }
+
+                }
+                
+            }).catch(()=>{}))
+            
+        }
+
+        await Promise.all(promises)
+
+        if(agreements.size >= majority){
+
+            let dataToReturn = {
+
+                epochIndex,
+
+                delayedTransactions,
+
+                proofs: Object.fromEntries(dataToReturn)
+                
+            }
+
+            return dataToReturn
+            
+        } else return {epochIndex,delayedTransactions:[],proofs:{}}
+
+    } else return {epochIndex,delayedTransactions:[],proofs:{}}
 
 }
 
@@ -358,7 +448,7 @@ let generateBlocksPortion = async() => {
 
     let epochIndex = epochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)    
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
     if(!currentEpochMetadata) return
 
@@ -446,7 +536,7 @@ let generateBlocksPortion = async() => {
             let previousLeaderPubkey = epochHandler.leadersSequence[indexOfPreviousLeaderInSequence]
 
 
-            extraData.delayedTransactions = await getBatchOfApprovedDelayedTxsByQuorum()
+            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(currentEpochMetadata.CURRENT_LEADER_INFO.index)
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________
