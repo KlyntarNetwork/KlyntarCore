@@ -1550,7 +1550,8 @@ let executeTransaction = async (currentBlockID,transaction,rewardsAndSuccessfulT
         let {isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee} = await VERIFIERS[transaction.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
 
         // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
-        if(reason!=='EVM' && reason!=='Replay: You need to increase the nonce'){
+        
+        if(reason!=='EVM'){
 
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
