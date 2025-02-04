@@ -11,7 +11,7 @@ import {Level} from 'level'
 import Web3 from 'web3'
 
 
-import {CONFIGURATION} from '../../klyn74r.js'
+import {CONFIGURATION} from '../../klyntar_core.js'
 
 
 

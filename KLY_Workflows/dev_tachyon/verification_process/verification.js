@@ -10,7 +10,7 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.j
 
 import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
 
 import {executeDelayedTransaction} from '../life/find_new_epoch.js'
 
@@ -437,21 +437,17 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     let nextVtEpochIndex = vtEpochOldIndex + 1
 
-    // Stuff related for next epoch
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HASH:${nextVtEpochIndex}`).catch(()=>{})
+    // Data related for next epoch
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_QUORUM:${nextVtEpochIndex}`).catch(()=>{})
-
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
-
-
-    // Get the epoch edge transactions that we need to execute
-
-    let delayedTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>null)
+    let nextEpochData = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(`EPOCH_DATA:${nextVtEpochIndex}`).catch(()=>{})
 
     
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && delayedTransactions){
+    if(nextEpochData){
+
+        // Destruct the object
+
+        let {nextEpochHash, nextEpochPoolsRegistry, nextEpochQuorum, nextEpochLeadersSequence, delayedTransactions} = nextEpochData
 
         GLOBAL_CACHES.STATE_CHANGES_CACHE = { put: {}, delete: {}, update: {} }
 
@@ -474,17 +470,20 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
     
         }
 
-        // Now delete the delayed transactions array
+        // Make epoch handler the same as on APPROVEMENT_THREAD
 
-        // let overPreviousEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${vtEpochHandler.id-2}`).catch(()=>null)
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = nextVtEpochIndex
+        
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
 
-        // if(overPreviousEpochHandler) {
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.poolsRegistry = nextEpochPoolsRegistry
 
-        //         atomicBatch.del(`DELAYED_TRANSACTIONS:${vtEpochHandler.id}`)
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
-        // }
-    
-
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
+                
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequence
+        
         // Nullify values for the upcoming epoch
 
         WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL = {}
@@ -519,23 +518,13 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
 
 
+
         // Store the stats during verification thread work in this epoch
         
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochOldIndex}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
 
-        trackStateChange(`VT_STATS_PER_EPOCH:${vtEpochHandler.id}`,1,'put')
+        trackStateChange(`VT_STATS_PER_EPOCH:${vtEpochOldIndex}`,1,'put')
 
-        // Finally - set the new index, hash, timestamp, quorum and assign validators for next epoch
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = nextVtEpochIndex
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
-                
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
 
         
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH = {
@@ -604,7 +593,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Update the KLY-EVM state root after allocations
 
-        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA.root = await KLY_EVM.getStateRoot()
 
         
         // Commit the changes of state using atomic batch
@@ -628,13 +617,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Now we can delete useless data from EPOCH_DATA db
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_HASH:${nextVtEpochIndex}`).catch(()=>{})
-
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_QUORUM:${nextVtEpochIndex}`).catch(()=>{})
-
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
-
-        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
+        await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.del(`EPOCH_DATA:${nextVtEpochIndex}`).catch(()=>{})
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochOldIndex-1}`).catch(()=>{})
 
@@ -667,26 +650,22 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     let nextEpochIndex = vtEpochIndex+1
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HASH:${nextEpochIndex}`).catch(()=>{})
-
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_QUORUM:${nextEpochIndex}`).catch(()=>{})
-
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_LEADERS_SEQUENCES:${nextEpochIndex}`).catch(()=>{})
-
-    let nextEpochHandlerTemplate = {
-
-        id:nextEpochIndex,
-        
-        hash:nextEpochHash,
-
-        quorum:nextEpochQuorum,
-
-        leadersSequence:nextEpochLeadersSequences
-
-    }
+    let nextEpochData = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(`EPOCH_DATA:${nextEpochIndex}`).catch(()=>{})
 
 
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
+    if(nextEpochData){
+
+        let nextEpochHandlerTemplate = {
+
+            id: nextEpochIndex,
+            
+            hash: nextEpochData.nextEpochHash,
+    
+            quorum: nextEpochData.nextEpochQuorum,
+    
+            leadersSequence: nextEpochData.nextEpochLeadersSequence
+    
+        }
 
         let handlerWithFirstBlocksOnNextEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`).catch(()=>false) || {} // {firstBlockCreator,firstBlockHash}
 
@@ -743,7 +722,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
 
 
-let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epochHandler) => {
+let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith, epochHandler) => {
 
     /* 
     
@@ -1568,14 +1547,15 @@ let executeTransaction = async (currentBlockID,transaction,rewardsAndSuccessfulT
 
         let txCopy = JSON.parse(JSON.stringify(transaction))
 
-        let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[transaction.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
+        let {isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee} = await VERIFIERS[transaction.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
 
         // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
-        if(reason!=='EVM' && reason!=='Replay: You need to increase the nonce'){
+        
+        if(reason!=='EVM'){
 
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
-            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
+            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee})
 
             trackStateChange('TX:'+txid,1,'put')
 
@@ -1598,14 +1578,14 @@ let executeGroupOfTransaction = async (currentBlockID,independentGroup,rewardsAn
 
             let txCopy = JSON.parse(JSON.stringify(txFromIndependentGroup))
     
-            let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[txFromIndependentGroup.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
+            let {isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee} = await VERIFIERS[txFromIndependentGroup.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
     
             // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
             if(reason!=='EVM'){
     
                 let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
     
-                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt})
+                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee})
     
                 trackStateChange('TX:'+txid,1,'put')
 
@@ -1657,7 +1637,7 @@ let verifyBlock = async block => {
         //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
         
-        let klyEvmMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA // {nextBlockIndex,parentHash,timestamp}
+        let klyEvmMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA // {root,nextBlockIndex,parentHash,timestamp}
 
         // Set the next block's parameters
         KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
@@ -1738,9 +1718,9 @@ let verifyBlock = async block => {
         //________________________________________________COMMIT STATE__________________________________________________    
         
         
-        GLOBAL_CACHES.STATE_CACHE.forEach((account,storageCellID)=>
+        GLOBAL_CACHES.STATE_CACHE.forEach((dataValue,dataKey)=>
         
-            atomicBatch.put(storageCellID,account)
+            atomicBatch.put(dataKey,dataValue)
         
         )
         
@@ -1871,25 +1851,20 @@ let verifyBlock = async block => {
 
         //___________________ Update the KLY-EVM ___________________
 
-        // Update stateRoot
-        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
-
-        // Increase block index
-        let nextIndex = BigInt(klyEvmMetadata.nextBlockIndex)+BigInt(1)
-
-        klyEvmMetadata.nextBlockIndex = Web3.utils.toHex(nextIndex.toString())
-
         // Store previous hash
         let currentHash = KLY_EVM.getCurrentBlock().hash()
-    
-        klyEvmMetadata.parentHash = currentHash.toString('hex')
-        
 
-        // Imagine that it's 1 block per 1 second
-        let nextTimestamp = klyEvmMetadata.timestamp+1
-    
-        klyEvmMetadata.timestamp = nextTimestamp
-        
+        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA = {
+
+            root: await KLY_EVM.getStateRoot(),
+
+            nextBlockIndex: Web3.utils.toHex((BigInt(klyEvmMetadata.nextBlockIndex)+BigInt(1)).toString()),
+
+            parentHash: currentHash.toString('hex'),
+
+            timestamp: klyEvmMetadata.timestamp+1
+
+        }    
 
         // Finally, store the block
 
@@ -1921,8 +1896,9 @@ let verifyBlock = async block => {
 
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
-        atomicBatch.put(`STATE_CHANGES:${generalBlockHeight}:${generalBlockHeight+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)
+        atomicBatch.put(`STATE_CHANGES:${generalBlockHeight}:${generalBlockHeight+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)        
 
+        
         await atomicBatch.write()
 
         vtStatsLog(block.epoch,block.creator,block.index,blockHash,block.transactions.length)        

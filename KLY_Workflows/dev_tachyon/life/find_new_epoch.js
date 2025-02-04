@@ -1,14 +1,12 @@
-import {getFirstBlockInEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
-
 import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+
+import {getFirstBlockInEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_transactions/delayed_transactions.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../globals.js'
 
-import {blake3Hash, logColors, customLog, pathResolve, gracefulStop} from '../../../KLY_Utils/utils.js'
-
-import {getFromState} from '../common_functions/state_interactions.js'
+import {blake3Hash, logColors, customLog, pathResolve, gracefulStop, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
@@ -16,7 +14,7 @@ import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
 
 import {setLeadersSequence} from './leaders_monitoring.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
 
@@ -60,17 +58,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
-        let verificationThreadEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
         let currentEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-
-        if(currentEpochHandler.id - verificationThreadEpochHandler.id >= 2){
-
-            setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
-    
-            return
-
-        }
 
         let currentEpochFullID = currentEpochHandler.hash+"#"+currentEpochHandler.id
     
@@ -90,14 +78,10 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
 
 
-        let aefpAndFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`).catch(()=>({})) // {firstBlockCreator,firstBlockHash,aefp}
-
-
-        //____________________Ask the quorum for AEFP___________________
-    
-        if(!aefpAndFirstBlockData) aefpAndFirstBlockData = {}
+        let aefpAndFirstBlockData = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`) || {} // {firstBlockCreator,firstBlockHash,aefp}
 
         let haveEverything = aefpAndFirstBlockData.aefp && aefpAndFirstBlockData.firstBlockHash
+
 
         if(!haveEverything){
 
@@ -136,7 +120,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Try to find locally
 
-                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${currentEpochHandler.id}`).catch(()=>false)
+                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${currentEpochHandler.id}`).catch(()=>null)
 
                 if(aefp){
 
@@ -226,85 +210,106 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
         
         // Save the changes(caching)
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`,aefpAndFirstBlockData).catch(()=>{})
+        GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`,aefpAndFirstBlockData)
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge transactions and set the new epoch____
 
         if(aefpAndFirstBlockData.firstBlockHash && aefpAndFirstBlockData.aefp){
 
-            let delayedTransactions = []
+            //_________________Get the delayed transactions from the first block in epoch_________________
 
-            let firstBlocksHashes = []
-
-            let shouldContinue = true
-
-            let overPreviousEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${currentEpochHandler.id-2}`).catch(()=>null)
-
-            if(overPreviousEpochHandler) {
-
-                let delayedTxs = await getFromState(`DELAYED_TRANSACTIONS:${currentEpochHandler.id}`)
-
-                if(delayedTxs){
-
-                    delayedTransactions.push(...delayedTxs)
-
-                }
-
-            }
-
+            // 1. Fetch first block
 
             let firstBlock = await getBlock(currentEpochHandler.id,aefpAndFirstBlockData.firstBlockCreator,0)
 
+            // 2. Compare hashes
+
             if(firstBlock && Block.genHash(firstBlock) === aefpAndFirstBlockData.firstBlockHash){
+
+                // 3. Verify that quorum agreed batch of delayed transactions
+
+                let delayedTransactionsToExecute = []
+
+                let latestBatchIndex = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('LATEST_BATCH_INDEX').catch(()=>0)
+
+
+
+                if(firstBlock.extraData?.delayedTxsBatch){
+
+                    let {epochIndex,delayedTransactions,proofs} = firstBlock.extraData.delayedTxsBatch
+
+                    if(typeof epochIndex === 'number' && Array.isArray(delayedTransactions) && typeof proofs === 'object') {
+
+                        // 4. Verify signatures
+
+                        let dataThatShouldBeSigned = `SIG_DELAYED_OPERATIONS:${epochIndex}:${JSON.stringify(delayedTransactions)}`
+
+                        let okSignatures = 0
+
+                        let unique = new Set()
+
+
+                        for(let [signerPubKey,signa] of Object.entries(proofs)){
+
+                            let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
+
+                            if(isOK && currentEpochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+
+                                unique.add(signerPubKey)
+
+                                okSignatures++
+
+                            }
+
+                        }
+
+                        if(okSignatures >= majority){
+
+                            // 5. Finally - check if this batch has bigger index than already executed
+
+                            // 6. Only in case it's indeed new batch - execute it
+
+                            if(epochIndex > latestBatchIndex){
+
+                                latestBatchIndex = epochIndex
+
+                                delayedTransactionsToExecute = delayedTransactions
+
+                            }
+
+                        } 
+
+                    }
+
+                }
+
+
+                let firstBlocksHashes = []
 
                 firstBlocksHashes.push(aefpAndFirstBlockData.firstBlockHash)
 
-            }else{
-
-                shouldContinue = false
-
-            }
-
-
-            if(shouldContinue){
-
+                
                 // For API - store the whole epoch handler object by epoch numerical index
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler).catch(()=>{})
 
 
-                let daoVotingContractCalls = [], slashingContractCalls = [], changeUnobtaniumAmountCalls = [], allTheRestContractCalls = []
+                let daoVotingContractCalls = [], allTheRestContractCalls = []
 
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
                 
-                for(let delayedTransaction of delayedTransactions){
+                for(let delayedTransaction of delayedTransactionsToExecute){
 
-                    let itsDaoVoting = delayedTransaction.type === 'votingAccept'
-
-                    let itsSlashing = delayedTransaction.type === 'slashing'
-
-                    let itsUnoChangingTx = delayedTransaction.type === 'changeUnobtaniumAmount'
-
-
-                    if(itsDaoVoting) daoVotingContractCalls.push(delayedTransaction)
-
-                    else if(itsSlashing) slashingContractCalls.push(delayedTransaction)
-
-                    else if(itsUnoChangingTx) changeUnobtaniumAmountCalls.push(delayedTransaction)
+                    if(delayedTransaction.type === 'votingAccept') daoVotingContractCalls.push(delayedTransaction)
 
                     else allTheRestContractCalls.push(delayedTransaction)
 
                 }
 
-
-                let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(changeUnobtaniumAmountCalls).concat(allTheRestContractCalls)
-
-
-                // Store the delayed transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
-                // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these transactions(already in priority order)
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`DELAYED_TRANSACTIONS:${currentEpochFullID}`,delayedTransactions).catch(()=>false)
+                
+                let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(allTheRestContractCalls)
 
 
                 for(let delayedTransaction of delayedTransactionsOrderByPriority){
@@ -319,13 +324,18 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             
                     if(storageCellID.includes('(POOL)_STORAGE_POOL')){
 
-                        atomicBatch.put(storageCellID,value)
+                        atomicBatch.put(storageCellID, value)
 
                     }
             
                 })
 
-               
+
+                customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${currentEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
+
+
+                //_______________________ Update the values for new epoch _______________________
+
                 // Now, after the execution we can change the epoch id and get the new hash + prepare new temporary object
                 
                 let nextEpochId = currentEpochHandler.id + 1
@@ -334,34 +344,37 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 let nextEpochFullID = nextEpochHash+'#'+nextEpochId
 
-
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HASH:${nextEpochId}`,nextEpochHash).catch(()=>{})
-
-
                 // After execution - assign new sequence of leaders
 
                 await setLeadersSequence(currentEpochHandler,nextEpochHash)
-
-                
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_LEADERS_SEQUENCES:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
-
-
-                customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${currentEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
-
-
-                //_______________________ Update the values for new epoch _______________________
-
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash = nextEpochHash
 
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
+
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
 
-                // WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME = Math.floor(WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME/WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.length)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_QUORUM:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum).catch(()=>{})
+                let nextEpochDataToStore = {
+
+                    nextEpochHash,
+
+                    nextEpochPoolsRegistry: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,
+
+                    nextEpochQuorum: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum,
+
+                    nextEpochLeadersSequence: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence,
+
+                    delayedTransactions: delayedTransactionsOrderByPriority
+
+                }
+                
+
+                atomicBatch.put(`EPOCH_DATA:${nextEpochId}`,nextEpochDataToStore)
+
+                atomicBatch.put('LATEST_BATCH_INDEX',latestBatchIndex)
                 
                 // Create new temporary db for the next epoch
 
@@ -374,6 +387,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 await atomicBatch.write()
 
                 // Clean the cache
+
                 GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.clear()
 
 
@@ -447,11 +461,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 EPOCH_METADATA_MAPPING.set(nextEpochFullID,nextTemporaryObject)
 
-                // Delete the cache that we don't need more
-
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`).catch(()=>{})
-
-
             }
 
         }
@@ -459,7 +468,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
         // Continue to find
         setImmediate(findAefpsAndFirstBlocksForCurrentEpoch)
 
-    }else{
+    } else {
 
         setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
 

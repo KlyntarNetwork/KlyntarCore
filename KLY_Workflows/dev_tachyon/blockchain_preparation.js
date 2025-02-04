@@ -8,7 +8,7 @@ import {setLeadersSequence} from './life/leaders_monitoring.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import {isMyCoreVersionOld} from './utils.js'
 
@@ -322,7 +322,7 @@ let setGenesisToState=async()=>{
 
 
 
-    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA.root = await KLY_EVM.getStateRoot()
 
 
     let initEpochHash = blake3Hash('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'+BLOCKCHAIN_GENESIS.NETWORK_ID)
@@ -374,10 +374,6 @@ let setGenesisToState=async()=>{
     vtEpochHandler.quorum = await getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS,initEpochHash)
 
     atEpochHandler.quorum = await getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,initEpochHash)
-
-
-    // WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME = Math.floor(WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME/atEpochHandler.quorum.length)
-
 
 
     // Finally, assign sequence of leaders for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
@@ -467,9 +463,11 @@ export let prepareBlockchain=async()=>{
 
     //________________________________________Set the state of KLY-EVM______________________________________________
 
+    let {root,nextBlockIndex,parentHash,timestamp} = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA
 
-    await KLY_EVM.setStateRoot(WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT)
+    await KLY_EVM.setStateRoot(root)
 
+    KLY_EVM.setCurrentBlockParams(nextBlockIndex,timestamp,parentHash)
 
     //_______________________________Check the version of AT and VT and if need - update________________________________
     

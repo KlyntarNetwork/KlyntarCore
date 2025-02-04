@@ -2,7 +2,7 @@ import {getVerifiedAggregatedFinalizationProofByBlockId} from '../../common_func
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
 
 

@@ -2,7 +2,7 @@ import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../
 
 import {verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
 import {signEd25519} from '../../../../KLY_Utils/utils.js'
 

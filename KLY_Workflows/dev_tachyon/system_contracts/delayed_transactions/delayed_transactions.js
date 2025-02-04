@@ -8,7 +8,6 @@ import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../glob
 
 import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
-import { BLOCKCHAIN_GENESIS } from "../../../../klyn74r.js"
 
 
 

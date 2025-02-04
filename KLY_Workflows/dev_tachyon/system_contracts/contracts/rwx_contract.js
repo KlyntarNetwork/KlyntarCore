@@ -1,4 +1,4 @@
-import {getUserAccountFromState, getContractAccountFromState, trackStateChange} from "../../common_functions/state_interactions.js"
+import {getUserAccountFromState, getContractAccountFromState, trackStateChange, getFromState} from "../../common_functions/state_interactions.js"
 
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
@@ -173,6 +173,8 @@ export let CONTRACT = {
                 // Check if contract present in state
 
                 let rwxContractRelatedToDeal = await getContractAccountFromState(rwxContractId)
+
+                let _ = await getFromState(rwxContractId+'_STORAGE_DEFAULT')
 
                 if(rwxContractRelatedToDeal){
 

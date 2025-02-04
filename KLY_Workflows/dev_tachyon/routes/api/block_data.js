@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
 

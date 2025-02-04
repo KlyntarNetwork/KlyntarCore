@@ -1,6 +1,6 @@
 import {pathResolve,blake3Hash} from '../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import level from 'level'
 
@@ -67,16 +67,11 @@ export let WORKING_THREADS = {
 
         VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:int,hash:''}
 
-
-        KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
-
-        KLY_EVM_METADATA:{}, // {nextBlockIndex,parentHash,timestamp}
-
+        KLY_EVM_METADATA:{}, // {root,nextBlockIndex,parentHash,timestamp}
 
         TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS:{},
 
         SID_TRACKER:{}, // index
-
 
         TOTAL_STATS:{
 

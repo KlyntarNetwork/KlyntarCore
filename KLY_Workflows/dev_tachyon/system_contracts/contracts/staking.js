@@ -1,8 +1,6 @@
 /* eslint-disable no-unused-vars */
 
-import {getFromState, getUserAccountFromState} from '../../common_functions/state_interactions.js'
-
-import {WORKING_THREADS} from '../../globals.js'
+import {getUserAccountFromState, setToDelayedTransactions} from '../../common_functions/state_interactions.js'
 
 
 
@@ -14,8 +12,6 @@ export let gasUsedByMethod=methodID=>{
     else if(methodID==='stake') return 10000
 
     else if(methodID==='unstake') return 10000
-
-    else if(methodID==='slashing') return 10000
 
 }
 
@@ -55,13 +51,7 @@ export let CONTRACT = {
         let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
 
         if(typeCheckIsOk && percentageIsOk){
-
-            // Get the array of delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
+            
             let templateToPush = {
 
                 type:'createStakingPool',
@@ -72,7 +62,7 @@ export let CONTRACT = {
 
             }
 
-            delayedTransactions.push(templateToPush)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
@@ -94,10 +84,6 @@ export let CONTRACT = {
 
             // Get the array of delayed operations
 
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
             let templateToPush = {
 
                 type:'updateStakingPool',
@@ -108,7 +94,7 @@ export let CONTRACT = {
 
             }
 
-            delayedTransactions.push(templateToPush)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
@@ -145,11 +131,7 @@ export let CONTRACT = {
                 txCreatorAccount.balance -= amount
 
                 // Now add it to delayed operations
-
-                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
+            
                 let templateToPush = {
 
                     type:'stake',
@@ -160,7 +142,7 @@ export let CONTRACT = {
 
                 }
 
-                delayedTransactions.push(templateToPush)
+                await setToDelayedTransactions(templateToPush)
 
                 return {isOk:true}
 
@@ -195,10 +177,6 @@ export let CONTRACT = {
 
             // Now add it to delayed operations
 
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
             let templateToPush = {
 
                 type:'unstake',
@@ -209,17 +187,12 @@ export let CONTRACT = {
 
             }
 
-            delayedTransactions.push(templateToPush)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
         } else return {isOk:false, reason: `Failed with input verification`}
  
     }
-    
-    // slashing:async(transaction) => {
-
-
-    // }
 
 }

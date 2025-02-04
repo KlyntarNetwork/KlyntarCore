@@ -8,7 +8,7 @@ import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../
 
 import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
-import {CONFIGURATION} from '../../../../klyn74r.js'
+import {CONFIGURATION} from '../../../../klyntar_core.js'
 
 import Block from '../../structures/block.js'
 
@@ -29,7 +29,7 @@ import http from 'http'
  *  + Verify that it's the part of a valid segment(by comparing a hashes & verifying AFP)
  *  + Store the new block locally
  *  + Generate the finalization proof(FP) for a proposed block => ED25519_SIGNA(prevBlockHash+blockID+blockHash+epochFullID)
- *  + Store the fact that we have voted for a block with a specific hash for proposed slot to prevent double voting(and slashing as result) 
+ *  + Store the fact that we have voted for a block with a specific hash for proposed slot to prevent double voting 
  * 
  * 
  * 

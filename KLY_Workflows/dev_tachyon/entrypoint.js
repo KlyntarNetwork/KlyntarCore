@@ -14,7 +14,7 @@ import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
 
 import {blocksGenerationProcess} from './life/block_generation.js'
 
-import {CONFIGURATION, BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
+import {CONFIGURATION, BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import {prepareBlockchain} from './blockchain_preparation.js'
 

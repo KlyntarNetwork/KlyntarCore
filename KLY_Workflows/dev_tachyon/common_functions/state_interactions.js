@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../globals.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 
 
@@ -77,20 +77,28 @@ export let getFromState = async recordID => {
             return GLOBAL_CACHES.STATE_CACHE.get(recordID)
  
     
-        }).catch(()=>{
+        }).catch(()=>null)
 
-            if(recordID.startsWith('DELAYED_TRANSACTIONS')){
+}
 
-                trackStateChange(recordID,1,'put')
 
-                GLOBAL_CACHES.STATE_CACHE.set(recordID,[])
 
-                return GLOBAL_CACHES.STATE_CACHE.get(recordID)
+export let setToDelayedTransactions = async delayedTx => {
 
-            }
+    let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id + 2
+    
+    let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
+    
+    if(!Array.isArray(delayedTransactions)) {
 
-            return null
+        delayedTransactions = []
 
-        })
+        trackStateChange(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`,1,'put')
+
+    }
+
+    delayedTransactions.push(delayedTx)
+
+    GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`,delayedTransactions)
 
 }

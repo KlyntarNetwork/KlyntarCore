@@ -1,8 +1,6 @@
+import {getFromState, setToDelayedTransactions} from "../../common_functions/state_interactions.js"
+
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
-
-import {getFromState} from "../../common_functions/state_interactions.js"
-
-import {WORKING_THREADS} from "../../globals.js"
 
 
 
@@ -65,10 +63,6 @@ export let CONTRACT = {
 
                 // Now add it to delayed operations
 
-                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id + 2
-
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}`) // should be array of delayed operations
-
                 let templateToPush = {
 
                     type:'changeUnobtaniumAmount',
@@ -77,7 +71,7 @@ export let CONTRACT = {
 
                 }
 
-                delayedTransactions.push(templateToPush)
+                await setToDelayedTransactions(templateToPush)
 
                 return {isOk:true}
 

@@ -8,7 +8,7 @@ import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
 import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import {epochStillFresh} from '../utils.js'
 
@@ -250,7 +250,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         //Descriptor is {url,pubKey}
 
-        for(let descriptor of quorumMembers){      
+        for(let descriptor of quorumMembers){
             
             const controller = new AbortController()
 
@@ -341,7 +341,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
             
 
 
-        let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')// signer => signature
+        let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
 
         if(agreementsForEpochManager.size >= majority){
         
