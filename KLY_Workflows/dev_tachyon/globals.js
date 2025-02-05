@@ -71,7 +71,7 @@ export let WORKING_THREADS = {
 
         TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS:{},
 
-        SID_TRACKER:{}, // index
+        SID_TRACKER:0, // index
 
         TOTAL_STATS:{
 

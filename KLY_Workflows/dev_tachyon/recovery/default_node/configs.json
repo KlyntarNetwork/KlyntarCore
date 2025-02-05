@@ -1,0 +1,7 @@
+{
+    "checkpointSID":1337,
+    "checkpointHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "wsSourceUrl":"ws://recovery1.klyntarscan.org",
+    "blocksDbPath":"C:/Users/MI/MyProjects/NetRunner/XTESTNET_V2/V2/CHAINDATA/BLOCKS",
+    "stateDbPath":"C:/Users/MI/MyProjects/NetRunner/XTESTNET_V2/V2/CHAINDATA/STATE"
+}
