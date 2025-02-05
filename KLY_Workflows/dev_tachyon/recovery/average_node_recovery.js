@@ -1,3 +1,5 @@
+import {client as WebSocketClient} from 'websocket'
+
 import { fileURLToPath } from 'node:url'
 
 import level from 'level'
@@ -22,3 +24,16 @@ const recoveryConfigs = JSON.parse(fs.readFileSync(recoveryConfigsPath, 'utf8'))
 let stateDB = level(recoveryConfigs.stateDbPath,{valueEncoding:'json'})
 
 console.log(await stateDB.get('VT'))
+
+
+
+
+let endpointURL = recoveryConfigs.sourceUrl
+
+let client = new WebSocketClient({
+
+    maxReceivedMessageSize: 1024 * 1024 * 500
+
+})
+
+client.connect(endpointURL,'echo-protocol')
