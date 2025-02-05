@@ -55,7 +55,7 @@ let klyntarWebsocketServer = new WebSocketServer({
 
     autoAcceptConnections: false,
 
-    maxReceivedMessageSize: 1024*1024*50 // 50 Mb
+    maxReceivedMessageSize: 1024*1024*50
 
 })
 
