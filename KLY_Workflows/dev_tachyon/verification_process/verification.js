@@ -1605,13 +1605,9 @@ let executeGroupOfTransaction = async (currentBlockID,independentGroup,rewardsAn
 let verifyBlock = async block => {
 
 
-    let blockHash = Block.genHash(block),
+    let blockHash = Block.genHash(block)
 
-        overviewOk=
-        
-            block.transactions?.length<=WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK
-            &&
-            WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash === block.prevHash // it should be a chain
+    let overviewOk = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash === block.prevHash // it should be a chain
 
 
 
