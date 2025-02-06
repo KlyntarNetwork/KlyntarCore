@@ -92,21 +92,25 @@ klyntarWebsocketServer.on('request',request=>{
     
                 connection.sendUTF(JSON.stringify(blocks))
     
-            } else if (route === 'epoch_data'){
+            } else if (route === 'epoch_to_epoch_data'){
 
                 let promises = []
 
                 for(let index = from ; index < to ; index++){
+
+                    let epochIndexFrom = index
+
+                    let epochIndexNext = index + 1
     
-                    let epochDataPromise = stateDB.get('SID:'+index).then(blockID => blocksDB.get(blockID)).catch(()=>false)
-        
-                    promises.push(epochDataPromise)
+                    let epochToEpochDataPromise = stateDB.get(`EPOCH_TO_EPOCH_DATA:${epochIndexFrom}:${epochIndexNext}`).catch(()=>false)
+                    
+                    promises.push(epochToEpochDataPromise)
     
                 }
     
-                let epochDatas = await Promise.all(promises).then(array=>array.filter(Boolean))
+                let epochToEpochDatas = await Promise.all(promises).then(array=>array.filter(Boolean))
     
-                connection.sendUTF(JSON.stringify(epochDatas))
+                connection.sendUTF(JSON.stringify(epochToEpochDatas))
 
             } else connection.close(7331,'No appropraite route')
 
