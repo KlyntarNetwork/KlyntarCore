@@ -25,9 +25,9 @@ const recoveryConfigsPath = path.join(__dirname, 'configs.json')
 const {wsNetPort,wsNetInterface,stateDbPath,blocksDbPath} = JSON.parse(fs.readFileSync(recoveryConfigsPath, 'utf8'))
 
 
-let blocksDB = level(blocksDbPath,{valueEncoding:'json'})
+let blocksDB = level(blocksDbPath+'_RECOVERY',{valueEncoding:'json'})
 
-let stateDB = level(stateDbPath,{valueEncoding:'json'})
+let stateDB = level(stateDbPath+'_RECOVERY',{valueEncoding:'json'})
 
 
 console.log(await stateDB.get('VT'))

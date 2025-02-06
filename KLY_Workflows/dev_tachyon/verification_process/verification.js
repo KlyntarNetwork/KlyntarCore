@@ -518,6 +518,9 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
 
 
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.finishedOnHeight = WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT
+
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.finishedOnBlockHash = WORKING_THREADS.VERIFICATION_THREAD.LAST_BLOCKHASH
 
         // Store the stats during verification thread work in this epoch
         
@@ -1743,15 +1746,11 @@ let verifyBlock = async block => {
 
         }
 
+        let absoluteBlockIndex = WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT + 1
 
-        let generalBlockHeight = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER
+        atomicBatch.put(`SID:${absoluteBlockIndex}`,currentBlockID)
 
-        atomicBatch.put(`SID:${generalBlockHeight}`,currentBlockID)
-
-        trackStateChange(`SID:${generalBlockHeight}`,1,'put')
-
-
-        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER++
+        trackStateChange(`SID:${absoluteBlockIndex}`,1,'put')
 
 
         // Try to set the pointer to the first block in epoch
@@ -1883,16 +1882,19 @@ let verifyBlock = async block => {
 
         trackStateChange(`EVM_BLOCK_RECEIPT:${blockToStore.number}`,1,'put')
  
-        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{sid:generalBlockHeight})
+        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{sid:absoluteBlockIndex})
         
         trackStateChange(`BLOCK_RECEIPT:${currentBlockID}`,1,'put')
         
         //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
 
+        WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT++
+
+        WORKING_THREADS.VERIFICATION_THREAD.LAST_BLOCKHASH = blockHash
 
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
-        atomicBatch.put(`STATE_CHANGES:${generalBlockHeight}:${generalBlockHeight+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)        
+        atomicBatch.put(`STATE_CHANGES:${absoluteBlockIndex}:${absoluteBlockIndex+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)        
 
         
         await atomicBatch.write()

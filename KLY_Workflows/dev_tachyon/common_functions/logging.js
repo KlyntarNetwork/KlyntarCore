@@ -1,6 +1,6 @@
-import {logColors} from '../../../KLY_Utils/utils.js'
-
 import {CONFIGURATION} from '../../../klyntar_core.js'
+
+import {logColors} from '../../../KLY_Utils/utils.js'
 
 import {WORKING_THREADS} from '../globals.js'
 
@@ -21,7 +21,7 @@ export let vtStatsLog = (epochFullID,currentLeader,blockIndex,blockHash,txsNumbe
     
     console.log('\n')
 
-    console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${(WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER-1)}`,logColors.CLEAR)
+    console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${(WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT)}`,logColors.CLEAR)
     
     console.log(` \u001b[38;5;168m│\x1b[33m  Created by:\x1b[36;1m`,currentLeader,logColors.CLEAR)
 

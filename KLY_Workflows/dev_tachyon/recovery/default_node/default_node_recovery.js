@@ -26,13 +26,13 @@ const {checkpointSID, checkpointHash, wsSourceUrl, stateDbPath, blocksDbPath} = 
 
 let blocksToRecoveryDB = level(blocksDbPath+'_RECOVERY',{valueEncoding:'json'})
 
-let stateDB = level(stateDbPath,{valueEncoding:'json'})
+let stateDB = level(stateDbPath+'_RECOVERY',{valueEncoding:'json'})
 
 
 
 let localVerificationThread = await stateDB.get('VT')
 
-let lastBlockHeight = localVerificationThread.SID_TRACKER
+let lastBlockHeight = localVerificationThread.LAST_HEIGHT
 
 console.log(`[*] Local height of verification thread: ${lastBlockHeight}`)
 
