@@ -24,64 +24,98 @@ const recoveryConfigsPath = path.join(__dirname, 'configs.json')
 
 const {checkpointSID, checkpointHash, wsSourceUrl, stateDbPath, blocksDbPath} = JSON.parse(fs.readFileSync(recoveryConfigsPath, 'utf8'))
 
+
+let stateDB = level(stateDbPath,{valueEncoding:'json'})
+
 let blocksToRecoveryDB = level(blocksDbPath+'_RECOVERY',{valueEncoding:'json'})
 
-let stateDB = level(stateDbPath+'_RECOVERY',{valueEncoding:'json'})
+let stateRecoveryDB = level(stateDbPath+'_RECOVERY',{valueEncoding:'json'})
 
 
 
 let localVerificationThread = await stateDB.get('VT')
 
-let lastBlockHeight = localVerificationThread.LAST_HEIGHT
+let loadedUpToHeightBlocks = await blocksToRecoveryDB.get('LAST_HEIGHT').catch(()=>localVerificationThread.LAST_HEIGHT)
 
-console.log(`[*] Local height of verification thread: ${lastBlockHeight}`)
+let loadedUpToEpochIndex = await blocksToRecoveryDB.get('LAST_EPOCH_INDEX').catch(()=>0)
+
+
+console.log(`[*] Local loaded up to height: ${loadedUpToHeightBlocks}`)
 
 console.log(`[*] Going to load until (index => hash): ${checkpointSID} => ${checkpointHash}`)
 
 
-let client = new WebSocketClient({
+let client = new WebSocketClient({ maxReceivedMessageSize: 1024 * 1024 * 500 })
 
-    maxReceivedMessageSize: 1024 * 1024 * 500
-
-})
-
-
-let currentHeight = 0
 
 
 client.on('connect', (connection) => {
 
-    const requestNextBatch = async () => {
+    const requestNextBatchOfBlocks = async () => {
 
-        const from = currentHeight;
-        const to = currentHeight + 100;
+        const from = loadedUpToHeightBlocks
+
+        const to = loadedUpToHeightBlocks + 100
     
-        connection.sendUTF(JSON.stringify({ from, to }))
+        connection.sendUTF(JSON.stringify({ from, to, route: 'blocks' }))
+    
+    }
+
+    const requestNextBatchOfEpochToEpochData = async () => {
+
+        const from = loadedUpToEpochIndex
+
+        const to = loadedUpToEpochIndex + 100
+    
+        connection.sendUTF(JSON.stringify({ from, to, route: 'epoch_to_epoch_data' }))
     
     }
   
-    console.log('Connected to server');
-
+    console.log('[*] Connected to server')
 
     connection.on('message', async (message) => {
-        if (message.type === 'utf8') {
-          const blocks = JSON.parse(message.utf8Data);
-          
-          for (const block of blocks) {
-              
-              console.log(`Received block: `,block)
-              
-              currentHeight++;
-          
-          }
-          
-          requestNextBatch(); 
         
-      }
+        if (message.type === 'utf8') {
+
+            let parsedData = JSON.parse(message.utf8Data)
+
+            if(parsedData.route === 'blocks'){
+
+                const blocks = parsedData.blocks
+          
+                for (const block of blocks) {
+                    
+                    console.log(`Received block: `,block)
+                    
+                    loadedUpToHeightBlocks++;
+                
+                }
+                
+                requestNextBatchOfBlocks();       
+
+            } else if(parsedData.route === 'epoch_to_epoch_data'){
+
+                const epochToEpochDatas = parsedData.epochToEpochDatas
+          
+                for (const epochData of epochToEpochDatas) {
+                    
+                    console.log(`Received epoch data: `,epochData)
+                    
+                    loadedUpToEpochIndex++
+                
+                }
+                
+                requestNextBatchOfEpochToEpochData();
+
+            }
+                
+        }
       
     });
 
-    requestNextBatch()
+    requestNextBatchOfBlocks()
+
+    requestNextBatchOfEpochToEpochData()
 
 })
 
