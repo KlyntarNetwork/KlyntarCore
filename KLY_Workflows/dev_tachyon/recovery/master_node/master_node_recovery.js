@@ -25,12 +25,17 @@ const recoveryConfigsPath = path.join(__dirname, 'configs.json')
 const {wsNetPort,wsNetInterface,stateDbPath,blocksDbPath} = JSON.parse(fs.readFileSync(recoveryConfigsPath, 'utf8'))
 
 
-let blocksDB = level(blocksDbPath+'_RECOVERY',{valueEncoding:'json'})
+let blocksDB = level(blocksDbPath,{valueEncoding:'json'})
 
-let stateDB = level(stateDbPath+'_RECOVERY',{valueEncoding:'json'})
+let stateDB = level(stateDbPath,{valueEncoding:'json'})
+
+let localVerificationThread = await stateDB.get('VT')
+
+let epochData = localVerificationThread.EPOCH
 
 
-console.log(await stateDB.get('VT'))
+console.log(`[*] Local verification thread stats is (index => hash): ${localVerificationThread.LAST_HEIGHT}:${localVerificationThread.LAST_BLOCKHASH}`)
+console.log(`[*] Epoch data on verification thread stats is (index => hash): ${epochData.id}:${epochData.hash}`)
 
 
 let server = http.createServer({},(_,response)=>{
@@ -69,21 +74,41 @@ klyntarWebsocketServer.on('request',request=>{
 
         if (message.type === 'utf8') {
 
-            let {from, to} = JSON.parse(message.utf8Data)
+            let {from, to, route} = JSON.parse(message.utf8Data)
 
-            let promises = []
+            if(route === 'blocks'){
 
-            for(let index = from ; index < to ; index++){
+                let promises = []
 
-                let blockPromise = stateDB.get('SID:'+index).then(blockID => blocksDB.get(blockID)).catch(()=>false)
+                for(let index = from ; index < to ; index++){
     
-                promises.push(blockPromise)
+                    let blockPromise = stateDB.get('SID:'+index).then(blockID => blocksDB.get(blockID)).catch(()=>false)
+        
+                    promises.push(blockPromise)
+    
+                }
+    
+                let blocks = await Promise.all(promises).then(array=>array.filter(Boolean))
+    
+                connection.sendUTF(JSON.stringify(blocks))
+    
+            } else if (route === 'epoch_data'){
 
-            }
+                let promises = []
 
-            let blocks = await Promise.all(promises).then(array=>array.filter(Boolean))
+                for(let index = from ; index < to ; index++){
+    
+                    let epochDataPromise = stateDB.get('SID:'+index).then(blockID => blocksDB.get(blockID)).catch(()=>false)
+        
+                    promises.push(epochDataPromise)
+    
+                }
+    
+                let epochDatas = await Promise.all(promises).then(array=>array.filter(Boolean))
+    
+                connection.sendUTF(JSON.stringify(epochDatas))
 
-            connection.sendUTF(JSON.stringify(blocks))
+            } else connection.close(7331,'No appropraite route')
 
         } else connection.close(7331,'Wrong message type')
     

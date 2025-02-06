@@ -517,11 +517,6 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
 
-
-        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.finishedOnHeight = WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT
-
-        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.finishedOnBlockHash = WORKING_THREADS.VERIFICATION_THREAD.LAST_BLOCKHASH
-
         // Store the stats during verification thread work in this epoch
         
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS_PER_EPOCH:${vtEpochOldIndex}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
@@ -534,22 +529,14 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             
             totalBlocksNumber:0, totalTxsNumber:0, successfulTxsNumber:0,
 
-            newUserAccountsNumber:{
-                native:0,
-                evm:0
-            },
+            newUserAccountsNumber:{ native:0, evm:0 },
 
-            newSmartContractsNumber:{
-                native:0,
-                evm:0
-            },
+            newSmartContractsNumber:{ native:0, evm:0 },
 
-            rwxContracts:{
-                total:0,
-                closed:0
-            },
+            rwxContracts:{ total:0, closed:0 },
 
             totalKlyStaked:0,
+
             totalUnoStaked:0,
 
             coinsAllocations:{ blockRewards:0 }
@@ -607,9 +594,23 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             
         )
 
+        let epochToEpochData = {
+
+            finishedOnHeight: WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT,
+
+            finishedOnBlockHash: WORKING_THREADS.VERIFICATION_THREAD.LAST_BLOCKHASH,
+
+            ...nextEpochData
+
+        }
+
+        atomicBatch.put(`EPOCH_TO_EPOCH_DATA:${vtEpochOldIndex}:${nextVtEpochIndex}`,epochToEpochData)
+
+        trackStateChange(`EPOCH_TO_EPOCH_DATA:${vtEpochOldIndex}:${nextVtEpochIndex}`,1,'put')
+
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
-        atomicBatch.put(`STATE_CHANGES:FROM_EPOCH${vtEpochOldIndex}:${nextVtEpochIndex}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)
+        atomicBatch.put(`STATE_CHANGES_EPOCH_LEVEL${vtEpochOldIndex}:${nextVtEpochIndex}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)
 
         await atomicBatch.write()
 
@@ -1894,7 +1895,7 @@ let verifyBlock = async block => {
 
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
-        atomicBatch.put(`STATE_CHANGES:${absoluteBlockIndex}:${absoluteBlockIndex+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)        
+        atomicBatch.put(`STATE_CHANGES_BLOCK_LEVEL:${absoluteBlockIndex}:${absoluteBlockIndex+1}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)        
 
         
         await atomicBatch.write()
