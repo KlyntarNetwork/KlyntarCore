@@ -608,6 +608,9 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         trackStateChange(`EPOCH_TO_EPOCH_DATA:${vtEpochOldIndex}:${nextVtEpochIndex}`,1,'put')
 
+
+        atomicBatch.del(`FIRST_BLOCK:${vtEpochOldIndex}`)
+
         atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
         atomicBatch.put(`STATE_CHANGES_EPOCH_LEVEL${vtEpochOldIndex}:${nextVtEpochIndex}`,GLOBAL_CACHES.STATE_CHANGES_CACHE)
@@ -1769,7 +1772,7 @@ let verifyBlock = async block => {
 
                 atomicBatch.put(`FIRST_BLOCK:${currentEpochIndex}`,handlerWithTheFirstBlockData)
 
-                trackStateChange(`FIRST_BLOCK:${currentEpochIndex}`,handlerWithTheFirstBlockData,'put')
+                trackStateChange(`FIRST_BLOCK:${currentEpochIndex}`,1,'put')
 
             }
 

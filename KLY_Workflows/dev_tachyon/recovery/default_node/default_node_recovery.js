@@ -22,7 +22,7 @@ const recoveryConfigsPath = path.join(__dirname, 'configs.json')
 
 
 
-const {checkpointSID, checkpointHash, wsSourceUrl, stateDbPath, blocksDbPath} = JSON.parse(fs.readFileSync(recoveryConfigsPath, 'utf8'))
+const {loadUpToHeight, loadUpToHash, loadUpToEpochIndex, wsSourceUrl, stateDbPath, blocksDbPath} = JSON.parse(fs.readFileSync(recoveryConfigsPath, 'utf8'))
 
 
 let stateDB = level(stateDbPath,{valueEncoding:'json'})
@@ -35,14 +35,29 @@ let stateRecoveryDB = level(stateDbPath+'_RECOVERY',{valueEncoding:'json'})
 
 let localVerificationThread = await stateDB.get('VT')
 
-let loadedUpToHeightBlocks = await blocksToRecoveryDB.get('LAST_HEIGHT').catch(()=>localVerificationThread.LAST_HEIGHT)
 
-let loadedUpToEpochIndex = await blocksToRecoveryDB.get('LAST_EPOCH_INDEX').catch(()=>0)
+/*
+
+We need to load extra data from external source of recovery
+
+[1] Blocks untill the height of point of recovery
+[2] Epoch-to-epoch data
+
+*/
+
+let loadedUpToHeightBlocks = await blocksToRecoveryDB.get('LAST_LOADED_BLOCK').catch(()=>localVerificationThread.LAST_HEIGHT)
+
+let loadedUpToEpochIndex = await stateRecoveryDB.get('LAST_EPOCH_INDEX').catch(()=>localVerificationThread.EPOCH.id)
 
 
-console.log(`[*] Local loaded up to height: ${loadedUpToHeightBlocks}`)
 
-console.log(`[*] Going to load until (index => hash): ${checkpointSID} => ${checkpointHash}`)
+
+console.log(`[*] Local verified height (up to height): ${localVerificationThread.LAST_HEIGHT}`)
+console.log(`[*] Locally loaded blocks (up to height): ${loadedUpToHeightBlocks}`)
+
+console.log(`[*] Going to load blocks until (index => hash): ${loadUpToHeight} => ${loadUpToHash}`)
+console.log(`[*] Going to load epoch-to-epoch data until epoch index: ${loadUpToEpochIndex}`)
+
 
 
 let client = new WebSocketClient({ maxReceivedMessageSize: 1024 * 1024 * 500 })
