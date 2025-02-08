@@ -9,17 +9,6 @@ import {blake3Hash} from "../../../../KLY_Utils/utils.js"
 
 
 
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='createContract') return 10000
-
-    else if(methodID==='resolveContract') return 10000
-
-}
-
-
-
-
 export let CONTRACT = {
 
 
@@ -174,7 +163,7 @@ export let CONTRACT = {
 
                 let rwxContractRelatedToDeal = await getContractAccountFromState(rwxContractId)
 
-                let _ = await getFromState(rwxContractId+'_STORAGE_DEFAULT')
+                await getFromState(rwxContractId+'_STORAGE_DEFAULT')
 
                 if(rwxContractRelatedToDeal){
 

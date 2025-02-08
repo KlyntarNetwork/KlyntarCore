@@ -6,16 +6,6 @@ import {getFromState} from "../../common_functions/state_interactions.js"
 
 
 
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='changeGasAmount') return 10000
-
-    else if(methodID==='chargePaymentForStorageUsedByContract') return 10000
-
-}
-
-
-
 
 export let CONTRACT = {
 

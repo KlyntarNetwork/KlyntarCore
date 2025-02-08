@@ -5,13 +5,6 @@ import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_pro
 
 
 
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='changeUnobtaniumAmount') return 10000
-
-}
-
-
 export let CONTRACT = {
 
 

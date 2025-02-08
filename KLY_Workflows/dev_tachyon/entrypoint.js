@@ -4,17 +4,17 @@ import {findTemporaryInfoAboutFinalBlocksByPreviousPools} from './life/temp_vt_s
 
 import {shareBlocksAndGetFinalizationProofs} from './life/share_block_and_grab_proofs.js'
 
-import {startVerificationThread} from './verification_process/verification.js'
-
 import {findAefpsAndFirstBlocksForCurrentEpoch} from './life/find_new_epoch.js'
 
-import {leadersSequenceMonitoring} from './life/leaders_monitoring.js'
+import {startVerificationThread} from './verification_process/verification.js'
 
 import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
 
-import {blocksGenerationProcess} from './life/block_generation.js'
-
 import {CONFIGURATION, BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
+
+import {leadersSequenceMonitoring} from './life/leaders_monitoring.js'
+
+import {blocksGenerationProcess} from './life/block_generation.js'
 
 import {prepareBlockchain} from './blockchain_preparation.js'
 
