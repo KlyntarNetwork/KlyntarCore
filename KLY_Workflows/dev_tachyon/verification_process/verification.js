@@ -1190,7 +1190,7 @@ export let startVerificationThread=async()=>{
         /*
         
             In case we have .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS - it's a signal that the new epoch on APPROVEMENT_THREAD has started
-            In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS which has the structure
+            In this case, in function tryToChangeEpochForVerificationThread we update the epoch and add the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS which has the structure
 
             {
 
