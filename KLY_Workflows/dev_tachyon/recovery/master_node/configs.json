@@ -1,0 +1,6 @@
+{
+    "wsNetPort":8999,
+    "wsNetInterface":"::",
+    "blocksDbPath":"C:/Users/MI/MyProjects/NetRunner/XTESTNET_V2/V1/CHAINDATA/BLOCKS",
+    "stateDbPath":"C:/Users/MI/MyProjects/NetRunner/XTESTNET_V2/V1/CHAINDATA/STATE"
+}

@@ -1,8 +1,8 @@
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
+
 import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
-
-import {WORKING_THREADS} from '../blockchain_preparation.js'
+import {WORKING_THREADS} from '../globals.js'
 
 
 
@@ -19,7 +19,7 @@ export default class Block{
 
         this.transactions = transactionsSet // array of transactions,contract calls, services logic,etc.
 
-        this.extraData = extraData || {} // extradata to be added to block. Used mostly to add ALRPs(aggregated leader rotation proofs)
+        this.extraData = extraData || {} // extradata to be added to block. Used mostly to add ALRPs(aggregated leader rotation proofs) and delayed transactions
 
         this.index = WORKING_THREADS.GENERATION_THREAD.nextIndex // index of block in pool's own sequence
         

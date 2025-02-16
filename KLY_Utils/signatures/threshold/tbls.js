@@ -2,7 +2,9 @@
 
 
 import * as dkg from './tbls_index.js'
+
 import bls from 'bls-eth-wasm'
+
 
 await bls.init(bls.BLS12_381)
 

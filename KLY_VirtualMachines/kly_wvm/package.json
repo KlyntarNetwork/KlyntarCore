@@ -7,7 +7,7 @@
     "keywords": ["kly","klyntar","klyntar-vm"],
     "author": "KlyntarTeam",
     "license": "Apache-2.0",
-    "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
+    "homepage": "https://github.com/KlyntarNetwork/KlyntarCore#readme",
     "dependencies": {
       "@assemblyscript/loader": "^0.20.13",
       "wasm-metering": "^0.2.1"

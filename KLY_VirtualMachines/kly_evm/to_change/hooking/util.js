@@ -175,38 +175,38 @@ function writeCallOutput(runState, outOffset, outLength) {
 
     // this._runState.returnBuffer
 
-    console.log('Directly from buffer => ',runState.interpreter._runState.returnBuffer);
+    // console.log('Directly from buffer => ',runState.interpreter._runState.returnBuffer);
     
-    runState.interpreter._runState.returnBuffer = Buffer.from('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','hex');
+    // runState.interpreter._runState.returnBuffer = Buffer.from('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','hex');
 
     let returnData = runState.interpreter.getReturnData();
 
     // console.log('Interpreter is ',runState.interpreter)
 
-    console.log('Returndata is => ',returnData);
+    // console.log('Returndata is => ',returnData);
 
-    console.log('Try to hook it and change to own version');
+    // console.log('Try to hook it and change to own version');
 
     // returnData = Buffer.from('00000000000000000000000000000000000000000000000000000000000000aa','hex');
 
-    console.log('Now returndata is ',returnData);
+    // console.log('Now returndata is ',returnData);
 
     if (returnData.length > 0) {
         const memOffset = Number(outOffset);
 
-        console.log('Memoffset is ',memOffset);
+        // console.log('Memoffset is ',memOffset);
 
         let dataLength = Number(outLength);
 
-        console.log('Datalength is ',dataLength);
-        console.log('Returndata length is ',returnData.length);
+        // console.log('Datalength is ',dataLength);
+        // console.log('Returndata length is ',returnData.length);
 
         if (BigInt(returnData.length) < dataLength) {
             dataLength = returnData.length;
         }
         let data = getDataSlice(returnData, BigInt(0), BigInt(dataLength));
 
-        console.log('Data is ',data);
+        // console.log('Data is ',data);
 
         runState.memory.extend(memOffset, dataLength);
         runState.memory.write(memOffset, dataLength, data);

@@ -1,6 +1,6 @@
 import {getQuorumMajority} from '../KLY_Workflows/dev_tachyon/common_functions/quorum_related.js'
 
-import {WORKING_THREADS} from '../KLY_Workflows/dev_tachyon/blockchain_preparation.js'
+import {WORKING_THREADS} from '../KLY_Workflows/dev_tachyon/globals.js'
 
 import tbls from '../KLY_Utils/signatures/threshold/tbls.js'
 

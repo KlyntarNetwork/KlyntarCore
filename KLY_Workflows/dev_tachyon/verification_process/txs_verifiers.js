@@ -1,25 +1,21 @@
 /* eslint-disable no-unused-vars */
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
-
-import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
+import {getUserAccountFromState, getFromState, trackStateChange, setToDelayedTransactions} from '../common_functions/state_interactions.js'
 
 import * as functionsToInjectToVm from '../../../KLY_VirtualMachines/common_modules.js'
 
 import {verifyQuorumMajoritySolution} from '../common_functions/work_with_proofs.js'
 
-import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
-
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
-
-import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
-
-import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {WVM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
 
 import {SYSTEM_CONTRACTS} from '../system_contracts/root.js'
+
+import {blake3Hash} from '../../../KLY_Utils/utils.js'
+
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import {TXS_FILTERS} from './txs_filters.js'
 
@@ -32,15 +28,15 @@ import web3 from 'web3'
 
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.sigType==='D') return 5000n
+    if(transaction.sigType==='D') return 5000000000000000n
     
-    if(transaction.sigType==='T') return 10000n
+    if(transaction.sigType==='T') return 10000000000000000n
 
-    if(transaction.sigType==='P/D') return 15000n
+    if(transaction.sigType==='P/D') return 15000000000000000n
 
-    if(transaction.sigType==='P/B') return 15000n
+    if(transaction.sigType==='P/B') return 15000000000000000n
 
-    if(transaction.sigType==='M') return 7000n + BigInt(transaction.payload.afk.length) * 1000n
+    if(transaction.sigType==='M') return (7000n + BigInt(transaction.payload.afk.length) * 1000n) * BigInt('1000000000000')
 
     return 0n
 
@@ -51,11 +47,9 @@ let getCostPerSignatureType = transaction => {
 
 let getFunctionsToInject = (arrayOfImports,contractHandlerToBind) => {
 
-    let templateToReturn = {
+    // function injected into contract should be injected from <klyntar> module
 
-        klyntar:{} // function injected into contract should be injected from <klyntar> module
-
-    }
+    let templateToReturn = { klyntar:{} }
 
     for(let funcName of arrayOfImports){
 
@@ -71,7 +65,7 @@ let getFunctionsToInject = (arrayOfImports,contractHandlerToBind) => {
 
 
 
-let performStakingActionsForEVM = async (originShard,txCreator,transferValue,parsedData) => {
+let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => {
 
 
     /*
@@ -86,7 +80,7 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
             poolPubKey:<Format is Ed25519_pubkey>,
                                 
-            amount:<amount in KLY>,
+            amount:<amount in wei>,
                             
         }
                         
@@ -97,33 +91,13 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
     if(method === 'stake'){
 
-        if(typeof poolPubKey === 'string' && typeof amount === 'number' && amount === transferValue){
+        if(typeof poolPubKey === 'string' && typeof amount === 'string' && amount === transferValue){
             
             // Now add it to delayed operations
+            
+            let templateToPush = { type:'stake', staker: txCreator, poolPubKey, amount }
 
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
-            let templateToPush = {
-
-                type:'stake',
-
-                staker: txCreator,
-
-                poolPubKey, amount
-
-            }
-
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true,reason:'EVM'}
 
@@ -131,33 +105,13 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
     } else if(method === 'unstake') {
 
-        if(typeof poolPubKey === 'string' && typeof amount === 'number'){
+        if(typeof poolPubKey === 'string' && typeof amount === 'string'){
 
             // Now add it to delayed operations
 
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+            let templateToPush = { type:'unstake', unstaker: txCreator, poolPubKey, amount }
 
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
-            let templateToPush = {
-
-                type:'unstake',
-
-                unstaker: txCreator,
-
-                poolPubKey, amount
-
-            }
-
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true,reason:'EVM'}
 
@@ -170,16 +124,16 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
 
 
-let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccounts)=>{
+let trackTransactionsList=async(txid,txType,sigType,priorityFee,totalFee,touchedAccounts)=>{
 
     // Function to allow to fill the list of transaction per address
 
-    let dataToPush = {txid,txType,sigType,fee}
+    let dataToPush = {txid,txType,sigType,priorityFee,totalFee}
 
 
     for(let account of touchedAccounts){
 
-        let txsListForAccount = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(()=>[])
+        let txsListForAccount = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${account}`).catch(()=>[])
 
         txsListForAccount.push(dataToPush)
 
@@ -191,63 +145,9 @@ let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccou
 
         }
 
-        await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${account}`,txsListForAccount)        
+        await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${account}`,txsListForAccount)        
 
     }
-
-}
-
-
-
-export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,originShard) => {
-
-    
-    if(WORKING_THREADS[threadID].CORE_MAJOR_VERSION === tx.v){
-
-        // Sender sign concatenated NETWORK_ID(to prevent cross-chains attacks and reuse nonce & signatures), core version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
-        
-        let signedData = BLOCKCHAIN_GENESIS.NETWORK_ID + tx.v + originShard + tx.type + JSON.stringify(tx.payload) + tx.nonce + tx.fee
-    
-
-        if(tx.sigType==='D') return verifyEd25519(signedData,tx.sig,tx.creator)
-        
-        if(tx.sigType==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
-        
-        if(tx.sigType==='P/D') {
-
-            let isOk = false
-
-            try{
-
-                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
-
-                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyDilithiumSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
-            
-            }catch{ isOk = false }
-
-            return isOk
-            
-        }
-        
-        if(tx.sigType==='P/B'){
-          
-            let isOk = false
-
-            try{
-
-                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
-
-                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyBlissSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
-            
-            }catch{ isOk = false }
-
-            return isOk
-
-        }
-        
-        if(tx.sigType==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t)     
-
-    } else return false
 
 }
 
@@ -256,9 +156,11 @@ export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,o
 
 let calculateAmountToSpendAndGasToBurn = tx => {
 
-    let goingToSpendInNativeCurrency = 0n
+    let withdrawFromSender = 0n
 
-    let goingToBurnGasAmount = 0n
+    let pureFee = 0n
+
+    let abstractGasToSpend = 0n
 
     let transferAmount = tx.payload.amount || 0n
 
@@ -267,35 +169,37 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         // In this case creator pays fee in native KLY currency
 
-        goingToSpendInNativeCurrency = getCostPerSignatureType(tx) + transferAmount + tx.fee
+        pureFee = getCostPerSignatureType(tx) + tx.fee
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
-            goingToSpendInNativeCurrency += 2000n * BigInt(tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
+            pureFee += 2000n * BigInt(tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
 
-            goingToSpendInNativeCurrency += 2_000_000n * BigInt(JSON.stringify(tx.payload.constructorParams.initStorage).length)
+            pureFee += 2_000_000n * BigInt(JSON.stringify(tx.payload.constructorParams.initStorage).length)
 
         } else if(tx.type === 'WVM_CALL'){
 
             let totalSize = JSON.stringify(tx.payload).length
 
-            goingToSpendInNativeCurrency += 2_000_000n * BigInt(totalSize)
+            pureFee += 2_000_000n * BigInt(totalSize)
 
-            goingToSpendInNativeCurrency += BigInt(tx.payload.gasLimit)
+            pureFee += BigInt(tx.payload.gasLimit)
 
         } // TODO: Add EVM_CALL type
+
+        withdrawFromSender = pureFee + transferAmount
 
     } else if(tx.fee === 0n && tx.payload.abstractionBoosts){
 
         // In this case creator pays using boosts. This should be signed by current quorum
 
-        goingToSpendInNativeCurrency = transferAmount
+        withdrawFromSender = transferAmount
 
         let dataThatShouldBeSignedForBoost = `BOOST:${tx.creator}:${tx.nonce}` // TODO: Fix data that should be signed - sign payload(mb +epoch) instead of just creator+nonce
 
         if(verifyQuorumMajoritySolution(dataThatShouldBeSignedForBoost,tx.payload.abstractionBoosts?.quorumAgreements)){
 
-            goingToBurnGasAmount = BigInt(tx.payload.abstractionBoosts.proposedGasToBurn)
+            abstractGasToSpend = BigInt(tx.payload.abstractionBoosts.proposedGasToBurn)
 
         } return {errReason:`Majority verification failed in attempt to use boost`}
 
@@ -303,30 +207,35 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         // Otherwise - it's AA 2.0 usage and we just should reduce the gas amount from account
 
-        goingToSpendInNativeCurrency = transferAmount
+        withdrawFromSender = transferAmount
 
-        goingToBurnGasAmount = getCostPerSignatureType(tx) * 2n
+        abstractGasToSpend = getCostPerSignatureType(tx) * 2n
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
-            goingToBurnGasAmount += BigInt(tx.payload.bytecode.length/2)
+            abstractGasToSpend += BigInt(tx.payload.bytecode.length/2)
 
         } else if(tx.type === 'WVM_CALL'){
 
             let totalSize = JSON.stringify(tx.payload)
 
-            goingToBurnGasAmount += BigInt(totalSize)
+            abstractGasToSpend += BigInt(totalSize)
 
-            goingToBurnGasAmount += BigInt(tx.payload.gasLimit)
+            abstractGasToSpend += BigInt(tx.payload.gasLimit)
 
         } // TODO: Add EVM_CALL type
 
     }
 
 
-    return {goingToSpendInNativeCurrency, goingToBurnGasAmount}
+    return {withdrawFromSender, abstractGasToSpend, pureFee}
 
 }
+
+
+
+
+
 
 
 
@@ -369,15 +278,15 @@ export let VERIFIERS = {
     
     */
 
-    TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    TX:async(tx,rewardsAndSuccessfulTxsCollector,_atomicBatch)=>{
 
-        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(tx.creator)
         
-        let recipientAccount = await getFromState(originShard+':'+tx.payload.to)    
+        let recipientAccount = await getFromState(tx.payload.to)
 
         
-        tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
-
+        tx = await TXS_FILTERS.TX(tx) // pass through the filter
+        
 
         if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
 
@@ -404,17 +313,8 @@ export let VERIFIERS = {
             } else if(!recipientAccount){
     
                 // Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
-                recipientAccount = {
                 
-                    type:'eoa',
-
-                    balance:'0',
-                    
-                    nonce:0,
-
-                    gas:0
-                
-                }
+                recipientAccount = { type:'eoa', balance:'0', nonce:0, gas:0 }
                 
                 // In case recipient is BLS multisig, we need to add one more field - "rev_t" (reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign)
 
@@ -422,7 +322,9 @@ export let VERIFIERS = {
 
                 else if(tx.payload.pqcPub) recipientAccount.pqcPub = tx.payload.pqcPub
 
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
+                GLOBAL_CACHES.STATE_CACHE.set(tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
+
+                trackStateChange(tx.payload.to,1,'put')
 
                 WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
 
@@ -437,14 +339,14 @@ export let VERIFIERS = {
             recipientAccount.balance = BigInt(recipientAccount.balance)
 
 
-            let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
+            let spendData = calculateAmountToSpendAndGasToBurn(tx)
 
             
-            if(!goingToSpend.errReason){
+            if(!spendData.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0n && BigInt(senderAccount.gas) - goingToSpend.goingToBurnGasAmount >= 0n){
+                if(senderAccount.balance - spendData.withdrawFromSender >= 0n && BigInt(senderAccount.gas) - spendData.abstractGasToSpend >= 0n){
                             
-                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+                    senderAccount.balance -= spendData.withdrawFromSender
 
 
                     let touchedAccounts = [tx.creator,tx.payload.to]
@@ -454,21 +356,13 @@ export let VERIFIERS = {
 
                     if(tx.payload.to.startsWith('0x') && tx.payload.to.length === 42){
 
-                        // Check if recipient is binded to same shard
-
                         let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
 
                         let evmAccountMetadata = await getFromState(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`)
 
                         if(!evmAccountMetadata){
 
-                            evmAccountMetadata = {shard:originShard, gas:0}
-
-                            GLOBAL_CACHES.STATE_CACHE.set(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,evmAccountMetadata)
-
-                            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
-
-                            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+                            global.CREATED_EVM_ACCOUNTS.add('0x'+lowerCaseAddressAsStringWithout0x)
 
                         }
 
@@ -482,19 +376,19 @@ export let VERIFIERS = {
 
                     }
     
-                    senderAccount.gas -= Number(goingToSpend.goingToBurnGasAmount)
+                    senderAccount.gas -= Number(spendData.abstractGasToSpend)
                 
                     senderAccount.nonce = tx.nonce
                     
-                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                    rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,touchedAccounts)
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,touchedAccounts)
         
-                    return {isOk:true}        
+                    return {isOk:true, priorityFee: tx.fee, totalFee: spendData.pureFee}
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
-            } else return {isOk:false,reason:goingToSpend.errReason}
+            } else return {isOk:false,reason:spendData.errReason}
             
         } else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
         
@@ -535,13 +429,13 @@ export let VERIFIERS = {
 
     */
 
-    WVM_CONTRACT_DEPLOY:async (originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    WVM_CONTRACT_DEPLOY:async (tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         if(tx) return {isOk:false,reason:`Contract deployment to WASM vm disabled for a while`}
 
-        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(tx.creator)
 
-        tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
+        tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx) // pass through the filter
 
 
         if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
@@ -554,13 +448,13 @@ export let VERIFIERS = {
 
             }
 
-            let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
+            let spendData = calculateAmountToSpendAndGasToBurn(tx)
 
-            if(!goingToSpend.errReason){
+            if(!spendData.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0n && BigInt(senderAccount.gas) - goingToSpend.goingToBurnGasAmount >= 0n){
+                if(senderAccount.balance - spendData.withdrawFromSender >= 0n && BigInt(senderAccount.gas) - spendData.abstractGasToSpend >= 0n){
 
-                    let contractID = `0x${blake3Hash(originShard+tx.creator+tx.nonce)}`
+                    let contractID = `0x${blake3Hash(tx.creator+tx.nonce)}`
 
                     let contractMetadataTemplate = {
         
@@ -573,11 +467,17 @@ export let VERIFIERS = {
         
                     }
                 
-                    atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
+                    atomicBatch.put(contractID,contractMetadataTemplate)
 
-                    atomicBatch.put(originShard+':'+contractID+'_BYTECODE',tx.payload.bytecode)
+                    trackStateChange(contractID,1,'put')
+
+                    atomicBatch.put(contractID+'_BYTECODE',tx.payload.bytecode)
+
+                    trackStateChange(contractID+'_BYTECODE',1,'put')
     
-                    atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
+                    atomicBatch.put(contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
+
+                    trackStateChange(contractID+'_STORAGE_DEFAULT',1,'put')
 
 
                     WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
@@ -585,22 +485,21 @@ export let VERIFIERS = {
                     WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
 
 
-                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+                    senderAccount.balance -= spendData.withdrawFromSender
 
-
-                    senderAccount.gas -= Number(goingToSpend.goingToBurnGasAmount)
+                    senderAccount.gas -= Number(spendData.abstractGasToSpend)
             
                     senderAccount.nonce = tx.nonce
                     
-                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                    rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,contractID])
 
-                    return {isOk:true, createdContractAddress: contractID}
+                    return {isOk:true, createdContractAddress: contractID, priorityFee: tx.fee, totalFee: spendData.pureFee}
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
-            } else return {isOk:false,reason:goingToSpend.errReason}
+            } else return {isOk:false,reason:spendData.errReason}
 
         } else return {isOk:false,reason:`Can't get filtered value of tx`}
 
@@ -625,12 +524,12 @@ export let VERIFIERS = {
 
 
     */
-    WVM_CALL:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    WVM_CALL:async(tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
 
-        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(tx.creator)
 
-        tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
+        tx = await TXS_FILTERS.WVM_CALL(tx) // pass through the filter
        
 
         if(tx && tx.fee >= 0n && Number.isInteger(tx.nonce) && senderAccount.type==='eoa'){
@@ -645,12 +544,14 @@ export let VERIFIERS = {
 
             }
 
+            if(tx.payload.contractID?.startsWith('system/') && Array.isArray(tx.payload.touchedAccounts)) return {isOk:false,reason:'Parallelization of system smart contracts are disabled for a while'}
+
             
-            let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
+            let spendData = calculateAmountToSpendAndGasToBurn(tx)
 
-            if(!goingToSpend.errReason){
+            if(!spendData.errReason){
 
-                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0n && BigInt(senderAccount.gas) - goingToSpend.goingToBurnGasAmount >= 0n){
+                if(senderAccount.balance - spendData.withdrawFromSender >= 0n && BigInt(senderAccount.gas) - spendData.abstractGasToSpend >= 0n){
 
                     let execResultWithStatusAndReason
 
@@ -664,7 +565,7 @@ export let VERIFIERS = {
         
                             let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
                             
-                            execResultWithStatusAndReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
+                            execResultWithStatusAndReason = await systemContract[tx.payload.method](tx,atomicBatch) // result is {isOk:true/false, reason:''}
         
                         } else execResultWithStatusAndReason = {isOk:false,reason:`No such type of system contract`}
                 
@@ -674,9 +575,9 @@ export let VERIFIERS = {
         
                         // Otherwise it's attempt to call custom contract
         
-                        let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
+                        let contractMetadata = await getFromState(tx.payload.contractID)
 
-                        let contractBytecode = await getFromState(originShard+':'+tx.payload.contractID+'_BYTECODE')
+                        let contractBytecode = await getFromState(tx.payload.contractID+'_BYTECODE')
         
                         if(contractMetadata){
         
@@ -693,7 +594,7 @@ export let VERIFIERS = {
         
                             // Before call - get the contract default storage from state DB
         
-                            let contractStorage = await getFromState(originShard+':'+tx.payload.contractID+'_STORAGE_DEFAULT')
+                            let contractStorage = await getFromState(tx.payload.contractID+'_STORAGE_DEFAULT')
 
                             
                             
@@ -705,7 +606,7 @@ export let VERIFIERS = {
 
                                 contractAccount:  contractMetadata,
 
-                                recipientAccount: await getFromState(originShard+':'+tx.payload.to) // in case you plan to call <transferNativeCoins> function - you need to get account of recipient first
+                                recipientAccount: await getFromState(tx.payload.to) // in case you plan to call <transferNativeCoins> function - you need to get account of recipient first
 
                             }
 
@@ -747,21 +648,25 @@ export let VERIFIERS = {
         
                     }
 
-                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+                    senderAccount.balance -= spendData.withdrawFromSender
 
-                    senderAccount.gas -= Number(goingToSpend.goingToBurnGasAmount)
+                    senderAccount.gas -= Number(spendData.abstractGasToSpend)
             
-                    senderAccount.nonce = tx.nonce
+                    senderAccount.nonce = tx.nonces
                     
-                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                    rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,tx.payload.contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,tx.payload.contractID])
+
+                    execResultWithStatusAndReason.priorityFee = tx.fee
+
+                    execResultWithStatusAndReason.totalFee = spendData.pureFee
 
                     return execResultWithStatusAndReason
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
-            } else return {isOk:false,reason:goingToSpend.errReason}
+            } else return {isOk:false,reason:spendData.errReason}
 
         } else return {isOk:false,reason:`Can't get filtered value of tx`}
 
@@ -775,9 +680,7 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(originShard,txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
-
-        global.STATE_CACHE = GLOBAL_CACHES.STATE_CACHE
+    EVM_CALL:async(txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         let evmResult = await KLY_EVM.callEVM(txWithPayload.payload)
 
@@ -807,10 +710,6 @@ export let VERIFIERS = {
                 let {tx,receipt} = possibleReceipt
 
                 let returnToReceipt
-
-                atomicBatch.put('TX:'+tx.hash,{tx,receipt,originShard})
-
-                let propsedFee = Number(web3.utils.fromWei((tx.gasLimit * tx.gasPrice).toString(),'ether'))
                                 
                 let touchedAccounts = [tx.from, tx.to]
 
@@ -829,7 +728,7 @@ export let VERIFIERS = {
                     
                     // In case it's staking/unstaking
 
-                    let transferValue = Number(web3.utils.fromWei(tx.value,'ether'))
+                    let transferValueInWei = web3.utils.fromWei(tx.value,'ether')
 
                     if(parsedData.contractID === 'system/staking'){
 
@@ -851,7 +750,7 @@ export let VERIFIERS = {
                         
                         */
                         
-                        returnToReceipt = await performStakingActionsForEVM(originShard,tx.from,transferValue,parsedData)
+                        returnToReceipt = await performStakingActionsForEVM(tx.from,transferValueInWei,parsedData)
 
                     
                     } else if(parsedData.to){
@@ -859,7 +758,7 @@ export let VERIFIERS = {
                         if(Array.isArray(parsedData.touchedAccounts) && !parsedData.touchedAccounts.includes(parsedData.to)) return {isOk:false,reason:'EVM'}
 
 
-                        let accountToTransfer = await getUserAccountFromState(originShard+':'+parsedData.to)
+                        let accountToTransfer = await getUserAccountFromState(parsedData.to)
 
                         // Transfer coins
 
@@ -877,7 +776,7 @@ export let VERIFIERS = {
             
                             else if(parsedData.pqcPub) accountToTransfer.pqcPub = tx.payload.pqcPub
                 
-                            GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+parsedData.to,accountToTransfer) // add to cache to collapse after all events in block
+                            GLOBAL_CACHES.STATE_CACHE.set(parsedData.to,accountToTransfer) // add to cache to collapse after all events in block
                         
                         }
 
@@ -891,7 +790,15 @@ export let VERIFIERS = {
 
                 }
 
-                trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',propsedFee,touchedAccounts)
+                let priorityFee = tx.gasLimit * tx.gasPrice
+
+                let totalFee = receipt.gasUsed
+
+                atomicBatch.put('TX:'+tx.hash,{tx,receipt,priorityFee,totalFee})
+
+                trackStateChange('TX:'+tx.hash,1,'put')
+
+                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',priorityFee,totalFee,touchedAccounts)
 
                 return returnToReceipt || {isOk:true,reason:'EVM'}
 

@@ -1,23 +1,4 @@
-/* eslint-disable no-unused-vars */
-
-import {getFromState, getUserAccountFromState} from '../../common_functions/state_interactions.js'
-
-import {GLOBAL_CACHES,WORKING_THREADS} from '../../blockchain_preparation.js'
-
-
-
-
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='createStakingPool') return 10000
-
-    else if(methodID==='stake') return 10000
-
-    else if(methodID==='unstake') return 10000
-
-    else if(methodID==='slashing') return 10000
-
-}
+import {getUserAccountFromState, setToDelayedTransactions} from '../../common_functions/state_interactions.js'
 
 
 
@@ -46,7 +27,7 @@ export let CONTRACT = {
         [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
 
     */
-    createStakingPool:async (originShard,transaction) => {
+    createStakingPool:async transaction => {
 
         let {percentage,poolURL,wssPoolURL} = transaction.payload.params
 
@@ -55,32 +36,18 @@ export let CONTRACT = {
         let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
 
         if(typeCheckIsOk && percentageIsOk){
-
-            // Get the array of delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
+            
             let templateToPush = {
 
                 type:'createStakingPool',
 
                 creator: transaction.creator,
 
-                originShard, percentage, poolURL, wssPoolURL
+                percentage, poolURL, wssPoolURL
 
             }
 
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
@@ -90,7 +57,7 @@ export let CONTRACT = {
 
 
 
-    updateStakingPool:async (originShard,transaction) => {
+    updateStakingPool:async transaction => {
 
         let {activated,percentage,poolURL,wssPoolURL} = transaction.payload.params
 
@@ -102,29 +69,17 @@ export let CONTRACT = {
 
             // Get the array of delayed operations
 
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
             let templateToPush = {
 
                 type:'updateStakingPool',
 
                 creator: transaction.creator,
 
-                originShard, activated, percentage, poolURL, wssPoolURL
+                activated, percentage, poolURL, wssPoolURL
 
             }
 
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
@@ -146,9 +101,9 @@ export let CONTRACT = {
     
     */
     
-    stake:async(originShard,transaction) => {
+    stake:async transaction => {
 
-        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
+        let txCreatorAccount = await getUserAccountFromState(transaction.creator)
 
         let {poolPubKey,amount} = transaction.payload.params
 
@@ -161,17 +116,7 @@ export let CONTRACT = {
                 txCreatorAccount.balance -= amount
 
                 // Now add it to delayed operations
-
-                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-                if(!Array.isArray(delayedTransactions)){
-
-                    delayedTransactions = []
-
-                }   
-
+            
                 let templateToPush = {
 
                     type:'stake',
@@ -182,9 +127,7 @@ export let CONTRACT = {
 
                 }
 
-                delayedTransactions.push(templateToPush)
-
-                GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+                await setToDelayedTransactions(templateToPush)
 
                 return {isOk:true}
 
@@ -207,9 +150,9 @@ export let CONTRACT = {
     }
     
     */
-    unstake:async (originShard,transaction) => {
+    unstake:async transaction => {
 
-        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
+        let txCreatorAccount = await getUserAccountFromState(transaction.creator)
 
         let {poolPubKey,amount} = transaction.payload.params
 
@@ -218,16 +161,6 @@ export let CONTRACT = {
         if(txCreatorAccount && typeof poolPubKey === 'string'){
 
             // Now add it to delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
 
             let templateToPush = {
 
@@ -239,19 +172,12 @@ export let CONTRACT = {
 
             }
 
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+            await setToDelayedTransactions(templateToPush)
 
             return {isOk:true}
 
         } else return {isOk:false, reason: `Failed with input verification`}
  
     }
-    
-    // slashing:async(originShard,transaction) => {
-
-
-    // }
 
 }

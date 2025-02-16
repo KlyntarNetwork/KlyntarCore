@@ -1,15 +1,15 @@
 {
   "name": "klyntar",
   "version": "1.0.0",
-  "description": "KLYNTAR core for everything in endless space!",
-  "main": "klyn74r.js",
+  "description": "Klyntar core for everything in endless space!",
+  "main": "klyntar_core.js",
   "type": "module",
   "scripts": {
-    "init": "npm ci --only=production && node klyn74r.js",
+    "init": "npm ci --only=production && node klyntar_core.js",
     "postinstall": "node ./npm_scripts/script.js"
   },
   "bin": {
-    "klyntar": "klyn74r.js"
+    "klyntar": "klyntar_core.js"
   },
   "repository": {
     "type": "git",
@@ -23,9 +23,10 @@
   "homepage": "https://github.com/KlyntarNetwork/KlyntarCore#readme",
   "dependencies": {
     "@assemblyscript/loader": "^0.20.19",
+    "@ethereumjs/tx": "4.1.2",
     "@fastify/cors": "^9.0.1",
     "@idena/vrf-js": "^1.0.1",
-    "@klyntar/klyntarevmjsonrpc": "^3.6.0",
+    "@klyntar/klyntarevmjsonrpc": "^4.0.0",
     "assemblyscript": "^0.19.23",
     "base-58": "^0.0.1",
     "bigi": "^1.4.2",
@@ -43,9 +44,8 @@
     "secp256k1": "^4.0.3",
     "snarkjs": "^0.7.4",
     "wasm-metering": "^0.2.1",
-    "web1337": "^4.3.0",
-    "websocket": "^1.0.34",
-    "@ethereumjs/tx": "4.1.2"
+    "web1337": "^5.3.0",
+    "websocket": "^1.0.34"
   },
   "devDependencies": {
     "@ethereumjs/common": "^3.0.0",

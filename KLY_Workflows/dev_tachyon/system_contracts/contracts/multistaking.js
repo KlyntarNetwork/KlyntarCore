@@ -1,23 +1,14 @@
+import {getFromState, setToDelayedTransactions} from "../../common_functions/state_interactions.js"
+
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
-import {GLOBAL_CACHES, WORKING_THREADS} from "../../blockchain_preparation.js"
 
-import {getFromState} from "../../common_functions/state_interactions.js"
-
-
-
-
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='changeUnobtaniumAmount') return 10000
-
-}
 
 
 export let CONTRACT = {
 
 
-    changeUnobtaniumAmount:async (originShard,transaction)=>{
+    changeUnobtaniumAmount:async transaction => {
 
         /*
         
@@ -59,21 +50,11 @@ export let CONTRACT = {
 
             let majorityApproved = verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)
 
-            let targetPoolExists = await getFromState(originShard+':'+targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
+            let targetPoolExists = await getFromState(targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(majorityApproved && targetPoolExists){
 
                 // Now add it to delayed operations
-
-                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id + 2
-
-                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-                if(!Array.isArray(delayedTransactions)){
-
-                    delayedTransactions = []
-
-                }
 
                 let templateToPush = {
 
@@ -83,9 +64,7 @@ export let CONTRACT = {
 
                 }
 
-                delayedTransactions.push(templateToPush)
-
-                GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+                await setToDelayedTransactions(templateToPush)
 
                 return {isOk:true}
 

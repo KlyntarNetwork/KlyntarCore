@@ -1,21 +1,10 @@
-import {getUserAccountFromState, getContractAccountFromState} from "../../common_functions/state_interactions.js"
+import {getUserAccountFromState, getContractAccountFromState, trackStateChange, getFromState} from "../../common_functions/state_interactions.js"
 
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
-import {GLOBAL_CACHES, WORKING_THREADS} from "../../blockchain_preparation.js"
+import {GLOBAL_CACHES, WORKING_THREADS} from "../../globals.js"
 
 import {blake3Hash} from "../../../../KLY_Utils/utils.js"
-
-
-
-
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='createContract') return 10000
-
-    else if(methodID==='resolveContract') return 10000
-
-}
 
 
 
@@ -23,7 +12,7 @@ export let gasUsedByMethod=methodID=>{
 export let CONTRACT = {
 
 
-    createContract:async(originShard,transaction,atomicBatch)=>{
+    createContract:async(transaction,atomicBatch)=>{
 
         /*
         
@@ -81,14 +70,18 @@ export let CONTRACT = {
         // ...then - create a single storage for this new contract to store the body itself
         let futureRwxContractSingleStorage = transaction.payload.params
 
-        let contractID = `0x${blake3Hash(originShard+transaction.creator+transaction.nonce)}`
+        let contractID = `0x${blake3Hash(transaction.creator+transaction.nonce)}`
 
         
         // And put it to atomic batch to BLOCKCHAIN_DATABASES.STATE
 
-        atomicBatch.put(originShard+':'+contractID,futureRwxContractMetadataTemplate)
+        atomicBatch.put(contractID,futureRwxContractMetadataTemplate)
 
-        atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',futureRwxContractSingleStorage)
+        trackStateChange(contractID,1,'put')
+
+        atomicBatch.put(contractID+'_STORAGE_DEFAULT',futureRwxContractSingleStorage)
+
+        trackStateChange(contractID+'_STORAGE_DEFAULT',1,'put')
 
 
         WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.rwxContracts.total++
@@ -103,7 +96,7 @@ export let CONTRACT = {
 
 
 
-    resolveContract:async(originShard,transaction,atomicBatch)=>{
+    resolveContract:async(transaction,atomicBatch)=>{
 
         // Here we simply execute array of delegations by contract parties dependent on solution and delete contract from state to mark deal as solved and prevent replay attacks
         // For stats it's possible to leave the fact of contract in separate DB
@@ -115,7 +108,7 @@ export let CONTRACT = {
 
             {
 
-                rwxContractId:<BLAKE3 hash id of contract on this shard>,
+                rwxContractId:<BLAKE3 hash id of contract>,
 
                 executionBatch:[
 
@@ -164,11 +157,13 @@ export let CONTRACT = {
 
             // Check if it's not a same-block-replay attack
 
-            if(!GLOBAL_CACHES.STATE_CACHE.has(originShard+':'+rwxContractId+':'+'REPLAY_PROTECTION')){
+            if(!GLOBAL_CACHES.STATE_CACHE.has(rwxContractId+':'+'REPLAY_PROTECTION')){
 
                 // Check if contract present in state
 
-                let rwxContractRelatedToDeal = await getContractAccountFromState(originShard+':'+rwxContractId)
+                let rwxContractRelatedToDeal = await getContractAccountFromState(rwxContractId)
+
+                await getFromState(rwxContractId+'_STORAGE_DEFAULT')
 
                 if(rwxContractRelatedToDeal){
 
@@ -176,7 +171,7 @@ export let CONTRACT = {
 
                         // Each tx has format like TX type -> {to,amount}
                         
-                        let recipientAccount = await getUserAccountFromState(originShard+':'+subTx.to)
+                        let recipientAccount = await getUserAccountFromState(subTx.to)
 
                         let amountInWeiToTransfer = BigInt(subTx.amount)
 
@@ -194,9 +189,9 @@ export let CONTRACT = {
     
                     // Finally - delete this RWX contract from DB to prevent replay attacks
                 
-                    atomicBatch.del(originShard+':'+rwxContractId)
+                    atomicBatch.del(rwxContractId)
     
-                    atomicBatch.del(originShard+':'+rwxContractId+'_STORAGE_DEFAULT')
+                    atomicBatch.del(rwxContractId+'_STORAGE_DEFAULT')
 
 
                     WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.rwxContracts.closed++
@@ -206,11 +201,11 @@ export let CONTRACT = {
 
                     // Delete from cache too
 
-                    GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+rwxContractId)
+                    GLOBAL_CACHES.STATE_CACHE.delete(rwxContractId)
 
-                    GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+rwxContractId+'_STORAGE_DEFAULT')
+                    GLOBAL_CACHES.STATE_CACHE.delete(rwxContractId+'_STORAGE_DEFAULT')
                 
-                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+rwxContractId+':'+'REPLAY_PROTECTION',true)
+                    GLOBAL_CACHES.STATE_CACHE.set(rwxContractId+':'+'REPLAY_PROTECTION',true)
 
 
                 } else return {isOk:false, reason:'No RWX contract with this id'}

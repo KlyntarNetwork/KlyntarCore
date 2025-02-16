@@ -21,8 +21,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       '@klyntar/klyntarevmjsonrpc':
-        specifier: ^3.6.0
-        version: 3.6.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+        specifier: ^4.0.0
+        version: 4.0.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       assemblyscript:
         specifier: ^0.19.23
         version: 0.19.23
@@ -75,8 +75,8 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1
       web1337:
-        specifier: ^4.3.0
-        version: 4.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+        specifier: ^5.3.0
+        version: 5.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       websocket:
         specifier: ^1.0.34
         version: 1.0.34
@@ -272,8 +272,8 @@ packages:
   '@idena/vrf-js@1.0.1':
     resolution: {integrity: sha512-XYC/6j3PKZ9O9eqNqjVQrpdD0oRN+eScnicK7o6Q9scRfWQOsZNIewRUJ1rNEOUr0uqlOrs8Nm/kBhmrjp+2tg==}
 
-  '@klyntar/klyntarevmjsonrpc@3.6.0':
-    resolution: {integrity: sha512-NWTjazkQDc77ZlJLIkcKRAlG0td44fs2Rw89+iFnenlYwiCDLhh56ZGUfZ/mkDIPStOcCQqzwCzbj0SRIFF9qA==}
+  '@klyntar/klyntarevmjsonrpc@4.0.0':
+    resolution: {integrity: sha512-aGaTbeeZz/GzlXxtUO/hDDBcabmnYqnVeoed9VKGMYhxBf9VPJqEcjEpnZrajeMhL1VpyD8ProOHoMvwV9Hy8Q==}
     hasBin: true
 
   '@noble/curves@1.1.0':
@@ -2710,8 +2710,8 @@ packages:
   web-worker@1.2.0:
     resolution: {integrity: sha512-PgF341avzqyx60neE9DD+XS26MMNMoUQRz9NOZwW32nPQrF6p77f1htcnjBSEV8BGMKZ16choqUG4hyI0Hx7mA==}
 
-  web1337@4.3.0:
-    resolution: {integrity: sha512-HYzTguQs/T1PVBI1my30OFd0IsJDVay8gznE0mA6oXyHeXGjmtanNBlwV7Q8k4JknjcEMJpDcrEyrXQVcB54gw==}
+  web1337@5.3.0:
+    resolution: {integrity: sha512-fTouoJmlwipqwqDVNm/NeTUDaDJ0yJAMLwDq1W+4Ah7MhlMUptrXWWJ1i0LPmg0aaH1oQhFdsGFzaunB5Dtkkg==}
 
   web3-bzz@1.10.4:
     resolution: {integrity: sha512-ZZ/X4sJ0Uh2teU9lAGNS8EjveEppoHNQiKlOXAjedsrdWuaMErBPdLQjXfcrYvN6WM6Su9PMsAxf3FXXZ+HwQw==}
@@ -3249,7 +3249,7 @@ snapshots:
       js-sha512: 0.8.0
       mocha: 8.4.0
 
-  '@klyntar/klyntarevmjsonrpc@3.6.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
+  '@klyntar/klyntarevmjsonrpc@4.0.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethereumjs/tx': 4.1.2
       keccak256: 1.0.6
@@ -3340,24 +3340,24 @@ snapshots:
 
   '@types/bn.js@5.1.5':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/cacheable-request@6.0.3':
     dependencies:
       '@types/http-cache-semantics': 4.0.4
       '@types/keyv': 3.1.4
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
       '@types/responselike': 1.0.3
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/http-cache-semantics@4.0.4': {}
 
   '@types/keyv@3.1.4':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/node@12.20.55': {}
 
@@ -3371,7 +3371,7 @@ snapshots:
 
   '@types/responselike@1.0.3':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@types/secp256k1@4.0.6':
     dependencies:
@@ -3381,7 +3381,7 @@ snapshots:
 
   '@types/ws@7.4.7':
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.10.5
 
   '@ungap/promise-all-settled@1.1.2': {}
 
@@ -6019,7 +6019,7 @@ snapshots:
 
   web-worker@1.2.0: {}
 
-  web1337@4.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
+  web1337@5.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       base-58: 0.0.1
       blake3-wasm: 2.1.5

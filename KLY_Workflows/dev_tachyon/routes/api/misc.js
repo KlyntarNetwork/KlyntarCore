@@ -1,10 +1,12 @@
-import {EPOCH_METADATA_MAPPING, getCurrentShardLeaderURL, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../globals.js'
 
 import {getQuorumUrlsAndPubkeys} from '../../common_functions/quorum_related.js'
 
 import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
+
+import {getCurrentLeaderURL} from '../../utils.js'
 
 
 
@@ -120,7 +122,7 @@ FASTIFY_SERVER.get('/chain_info',(_request,response)=>{
 
 
 
-// Returns metadata related to KLY-EVM on shards
+// Returns metadata related to KLY-EVM
 FASTIFY_SERVER.get('/kly_evm_metadata',(_request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.KLY_EVM_METADATA){
@@ -133,7 +135,7 @@ FASTIFY_SERVER.get('/kly_evm_metadata',(_request,response)=>{
 
         let responseObject = {
 
-            klyEvmMetadata:WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA, // shardID => {nextEvmBlockIndex,parentHash,timestamp},
+            klyEvmMetadata:WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA, // {nextEvmBlockIndex,parentHash,timestamp},
 
             epochMetadata:{
 
@@ -184,7 +186,7 @@ FASTIFY_SERVER.get('/quorum_urls_and_pubkeys',async(_request,response)=>{
 
 
 
-// Returns data that shows your node synchronization height on shards
+// Returns data that shows your node synchronization status
 FASTIFY_SERVER.get('/synchronization_stats',(_request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYNC_STATS){
@@ -197,7 +199,9 @@ FASTIFY_SERVER.get('/synchronization_stats',(_request,response)=>{
 
         let responseObject = {
 
-            heightPerShard:WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER, // shardID => height
+            heightPerShard:{
+                [BLOCKCHAIN_GENESIS.SHARD]: WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT,
+            },
 
             epochMetadata:{
 
@@ -277,21 +281,21 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
     }
     
-    let whoIsShardLeader = await getCurrentShardLeaderURL()
+    let whoIsCurrentLeader = await getCurrentLeaderURL()
 
-    if(!whoIsShardLeader?.isMeShardLeader){
+    if(!whoIsCurrentLeader?.isMeLeader){
 
-        if(whoIsShardLeader.url){
+        if(whoIsCurrentLeader.url){
 
-            fetch(whoIsShardLeader.url+'/transaction',{
+            fetch(whoIsCurrentLeader.url+'/transaction',{
 
                 method:'POST', body:request.body
     
             }).catch(error=>error)
 
-            response.send({status:`Ok, tx redirected to current shard leader`})
+            response.send({status:`Ok, tx redirected to current leader`})
 
-        } else response.send({err:`Impossible to redirect to current shard leader`})
+        } else response.send({err:`Impossible to redirect to current leader`})
 
     } else if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
 
@@ -303,7 +307,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
 
         if(currentEpochMetadata){
     
-            let filteredTx = await TXS_FILTERS[transaction.type](transaction,BLOCKCHAIN_GENESIS.SHARD)
+            let filteredTx = await TXS_FILTERS[transaction.type](transaction)
         
             if(filteredTx){
         

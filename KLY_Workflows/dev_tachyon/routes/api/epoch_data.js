@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
 
 
@@ -10,8 +10,7 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
-        shard,
-        lastLeader:<index of Ed25519 pubkey of some pool in shard's leaders sequence>,
+        lastLeader:<index of Ed25519 pubkey of some pool in leaders sequence>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
         hashOfFirstBlockByLastLeader:<hash of the first block by this leader>,
@@ -26,22 +25,22 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
     
     }
 
-    Signature is => ED25519('EPOCH_DONE'+shard+lastLeaderIndex+lastIndex+lastHash+firstBlockHash+epochFullId)
+    Signature is => ED25519('EPOCH_DONE'+lastLeaderIndex+lastIndex+lastHash+firstBlockHash+epochFullId)
 
 
 */
 
-// Simple GET handler to return AEFP for given shard and epoch ✅
+// Simple GET handler to return AEFP for given and epoch ✅
 
-FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',async(request,response)=>{
+FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index',async(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
 
-        let aggregatedEpochFinalizationProofForShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
+        let aggregatedEpochFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${request.params.epoch_index}`).catch(()=>null)
         
-        if(aggregatedEpochFinalizationProofForShard){
+        if(aggregatedEpochFinalizationProof){
 
-            response.send(aggregatedEpochFinalizationProofForShard)
+            response.send(aggregatedEpochFinalizationProof)
 
         }else response.send({err:'No AEFP'})
 
@@ -77,9 +76,9 @@ FASTIFY_SERVER.get('/current_epoch/:threadID',(request,response)=>{
 
 
 
-// Returns the info about the current leaders on shards(leader = pool with the right to generate blocks in current timeframe of epoch)
+// Returns the info about the current leader (leader = pool with the right to generate blocks in current timeframe of epoch)
 
-FASTIFY_SERVER.get('/current_shards_leaders',(_request,response)=>{
+FASTIFY_SERVER.get('/current_leader',(_request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.GET_CURRENT_SHARD_LEADERS){
 
@@ -89,8 +88,6 @@ FASTIFY_SERVER.get('/current_shards_leaders',(_request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.GET_CURRENT_SHARD_LEADERS}`)
             
         
-        let responseObj = {}
-
         // Get the current epoch metadata
 
         let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
@@ -99,23 +96,9 @@ FASTIFY_SERVER.get('/current_shards_leaders',(_request,response)=>{
 
         let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
+        let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentEpochMetadata.CURRENT_LEADER_INFO.pubKey }
 
-        // Iterate over shards to get information about current leader
-
-        for(let shardID of Object.keys(atEpochHandler.leadersSequence)){
-
-            let currentShardLeader = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
-
-            // Once we know index => get the pubkey
-            
-            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][currentShardLeader.currentLeader]
-
-            responseObj[shardID] = pubKeyOfLeader
-
-
-        }
-
-        response.send(responseObj)
+        response.send(dataToReturn)
 
     }else response.send({err:'Route is off'})
 
@@ -205,7 +188,7 @@ FASTIFY_SERVER.get('/verification_thread_stats_per_epoch/:index',async(request,r
             }
 
 
-            let vtStatsPerEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS:${request.params.index}`).catch(()=>emptyTemplate)
+            let vtStatsPerEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS_PER_EPOCH:${request.params.index}`).catch(()=>emptyTemplate)
 
             response.send(vtStatsPerEpoch)
 
@@ -270,11 +253,7 @@ FASTIFY_SERVER.get('/historical_stats_per_epoch/:start_index/:limit',async(reque
 
         for(let i = 0 ; i < limit ; i++){
 
-            responseObject[startFromEpoch] = await BLOCKCHAIN_DATABASES.EPOCH_DATA
-
-                                                .get(`VT_STATS:${startFromEpoch}`)
-
-                                                .catch(()=>emptyTemplate)
+            responseObject[startFromEpoch] = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS_PER_EPOCH:${startFromEpoch}`).catch(()=>emptyTemplate)
 
             if(startFromEpoch === WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id){
 

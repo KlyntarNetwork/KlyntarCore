@@ -1,17 +1,6 @@
-/* eslint-disable no-unused-vars */
-
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
-import {WORKING_THREADS} from "../../blockchain_preparation.js"
-
-
-
-
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='votingAccept') return 10000
-
-}
+import {WORKING_THREADS} from "../../globals.js"
 
 
 

@@ -2,13 +2,13 @@ import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../c
 
 import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
 import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {logColors,verifyEd25519,customLog} from '../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
 
@@ -252,7 +252,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
 
 
-let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
+let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {    
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -514,11 +514,9 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     }
 
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
     // If we don't generate the blocks - skip this function
     
-    if(typeof canGenerateBlocksNow !== 'string'){
+    if(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
         setTimeout(shareBlocksAndGetFinalizationProofs,2000)
 
