@@ -974,7 +974,7 @@ klyntarWebsocketServer.on('request',request=>{
 
             }
 
-        }
+        } else connection.close(7331,'Wrong data type')
     
     })
     

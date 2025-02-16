@@ -78,7 +78,6 @@
             "API":{
     
                 "FROM_STATE":1,
-                "NODES":1,
                 "POOL_STATS":1,
                 "BLOCK":1,
                 "BLOCK_BY_SID":1,
@@ -90,7 +89,6 @@
                 "SYNC_STATS":1,
                 "CHAIN_INFO":1,
                 "TX_RECEIPT":1,
-                "VERIFICATION_STATS_PER_POOL":1,
                 "DATA_ABOUT_EPOCH_ON_THREAD":1,
                 "GET_CURRENT_SHARD_LEADERS":1,
                 "GET_EPOCH_BY_INDEX":1,

@@ -1,19 +1,11 @@
+/* eslint-disable no-unused-vars */
+
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
 import {getUserAccountFromState} from "../../common_functions/state_interactions.js"
 
 import {GLOBAL_CACHES} from "../../globals.js"
 
-
-
-
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='sendMessage') return 10000
-
-    else if(methodID==='acceptMessage') return 10000
-
-}
 
 
 

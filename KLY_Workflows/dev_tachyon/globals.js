@@ -65,13 +65,15 @@ export let WORKING_THREADS = {
 
     VERIFICATION_THREAD: {
 
+        LAST_HEIGHT:-1,
+        
+        LAST_BLOCKHASH:'',
+
         VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:int,hash:''}
 
         KLY_EVM_METADATA:{}, // {root,nextBlockIndex,parentHash,timestamp}
 
         TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS:{},
-
-        SID_TRACKER:{}, // index
 
         TOTAL_STATS:{
 

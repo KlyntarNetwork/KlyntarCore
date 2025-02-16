@@ -1,19 +1,4 @@
-/* eslint-disable no-unused-vars */
-
 import {getUserAccountFromState, setToDelayedTransactions} from '../../common_functions/state_interactions.js'
-
-
-
-
-export let gasUsedByMethod=methodID=>{
-
-    if(methodID==='createStakingPool') return 10000
-
-    else if(methodID==='stake') return 10000
-
-    else if(methodID==='unstake') return 10000
-
-}
 
 
 

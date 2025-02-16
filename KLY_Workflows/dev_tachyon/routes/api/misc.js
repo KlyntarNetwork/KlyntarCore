@@ -200,7 +200,7 @@ FASTIFY_SERVER.get('/synchronization_stats',(_request,response)=>{
         let responseObject = {
 
             heightPerShard:{
-                [BLOCKCHAIN_GENESIS.SHARD]: WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER,
+                [BLOCKCHAIN_GENESIS.SHARD]: WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT,
             },
 
             epochMetadata:{

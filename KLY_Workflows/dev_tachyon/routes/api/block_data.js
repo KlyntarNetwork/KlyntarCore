@@ -148,7 +148,7 @@ FASTIFY_SERVER.get('/latest_n_blocks/:start_index/:limit',async(request,response
 
         if(request.params.start_index === "x"){
 
-            request.params.start_index = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER - 1 // -1 because value in tracker point to the next block
+            request.params.start_index = WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT
 
         }
 
