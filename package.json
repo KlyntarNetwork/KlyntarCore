@@ -44,7 +44,6 @@
     "secp256k1": "^4.0.3",
     "snarkjs": "^0.7.4",
     "wasm-metering": "^0.2.1",
-    "web1337": "^5.3.0",
     "websocket": "^1.0.34"
   },
   "devDependencies": {
