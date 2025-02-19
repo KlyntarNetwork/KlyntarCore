@@ -1,10 +1,12 @@
-import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
+import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
-import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
+import {getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
 import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
 import {epochStillFresh} from '../utils.js'
+
+import {BLOCKCHAIN_GENESIS} from '../../../klyntar_core.js'
 
 
 
@@ -25,68 +27,8 @@ let timeIsOutForCurrentLeader=(epochHandler,indexOfCurrentLeaderInSequence,leade
 
 export let setLeadersSequence = async (epochHandler,epochSeed) => {
 
+    epochHandler.leadersSequence = [BLOCKCHAIN_GENESIS.OPTIONAL_SEQUENCER] // [pool0,pool1,...poolN] 
 
-    epochHandler.leadersSequence = [] // [pool0,pool1,...poolN] 
-
-
-    let hashOfMetadataFromOldEpoch = blake3Hash(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
-
-
-    // Change order of validators pseudo-randomly
-
-    let validatorsExtendedData = new Map()
-    
-    let totalStakeSum = BigInt(0)
-
-    for (let validatorPubKey of epochHandler.poolsRegistry) {
-
-        let validatorData = await getFromApprovementThreadState(validatorPubKey+'(POOL)_STORAGE_POOL')
-
-        let requiredData = {
-
-            validatorPubKey, 
-        
-            totalStake: BigInt(validatorData.totalStakedKly) + BigInt(validatorData.totalStakedUno) 
-        
-        }
-
-        totalStakeSum += requiredData.totalStake
-
-        validatorsExtendedData.set(validatorPubKey, requiredData)
-    
-    }
-    
-
-    for (let i = 0; i < epochHandler.poolsRegistry.length; i++) {
-
-        let cumulativeSum = BigInt(0)
-        
-        let hashInput = `${hashOfMetadataFromOldEpoch}_${i}`
-        
-        let deterministicRandomValue = BigInt(parseInt(blake3Hash(hashInput), 16)) % totalStakeSum
-
-        for (let [validatorPubKey, validator] of validatorsExtendedData) {
-
-            cumulativeSum += validator.totalStake
-
-            if (deterministicRandomValue <= cumulativeSum) {
-
-                if(!epochHandler.leadersSequence) epochHandler.leadersSequence = []
-        
-                epochHandler.leadersSequence.push(validatorPubKey)
-
-                totalStakeSum -= validator.totalStake
-
-                validatorsExtendedData.delete(validatorPubKey)
-                
-                break
-            
-            }
-        
-        }
-    
-    }
-            
 }
 
 
