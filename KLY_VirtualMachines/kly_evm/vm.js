@@ -338,6 +338,19 @@ class KLY_EVM_CLASS {
     }
 
 
+
+    /**
+     * 
+     * ### Returns the buffer of contract code
+     * 
+     * @param {string} address - EVM-compatible 20-bytes address
+     * 
+     * @returns {Buffer} code buffer
+     * 
+     */
+    getCode = async address => this.vm.stateManager.getContractCode(Address.fromString(address))
+
+
     
     /**
      * 
