@@ -8,6 +8,8 @@ import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../
 
 import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
+import {WEBSOCKET_EVM_ROUTE_HANDLER} from '@klyntar/klyntarevmjsonrpc'
+
 import {CONFIGURATION} from '../../../../klyntar_core.js'
 
 import Block from '../../structures/block.js'
@@ -941,13 +943,22 @@ klyntarWebsocketServer.on('request',request=>{
 
     let connection = request.accept('echo-protocol', request.origin)
 
-    connection.on('message',message=>{
+    connection.on('message',async message=>{
 
         if (message.type === 'utf8') {
 
             let data = JSON.parse(message.utf8Data)
 
-            if(data.route==='get_finalization_proof'){
+            if(data.jsonrpc && data.method){
+
+                // It's EVM JSO-RPC via webscoket
+
+                let responseData = await WEBSOCKET_EVM_ROUTE_HANDLER(data)
+
+                connection.sendUTF(JSON.stringify(responseData))
+
+                
+            } else if(data.route==='get_finalization_proof'){
 
                 returnFinalizationProofForBlock(data,connection)
 
