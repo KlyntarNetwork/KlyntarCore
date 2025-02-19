@@ -1,12 +1,12 @@
 import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
-import {getUtcTimestamp} from '../../../KLY_Utils/utils.js'
-
 import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
-import {epochStillFresh} from '../utils.js'
+import {getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../../klyntar_core.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
+
+import {epochStillFresh} from '../utils.js'
 
 
 
@@ -27,7 +27,7 @@ let timeIsOutForCurrentLeader=(epochHandler,indexOfCurrentLeaderInSequence,leade
 
 export let setLeadersSequence = async (epochHandler,epochSeed) => {
 
-    epochHandler.leadersSequence = [BLOCKCHAIN_GENESIS.OPTIONAL_SEQUENCER] // [pool0,pool1,...poolN] 
+    epochHandler.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER] // [pool0,pool1,...poolN] 
 
 }
 
