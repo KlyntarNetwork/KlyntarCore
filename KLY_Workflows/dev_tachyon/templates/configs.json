@@ -16,6 +16,9 @@
         "FASTIFY_OPTIONS":{"origin":"*"},
     
         "STORE_BLOCKS_IN_LOCAL_DATABASE":true,
+
+
+        "POINT_OF_DISTRIBUTION":"ws://localhost:9999",
     
         "EXTRA_DATA_TO_BLOCK":{
             "hello":"world"
