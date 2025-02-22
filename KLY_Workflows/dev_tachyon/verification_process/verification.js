@@ -738,7 +738,7 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith, epoc
     */
 
 
-    let endpointURL = CONFIGURATION.NODE_LEVEL?.BLOCKS_TUNNELS?.[poolPubKeyToOpenConnectionWith]
+    let endpointURL = CONFIGURATION.NODE_LEVEL.POINT_OF_DISTRIBUTION
 
     if(!endpointURL){
 
