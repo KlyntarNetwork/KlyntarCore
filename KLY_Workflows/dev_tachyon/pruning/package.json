@@ -1,0 +1,17 @@
+{
+    "name": "kly_evm",
+    "version": "1.0.0",
+    "description": "Pruning module",
+    "type": "module",
+    "author": "KlyntarTeam",
+    "license": "Apache-2.0",
+    "dependencies": {
+
+        "@ethereumjs/statemanager": "1.0.5",
+        "@ethereumjs/trie": "5.0.5",
+        "level_7": "npm:level@^7.0.1",
+        "level_8": "npm:level@^8.0.0"
+            
+    }
+  
+}
