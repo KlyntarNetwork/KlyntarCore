@@ -1,6 +1,12 @@
+import {DefaultStateManager} from '@ethereumjs/statemanager'
+
 import {fileURLToPath} from 'node:url'
 
-import level from 'level'
+import {Trie} from '@ethereumjs/trie'
+
+import {LevelDB} from './LevelDB.js'
+
+import level from 'level_7'
 
 import path from 'path'
 
@@ -46,5 +52,11 @@ stateDB.createReadStream().on('data',data=>{
     if(data.key.startswith('EVM_ACCOUNT:')) userAccounts.add(data.key.split(':')[1])
 
     else if(data.key.startsWith('EVM_CONTRACT_DATA:')) contractAccounts.add(data.key.split(':')[1])
+
+}).on('end',()=>{
+
+
+    console.log(`[*] Found ${userAccounts.size} user accounts and ${contractAccounts.size} contract accounts`)
+    console.log(`[*] Starting to prune EVM accounts and contracts`)
 
 })
