@@ -132,9 +132,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         
         }
 
-                    /*
-            
-                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by leader will contain all the ALRPs
+            /*
         
                 1) Start to build epoch finalization proposition. This object has the following structure
 

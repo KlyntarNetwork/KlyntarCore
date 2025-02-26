@@ -2,11 +2,11 @@ import {getFromState, getUserAccountFromState, trackStateChange} from '../common
 
 import {getFirstBlockInEpoch, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
-
 import {customLog, blake3Hash, logColors, gracefulStop} from '../../../KLY_Utils/utils.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
+
+import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js'
 
 import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
@@ -148,181 +148,14 @@ export let getBlock = async (epochIndex,blockCreator,index) => {
 
 
 
-export let getMultipleBlocks = async (epochHandler,blockCreator,fromIndex) => {
-
-    // Try to ask 100 blocks batch - from <fromIndex> to <fromIndex+100>
-
-    // 1. Try to find blocks locally
-
-    let epochIndex = epochHandler.id
-
-    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
-
-    let randomTargetURL = getRandomFromArray(allKnownNodes)
-
-
-    const controller = new AbortController()
-
-    setTimeout(() => controller.abort(), 7000)
-
-    ///multiple_blocks/:epoch_index/:pool_id/:from_index
-
-
-    let response = await fetch(randomTargetURL+`/multiple_blocks/${epochIndex}/${blockCreator}/${fromIndex}`).then(r=>r.json()).catch(()=>null)
-
-
-    /*
-        
-        The response has the following structure:
-
-        {
-        
-            blocks:[],
-            afpForLatest:{}
-
-        }
-    
-    */
-    
-    if(response && Array.isArray(response.blocks) && response.blocks[0]?.index === fromIndex){
-
-        if(response.afpForLatest){
-
-            // Make sure it's a chain
-
-            let breaked = false
-
-            for(let currentBlockIndexInArray = response.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
-
-                let currentBlock = response.blocks[currentBlockIndexInArray]
-
-                // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
-
-                let hashesAreEqual = true, indexesAreOk = true
-
-                if(currentBlockIndexInArray>0){
-
-                    hashesAreEqual = Block.genHash(response.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
-
-                    indexesAreOk = response.blocks[currentBlockIndexInArray-1].index+1 === response.blocks[currentBlockIndexInArray].index
-
-                }
-
-                // Now, check the structure of block
-
-                let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
-        
-                let itsTheSameCreator = currentBlock.creator === blockCreator
-
-                let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
-
-                // If it's the last block in array(and first in enumeration) - check the AFP for latest block
-
-                if(overviewIsOk && currentBlockIndexInArray === response.blocks.length-1){
-
-                    let blockIDThatMustBeInAfp = epochIndex+':'+blockCreator+':'+(currentBlock.index+1)
-
-                    let prevBlockHashThatMustBeInAfp = Block.genHash(currentBlock)
-
-                    overviewIsOk &&= blockIDThatMustBeInAfp === response.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === response.afpForLatest.prevBlockHash && await verifyAggregatedFinalizationProof(response.afpForLatest,epochHandler)
-
-                }
-        
-        
-                if(!overviewIsOk){
-
-                    breaked = true
-
-                    break
-
-                }
-
-            }
-
-            if(!breaked) return response.blocks
-
-        } else {
-
-            let maybeWeFindLatest = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+blockCreator)
-
-            let lastBlockInArr = response.blocks[response.blocks.length-1]
-
-            if(maybeWeFindLatest && lastBlockInArr.index > maybeWeFindLatest.index){
-
-                response.blocks = response.blocks.filter(block=>block.index <= maybeWeFindLatest.index)
-
-            }
-
-            lastBlockInArr = response.blocks[response.blocks.length-1]
-
-            if(lastBlockInArr.index === maybeWeFindLatest.index && maybeWeFindLatest.hash === Block.genHash(lastBlockInArr)){
-    
-                // Finally - make sure it's a chain in array
-
-                let breaked = false
-
-                for(let currentBlockIndexInArray = response.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
-
-                    let currentBlock = response.blocks[currentBlockIndexInArray]
-
-                    // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
-
-                    let hashesAreEqual = true, indexesAreOk = true
-
-                    if(currentBlockIndexInArray>0){
-
-                        hashesAreEqual = Block.genHash(response.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
-
-                        indexesAreOk = response.blocks[currentBlockIndexInArray-1].index+1 === response.blocks[currentBlockIndexInArray].index
-
-                    }
-
-                    // Now, check the structure of block
-
-                    let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
-        
-                    let itsTheSameCreator = currentBlock.creator === blockCreator
-
-                    let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
-        
-        
-                    if(!overviewIsOk){
-
-                        breaked = true
-
-                        break
-
-                    }
-
-                }
-
-                if(!breaked) return response.blocks
-    
-            }
-
-        }
-
-    }
-
-}
-
-
-
 
 let findInfoAboutLastBlocksByPreviousLeaders = async (vtEpochHandler,aefp) => {
 
     let emptyTemplate = {}
 
-    let vtEpochIndex = vtEpochHandler.id
-
     let oldLeadersSequence = vtEpochHandler.leadersSequence
     
     if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = {}
-
-    let infoAboutFinalBlocksByPool = new Map() // poolID => {poolThatWasLeader_A:ALRP,poolThatWasLeader_B:ALRP,...poolThatWasLeader_X:ALRP}
-        
-
-    // Start the cycle in reverse order from <aefp.lastLeader>
 
     let lastLeaderPoolPubKey = oldLeadersSequence[aefp.lastLeader]
 
@@ -334,93 +167,7 @@ let findInfoAboutLastBlocksByPreviousLeaders = async (vtEpochHandler,aefp) => {
 
     }
 
-    let infoAboutLastBlocksByPreviousPool
-
-    for(let position = aefp.lastLeader; position > 0; position--){
-
-        let poolPubKey = oldLeadersSequence[position]
-
-        // In case we know that pool on this position created 0 block - don't return from function and continue the cycle iterations
-
-        if(infoAboutLastBlocksByPreviousPool && infoAboutLastBlocksByPreviousPool[poolPubKey].index === -1){
-
-            continue
-
-        } else {
-
-            // Get the first block of this epoch from VERIFICATION_STATS_PER_POOL
-
-            let firstBlockInThisEpochByPool = await getBlock(vtEpochIndex,poolPubKey,0)
-
-            if(!firstBlockInThisEpochByPool) return
-
-            // In this block we should have ALRPs for all the previous pools
-
-            let {isOK,infoAboutFinalBlocksInThisEpoch} = await checkAlrpChainValidity(
-            
-                firstBlockInThisEpochByPool,oldLeadersSequence,position,null,null,true
-            
-            )
-
-
-            if(isOK){
-
-                infoAboutFinalBlocksByPool.set(poolPubKey,infoAboutFinalBlocksInThisEpoch) // filteredInfoForVerificationThread = {Pool0:{index,hash},Pool1:{index,hash},...PoolN:{index,hash}}
-
-                infoAboutLastBlocksByPreviousPool = infoAboutFinalBlocksInThisEpoch
-
-            }
-
-        }
-
-    }
-
-    for(let poolPubKey of oldLeadersSequence){
-
-        if(infoAboutFinalBlocksByPool.has(poolPubKey)){
-
-            let metadataForReassignment = infoAboutFinalBlocksByPool.get(poolPubKey)
-
-            for(let [reassignedPoolPubKey,alrpData] of Object.entries(metadataForReassignment)){
-
-                if(!emptyTemplate[reassignedPoolPubKey]) emptyTemplate[reassignedPoolPubKey] = alrpData
-
-            }
-
-        }
-
-    }
-
     WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = emptyTemplate
-
-
-        /*
-        
-        
-        After execution of this function we have:
-
-        [0] WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence with structure: [Pool0A,Pool1A,....,PoolNA]
-        
-        Using this chains we'll finish the verification process
-
-        [1] WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS with structure:
-
-        {
-
-            Pool0A:{index,hash},
-            Pool1A:{index,hash},
-            ....,
-            PoolNA:{index,hash}
-        
-        }
-
-        ___________________________________ So ___________________________________
-
-        Using the order in EPOCH.leadersSequence finish the verification based on index:hash pairs in INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS
-        
-        
-        */
-   
 
 }
 
@@ -1189,8 +936,6 @@ export let startVerificationThread=async()=>{
 
         let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-        // In this case we can grab the final block
-        if(infoAboutLastBlockByThisPool) GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,infoAboutLastBlockByThisPool)
 
         if(tunnelHandler){
 
@@ -1224,53 +969,22 @@ export let startVerificationThread=async()=>{
 
     } else if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS){
         
-
-        if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH')) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH',{indexOfCurrentPoolToVerify:0})
-        
-
-        let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get('CURRENT_TO_FINISH') // {indexOfCurrentPoolToVerify:int}
-
         let infoFromAefpAboutLastBlocksByPools = WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS // {pool:{index,hash},...}
 
         let localVtMetadataForPool, metadataFromAefpForThisPool
 
 
-
         // eslint-disable-next-line no-constant-condition
         while(true){            
 
-            let poolPubKey = vtEpochHandler.leadersSequence[handlerWithIndexToVerify.indexOfCurrentPoolToVerify]
+            let poolPubKey = vtEpochHandler.leadersSequence[0]
 
             localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
             metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPools[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
-            let weFinishedToVerifyPool = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
-
-
-            if(weFinishedToVerifyPool){
-
-                let itsTheLastPoolInSequence = vtEpochHandler.leadersSequence.length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify + 1
-
-
-                if(itsTheLastPoolInSequence) {
-
-                    GLOBAL_CACHES.STUFF_CACHE.delete('CURRENT_TO_FINISH')
-
-                    break
-
-                }
-
-                else {            
-
-                    handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
-
-                    continue
-
-                }
-
-            }
+            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index) break
 
 
             await checkConnectionWithPool(poolPubKey,vtEpochHandler)
@@ -1316,41 +1030,16 @@ export let startVerificationThread=async()=>{
             
                 }
 
-            } else {
-
-                let batchOfBlocksFromAnotherSource = await getMultipleBlocks(vtEpochHandler,poolPubKey,localVtMetadataForPool.index+1)
-    
-                if(batchOfBlocksFromAnotherSource){
-    
-                    for(let block of batchOfBlocksFromAnotherSource){
-    
-                        if(block.index === localVtMetadataForPool.index+1){
-    
-                            await verifyBlock(block)
-    
-                        }
-    
-                    }
-    
-                }
-    
             }
 
         }
 
-
-        let allBlocksWereVerifiedInPreviousEpoch = vtEpochHandler.leadersSequence.length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
-
-        let finishedToVerifyTheLastPoolInSequence = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
-
-
-        if(allBlocksWereVerifiedInPreviousEpoch && finishedToVerifyTheLastPoolInSequence){
+        if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
             shouldMoveToNextEpoch = true
 
         }
-
-        
+   
     }
 
 
