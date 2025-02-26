@@ -1,6 +1,6 @@
-import {checkAlrpChainValidity, getFirstBlockInEpoch, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
-
 import {getFromState, getUserAccountFromState, trackStateChange} from '../common_functions/state_interactions.js'
+
+import {getFirstBlockInEpoch, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
 
@@ -430,9 +430,6 @@ let findInfoAboutLastBlocksByPreviousLeaders = async (vtEpochHandler,aefp) => {
 
 let setUpNewEpochForVerificationThread = async vtEpochHandler => {
  
-
-    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
-
     let vtEpochOldIndex = vtEpochHandler.id
 
     let nextVtEpochIndex = vtEpochOldIndex + 1
@@ -509,10 +506,6 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         // Finally - delete the AEFP metadata with info about hights and hashes
 
         delete WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS
-
-        // Delete the useless temporary info from previous epoch about indexes/hashes
-        
-        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID]
 
 
         customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
@@ -674,39 +667,39 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
     
         }
 
-        let handlerWithFirstBlocksOnNextEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`).catch(()=>false) || {} // {firstBlockCreator,firstBlockHash}
+        let handlerWithFirstBlockOnNextEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`).catch(()=>false) || {} // {firstBlockCreator,firstBlockHash}
 
         // Find the first blocks for epoch X+1
 
-        if(!handlerWithFirstBlocksOnNextEpoch) handlerWithFirstBlocksOnNextEpoch = {}
+        if(!handlerWithFirstBlockOnNextEpoch) handlerWithFirstBlockOnNextEpoch = {}
 
-        if(!handlerWithFirstBlocksOnNextEpoch.firstBlockCreator){
+        if(!handlerWithFirstBlockOnNextEpoch.firstBlockCreator){
 
             let findResult = await getFirstBlockInEpoch('VERIFICATION_THREAD',nextEpochHandlerTemplate,getBlock)
 
             if(findResult){
 
-                handlerWithFirstBlocksOnNextEpoch.firstBlockCreator = findResult.firstBlockCreator
+                handlerWithFirstBlockOnNextEpoch.firstBlockCreator = findResult.firstBlockCreator
 
-                handlerWithFirstBlocksOnNextEpoch.firstBlockHash = findResult.firstBlockHash
+                handlerWithFirstBlockOnNextEpoch.firstBlockHash = findResult.firstBlockHash
 
             }
 
-            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`,handlerWithFirstBlocksOnNextEpoch).catch(()=>{})
+            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_IN_NEXT_EPOCH:${vtEpochIndex}`,handlerWithFirstBlockOnNextEpoch).catch(()=>{})
 
         }
 
         //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the data for VT to finish epoch X____________
 
-        let firstBlockInThisEpoch = await getBlock(nextEpochIndex,handlerWithFirstBlocksOnNextEpoch.firstBlockCreator,0)
+        let firstBlockInThisEpoch = await getBlock(nextEpochIndex,handlerWithFirstBlockOnNextEpoch.firstBlockCreator,0)
 
-        if(firstBlockInThisEpoch && Block.genHash(firstBlockInThisEpoch) === handlerWithFirstBlocksOnNextEpoch.firstBlockHash){
+        if(firstBlockInThisEpoch && Block.genHash(firstBlockInThisEpoch) === handlerWithFirstBlockOnNextEpoch.firstBlockHash){
 
-            handlerWithFirstBlocksOnNextEpoch.aefp = firstBlockInThisEpoch.extraData.aefpForPreviousEpoch
+            handlerWithFirstBlockOnNextEpoch.aefp = firstBlockInThisEpoch.extraData.aefpForPreviousEpoch
 
         }
 
-        if(handlerWithFirstBlocksOnNextEpoch.aefp){
+        if(handlerWithFirstBlockOnNextEpoch.aefp){
 
             // Create empty template
 
@@ -716,7 +709,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
                 WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS = {}
 
-                await findInfoAboutLastBlocksByPreviousLeaders(vtEpochHandler,handlerWithFirstBlocksOnNextEpoch.aefp)
+                await findInfoAboutLastBlocksByPreviousLeaders(vtEpochHandler,handlerWithFirstBlockOnNextEpoch.aefp)
             
             }                
 
@@ -1175,34 +1168,62 @@ export let startVerificationThread=async()=>{
 
     let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
-
     let vtEpochIndex = vtEpochHandler.id    
-
-    let tempInfoAboutFinalBlocksByPreviousPools = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS[vtEpochFullID] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
 
     let shouldMoveToNextEpoch = false
 
 
-    if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS){
-        
-        
-        /*
-        
-            In case we have .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS - it's a signal that the new epoch on APPROVEMENT_THREAD has started
-            In this case, in function tryToChangeEpochForVerificationThread we update the epoch and add the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS which has the structure
+    if(currentEpochIsFresh){
 
-            {
+        // Take the pool by it's position
+        
+        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[0]
+        
+        let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash}
+        
+        // Try check if we have established a WSS channel to fetch blocks
 
-                pool0:{index,hash},
-                ...
-                poolN:{index,hash}
+        await checkConnectionWithPool(poolToVerifyRightNow,vtEpochHandler)
 
+        // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
+
+        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
+        // In this case we can grab the final block
+        if(infoAboutLastBlockByThisPool) GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,infoAboutLastBlockByThisPool)
+
+        if(tunnelHandler){
+
+            let biggestHeightInCache = tunnelHandler.hasUntilHeight
+
+            let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
+
+            // Start the cycle to process all the blocks
+
+            while(stepsForWhile > 0){
+
+    
+                let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(verificationStatsOfThisPool.index+1)
+    
+                let block = tunnelHandler.cache.get(blockIdToGet)
+    
+    
+                if(block){
+    
+                    await verifyBlock(block)
+
+                    tunnelHandler.cache.delete(blockIdToGet)
+
+                }
+                
+                stepsForWhile--
+        
             }
+    
+        }
 
-            We just need to go through the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS and start the cycle over vtEpochHandler.leadersSequence and verify all the blocks
-
-        */
+    } else if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS){
+        
 
         if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH')) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH',{indexOfCurrentPoolToVerify:0})
         
@@ -1330,97 +1351,6 @@ export let startVerificationThread=async()=>{
         }
 
         
-    }else if(currentEpochIsFresh && tempInfoAboutFinalBlocksByPreviousPools){
-
-        // Take the pool by it's position
-        
-        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[tempInfoAboutFinalBlocksByPreviousPools.currentToVerify]
-        
-        let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash}
-
-        let infoAboutLastBlockByThisPool = tempInfoAboutFinalBlocksByPreviousPools.infoAboutFinalBlocksInThisEpoch[poolToVerifyRightNow] // {index,hash}
-
-        
-        if(infoAboutLastBlockByThisPool && verificationStatsOfThisPool.index === infoAboutLastBlockByThisPool.index){
-
-            // Move to next one
-            
-            tempInfoAboutFinalBlocksByPreviousPools.currentToVerify++
-
-
-            if(!currentEpochIsFresh){
-
-                await tryToFinishCurrentEpochOnVerificationThread(vtEpochHandler)
-
-            }
-                    
-        
-            setImmediate(startVerificationThread)
-
-            return
-
-        }
-        
-        // Try check if we have established a WSS channel to fetch blocks
-
-        await checkConnectionWithPool(poolToVerifyRightNow,vtEpochHandler)
-
-
-        // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
-
-        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
-
-        // In this case we can grab the final block
-        if(infoAboutLastBlockByThisPool) GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,infoAboutLastBlockByThisPool)
-
-        if(tunnelHandler){
-
-            let biggestHeightInCache = tunnelHandler.hasUntilHeight
-
-            let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
-
-            // Start the cycle to process all the blocks
-
-            while(stepsForWhile > 0){
-
-    
-                let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(verificationStatsOfThisPool.index+1)
-    
-                let block = tunnelHandler.cache.get(blockIdToGet)
-    
-    
-                if(block){
-    
-                    await verifyBlock(block)
-
-                    tunnelHandler.cache.delete(blockIdToGet)
-
-                }
-                
-                stepsForWhile--
-        
-            }
-    
-        } else {
-
-            let batchOfBlocksFromAnotherSource = await getMultipleBlocks(vtEpochHandler,poolToVerifyRightNow,verificationStatsOfThisPool.index+1)
-
-            if(batchOfBlocksFromAnotherSource){
-
-                for(let block of batchOfBlocksFromAnotherSource){
-
-                    if(block.index === verificationStatsOfThisPool.index+1){
-
-                        await verifyBlock(block)
-
-                    }
-
-                }
-
-            }
-
-        }
-
     }
 
 

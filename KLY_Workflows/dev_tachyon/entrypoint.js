@@ -1,6 +1,4 @@
-// 7 main threads - main core logic
-
-import {findTemporaryInfoAboutFinalBlocksByPreviousPools} from './life/temp_vt_sequence_builder.js'
+// Main threads - main core logic
 
 import {shareBlocksAndGetFinalizationProofs} from './life/share_block_and_grab_proofs.js'
 
@@ -11,8 +9,6 @@ import {startVerificationThread} from './verification_process/verification.js'
 import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
 
 import {CONFIGURATION, BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
-
-import {leadersSequenceMonitoring} from './life/leaders_monitoring.js'
 
 import {blocksGenerationProcess} from './life/block_generation.js'
 
@@ -36,25 +32,19 @@ export let runBlockchain=async()=>{
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
-    //✅0.Start verification process - process blocks and find new epoch step-by-step
+    //✅1.Start verification process - process blocks and find new epoch step-by-step
     startVerificationThread()
 
-    //✅1.Thread to find AEFPs and change the epoch for AT
+    //✅2.Thread to find AEFPs and change the epoch for AT
     findAefpsAndFirstBlocksForCurrentEpoch()
 
-    //✅2.Share our blocks within quorum members and get the finalization proofs
+    //✅3.Share our blocks within quorum members and get the finalization proofs
     shareBlocksAndGetFinalizationProofs()
 
-    //✅3.Thread to propose AEFPs to move to next epoch
+    //✅4.Thread to propose AEFPs to move to next epoch
     checkIfItsTimeToStartNewEpoch()
 
-    //✅4.Thread to track changes of leaders rotation
-    leadersSequenceMonitoring()
-
-    //✅5.Function to build the temporary sequence of blocks to verify them
-    findTemporaryInfoAboutFinalBlocksByPreviousPools()
-
-    //✅6.Start to generate blocks
+    //✅5.Start to generate blocks
     blocksGenerationProcess()
 
 

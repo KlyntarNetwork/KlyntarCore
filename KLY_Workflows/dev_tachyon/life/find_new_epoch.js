@@ -12,8 +12,6 @@ import {getBlock} from '../verification_process/verification.js'
 
 import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
 
-import {setLeadersSequence} from './leaders_monitoring.js'
-
 import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
@@ -346,7 +344,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // After execution - assign new sequence of leaders
 
-                await setLeadersSequence(currentEpochHandler,nextEpochHash)
+                currentEpochHandler.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER]
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
 

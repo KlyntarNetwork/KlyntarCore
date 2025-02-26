@@ -4,11 +4,9 @@ import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quoru
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from './globals.js'
 
-import {setLeadersSequence} from './life/leaders_monitoring.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyntar_core.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
-
-import {BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import {isMyCoreVersionOld} from './utils.js'
 
@@ -378,9 +376,9 @@ let setGenesisToState=async()=>{
 
     // Finally, assign sequence of leaders for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
-    await setLeadersSequence(atEpochHandler,initEpochHash)
+    atEpochHandler.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER]
 
-    vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(atEpochHandler.leadersSequence))
+    vtEpochHandler.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER]
 
 }
 
