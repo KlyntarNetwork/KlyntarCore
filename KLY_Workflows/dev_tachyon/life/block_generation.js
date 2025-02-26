@@ -244,14 +244,11 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => 
 
 
 
-let getBatchOfApprovedDelayedTxsByQuorum = async indexOfLeader => {
+let getBatchOfApprovedDelayedTxsByQuorum = async () => {
 
     // Get the batch of delayed operations from storage
 
     let epochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-
-    if(indexOfLeader !== 0) return {epochIndex,delayedTransactions:[],proofs:{}}
-
     
     let delayedTransactions = await BLOCKCHAIN_DATABASES.STATE.get(`DELAYED_TRANSACTIONS:${epochIndex}`).catch(()=>null)
 
@@ -289,16 +286,7 @@ let getBatchOfApprovedDelayedTxsByQuorum = async indexOfLeader => {
 
             promises.push(fetch(descriptor.url+'/sign_delayed_ops_batch',optionsToSend).then(r=>r.json()).then(async possibleAgreement => {
 
-                /*
-                
-                    possibleAgreements structure is:
-
-                    {
-                        sig: SIG(dataThatShouldBeSigned)
-                    }
-                    
-                
-                */
+                // possibleAgreements structure is: {sig: SIG(dataThatShouldBeSigned)}
 
                 if(possibleAgreement && typeof possibleAgreement === 'object'){
                     
@@ -363,7 +351,7 @@ let generateBlocksPortion = async() => {
 
     // Safe "if" branch to prevent unnecessary blocks generation    
     
-    if(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
+    if(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
         generateBatchOfMockTransactionsAndPushToMempool()
 
@@ -425,7 +413,7 @@ let generateBlocksPortion = async() => {
 
             }
 
-            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(currentEpochMetadata.CURRENT_LEADER_INFO.index)
+            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum()
 
         }
 

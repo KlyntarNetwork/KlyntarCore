@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
-
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
 
 
 
@@ -88,15 +88,7 @@ FASTIFY_SERVER.get('/current_leader',(_request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.GET_CURRENT_SHARD_LEADERS}`)
             
         
-        // Get the current epoch metadata
-
-        let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-        
-        let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
-
-        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-        let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentEpochMetadata.CURRENT_LEADER_INFO.pubKey }
+        let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER }
 
         response.send(dataToReturn)
 

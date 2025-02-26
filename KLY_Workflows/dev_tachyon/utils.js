@@ -1,6 +1,6 @@
 import {getFromApprovementThreadState} from './common_functions/approvement_thread_related.js'
 
-import { EPOCH_METADATA_MAPPING, WORKING_THREADS, NODE_METADATA } from './globals.js'
+import { WORKING_THREADS, NODE_METADATA } from './globals.js'
 
 import {getUtcTimestamp} from '../../KLY_Utils/utils.js'
 
@@ -32,23 +32,15 @@ export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETW
 
 export let getCurrentLeaderURL = async () => {
 
-    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-    
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+    let sequencerRole = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-    if(!currentEpochMetadata) return
-
-    let canGenerateBlocksNow = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
-
-    if(canGenerateBlocksNow) return {isMeLeader:true}
+    if(sequencerRole) return {isMeLeader:true}
 
     else {
 
         // Get the url of current leader
 
-        let poolStorage = await getFromApprovementThreadState(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = await getFromApprovementThreadState(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage) return {isMeLeader:false,url:poolStorage.poolURL}
         

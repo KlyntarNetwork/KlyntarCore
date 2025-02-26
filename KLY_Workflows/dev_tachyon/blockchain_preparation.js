@@ -43,8 +43,6 @@ let restoreCachesForApprovementThread=async()=>{
 
     }
 
-    currentEpochMetadata.CURRENT_LEADER_INFO = await currentEpochMetadata.DATABASE.get('CURRENT_LEADER_INFO').catch(()=>({index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]}))
-
     // Finally, once we've started the "next epoch" process - restore it
 
     let itsTimeForTheNextEpoch = await currentEpochMetadata.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
@@ -524,9 +522,6 @@ export let prepareBlockchain=async()=>{
         FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
-
-        CURRENT_LEADER_INFO:{}, // {index,pubKey}
-
 
         //____________________Mapping which contains temporary databases for____________________
 

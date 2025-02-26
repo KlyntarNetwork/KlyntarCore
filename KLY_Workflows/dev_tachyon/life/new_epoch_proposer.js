@@ -39,13 +39,14 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     if(iAmInTheQuorum && !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
         
         // Stop to generate finalization proofs
+
         currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
         let canGenerateEpochFinalizationProof = true
 
-        let pubKeyOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey
+        let pubKeyOfLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
-        let indexOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.index
+        let indexOfLeader = 0
 
 
         if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
@@ -68,6 +69,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         
 
         // Check the safety
+
         if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
 
             setTimeout(checkIfItsTimeToStartNewEpoch,3000)
@@ -81,45 +83,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let majority = getQuorumMajority(atEpochHandler)
 
-        let leadersSequence = atEpochHandler.leadersSequence // [pool0,pool1,...,poolN]
-
-
-        /*
-            
-            Now to avoid loops, check if last leader created at least 1 block
-            
-        */
-
-        let localVotingDataForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-
-        if(localVotingDataForLeader.index === -1){
-
-            // Change to previous leader that finish its work on height > -1
-
-            for(let position = indexOfLeader-1 ; position >= 0 ; position --){
-
-                let previousLeader = atEpochHandler.leadersSequence[position]
-
-                let localVotingData = currentEpochMetadata.FINALIZATION_STATS.get(previousLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-
-                if(localVotingData.index > -1){
-
-                    pubKeyOfLeader = previousLeader
-
-                    indexOfLeader = position
-
-                    // Also, change the value in pointer to current leader
-
-                    currentEpochMetadata.CURRENT_LEADER_INFO = {index:position, pubKey:previousLeader}
-
-                    break
-
-                }
-
-            }
-
-        }
-
         // Structure is Map(quorumMember=>SIG('EPOCH_DONE'+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId))
         
         let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')
@@ -132,85 +95,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         
         }
 
-            /*
-        
-                1) Start to build epoch finalization proposition. This object has the following structure
-
-
-                {
-
-                 currentLeader:<int - pointer to current leader based on AT.EPOCH.leadersSequence>
-
-                        lastBlockProposition:{
-                            index:,
-                            hash:,
-                            
-                            afp:{
-
-                                prevBlockHash:<must be the same as lastBlockProposition.hash>
-
-                                blockID:<must be next to lastBlockProposition.index>,
-
-                                blockHash,
-
-                                proofs:{
-
-                                    quorumMember0_Ed25519PubKey: ed25519Signa0,
-                                    ...
-                                    quorumMemberN_Ed25519PubKey: ed25519SignaN
-                
-                                }
-
-                            }
-                    
-                        }
-
-                }
-
-
-                2) Take the <lastBlockProposition> for <currentLeader> from TEMP.get(<epochFullID>).FINALIZATION_STATS
-
-                3) If nothing in FINALIZATION_STATS - then set index to -1 and hash to default(0123...)
-
-                4) Send epoch propostion to POST /epoch_proposition to all(or at least 2/3N+1) quorum members
-
-
-                ____________________________________________After we get responses____________________________________________
-
-                5) If validator agree with all the propositions - it generate signatures to paste this short proof to the fist block in the next epoch(to section block.extraData.aefpForPreviousEpoch)
-
-                6) If we get 2/3N+1 agreements - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
-
-                    The structure is
-
-
-                       {
-                
-                            lastLeader:<index of Ed25519 pubkey of some pool in sequence of validators>,
-                            lastIndex:<index of his block in previous epoch>,
-                            lastHash:<hash of this block>,
-                            firstBlockHash,
-
-                            proofs:{
-
-                                ed25519PubKey0:ed25519Signa0,
-                                ...
-                                ed25519PubKeyN:ed25519SignaN
-                         
-                            }
-
-                        }
-
-
-                7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID
-
-                8) Pools can query network for this proofs to set to <block.extraData.aefpForPreviousEpoch> to know where to start VERIFICATION_THREAD in a new epoch                
-                
-
-            */
-
-
-        let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}`).catch(()=>false)
+        let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}`).catch(()=>null)
 
         if(!aefpExistsLocally){
 
@@ -302,7 +187,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                             let {index,hash,afp} = possibleAgreements.lastBlockProposition
                         
-                            let pubKeyOfProposedLeader = leadersSequence[possibleAgreements.currentLeader]
+                            let pubKeyOfProposedLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
                             
                             let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
 
@@ -312,10 +197,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 let {prevBlockHash,blockID,blockHash,proofs} = afp
                         
-                                // Update the info about current leader
-
-                                currentEpochMetadata.CURRENT_LEADER_INFO = {index:possibleAgreements.currentLeader, pubKey:pubKeyOfProposedLeader}
-                                
                                 // Update FINALIZATION_STATS
 
                                 currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
@@ -341,7 +222,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
 
-        if(agreementsForEpochManager.size >= majority){
+        if(agreementsForEpochManager.size >= majority && epochFinishProposition && epochFinishProposition.lastBlockProposition){
         
             let aggregatedEpochFinalizationProof = {
 

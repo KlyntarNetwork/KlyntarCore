@@ -188,7 +188,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     // Try to find via network requests
 
-                    storedFirstBlockData = await getFirstBlockInEpoch('APPROVEMENT_THREAD',currentEpochHandler,getBlock)
+                    storedFirstBlockData = await getFirstBlockInEpoch(currentEpochHandler,getBlock)
 
                 }
 
@@ -399,8 +399,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     TEMP_CACHE:new Map(),
 
                     SYNCHRONIZER:new Map(),
-            
-                    CURRENT_LEADER_INFO:{index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]},
       
                     DATABASE:nextTempDB
             

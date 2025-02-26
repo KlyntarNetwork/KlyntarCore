@@ -1,5 +1,5 @@
 {
-    "name": "kly_evm",
+    "name": "pruning",
     "version": "1.0.0",
     "description": "Pruning module",
     "type": "module",

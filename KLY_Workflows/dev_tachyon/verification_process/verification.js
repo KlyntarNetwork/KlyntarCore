@@ -422,7 +422,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
         if(!handlerWithFirstBlockOnNextEpoch.firstBlockCreator){
 
-            let findResult = await getFirstBlockInEpoch('VERIFICATION_THREAD',nextEpochHandlerTemplate,getBlock)
+            let findResult = await getFirstBlockInEpoch(nextEpochHandlerTemplate,getBlock)
 
             if(findResult){
 
@@ -494,8 +494,6 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith, epoc
 
         // Open tunnel, set listeners for events, add to cache and fetch blocks portions time by time. 
 
-        // GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
-
         await new Promise(resolve=>{
 
             let WebSocketClient = WS.client
@@ -529,7 +527,7 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith, epoc
 
                         if(handler && bothNotNull && typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
 
-                            let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                            let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('FINAL_BLOCK_INFO:'+poolPubKeyToOpenConnectionWith)
 
                             if(lastBlockInfo && handler.hasUntilHeight+1 === lastBlockInfo.index){
 
@@ -547,7 +545,7 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith, epoc
                                         
                                         handler.hasUntilHeight = lastBlockThatWeGet.index
                                         
-                                        GLOBAL_CACHES.STUFF_CACHE.delete('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                                        GLOBAL_CACHES.STUFF_CACHE.delete('FINAL_BLOCK_INFO:'+poolPubKeyToOpenConnectionWith)
 
                                     }
 
@@ -657,7 +655,7 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith, epoc
 
                         let handler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-                        let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                        let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('FINAL_BLOCK_INFO:'+poolPubKeyToOpenConnectionWith)
 
                         if(handler){
     
@@ -733,26 +731,6 @@ let checkConnectionWithPool = async(poolToCheckConnectionWith,vtEpochHandler) =>
         },5000)
 
         
-    }else if(GLOBAL_CACHES.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToCheckConnectionWith)){
-
-        // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
-
-        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToCheckConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
-
-        tunnelHandler.connection.close()
-
-        GLOBAL_CACHES.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToCheckConnectionWith)
-
-        await openTunnelToFetchBlocksForPool(poolToCheckConnectionWith,vtEpochHandler)
-        
-        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToCheckConnectionWith,true)
-
-        setTimeout(()=>{
-
-            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToCheckConnectionWith)
-
-        },5000)
-
     }
 
 }
@@ -760,6 +738,7 @@ let checkConnectionWithPool = async(poolToCheckConnectionWith,vtEpochHandler) =>
 
 
 
+// eslint-disable-next-line no-unused-vars
 let getTouchedAccountsByEvmTx = serializedEVMTx => {
 
     let serializedEVMTxWithout0x = serializedEVMTx.slice(2) // delete 0x
@@ -924,7 +903,7 @@ export let startVerificationThread=async()=>{
 
         // Take the pool by it's position
         
-        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[0]
+        let poolToVerifyRightNow = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
         
         let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash}
         
@@ -977,7 +956,7 @@ export let startVerificationThread=async()=>{
         // eslint-disable-next-line no-constant-condition
         while(true){            
 
-            let poolPubKey = vtEpochHandler.leadersSequence[0]
+            let poolPubKey = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
             localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
@@ -992,7 +971,7 @@ export let startVerificationThread=async()=>{
 
             let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-            GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,infoFromAefpAboutLastBlocksByPools[poolPubKey])
+            GLOBAL_CACHES.STUFF_CACHE.set('FINAL_BLOCK_INFO:'+poolPubKey,infoFromAefpAboutLastBlocksByPools[poolPubKey])
 
             if(tunnelHandler){
             

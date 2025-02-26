@@ -1,16 +1,16 @@
 import {verifyEd25519, verifyEd25519Sync, blake3Hash} from '../../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
-
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
+
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../globals.js'
 
 import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {getUserAccountFromState} from './state_interactions.js'
-
-import {BLOCKCHAIN_GENESIS} from '../../../klyntar_core.js'
 
 import {getAllKnownPeers} from '../utils.js'
 
@@ -265,164 +265,61 @@ export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epoc
 
 
 
-export let getFirstBlockInEpoch = async(threadID,epochHandler,getBlockFunction) => {
+export let getFirstBlockInEpoch = async(epochHandler,getBlockFunction) => {
 
     // Check if we already tried to find first block by finding pivot in cache
 
-    let idOfHandlerWithFirstBlock = `${threadID}:${epochHandler.id}`
+    // Get all known peers and call GET /first_block_assumption/:epoch_index
 
-    let cache = threadID === 'VERIFICATION_THREAD' ? GLOBAL_CACHES.STUFF_CACHE : GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE
+    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...getAllKnownPeers()]
 
-    let pivotData = cache.get(idOfHandlerWithFirstBlock) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
-
-    if(!pivotData){
-
-        // Ask known peers about first block assumption
-
-        let arrayOfPools = epochHandler.leadersSequence
-
-        // Get all known peers and call GET /first_block_assumption/:epoch_index
-
-        let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...getAllKnownPeers()]
-
-        let promises = []
-
-
-        for(let node of allKnownNodes){
-
-            const controller = new AbortController()
-
-            setTimeout(() => controller.abort(), 2000)
-            
-            promises.push(fetch(node+'/first_block_assumption/'+epochHandler.id,{signal:controller.signal}).then(r=>r.json()).catch(()=>null))
-
-        }
-
-        let minimalIndexOfLeader = 100000000000000
-
-        let afpForSecondBlock
-
-        let propositions = await Promise.all(promises).then(responses=>responses.filter(Boolean)) // array where each element is {indexOfFirstBlockCreator, afpForSecondBlock}
-        
-
-        for(let proposition of propositions){
-
-            let firstBlockCreator = arrayOfPools[proposition.indexOfFirstBlockCreator]
-
-            if(firstBlockCreator && await verifyAggregatedFinalizationProof(proposition.afpForSecondBlock,epochHandler)){
-
-                let secondBlockIdThatShouldBeInAfp = `${epochHandler.id}:${firstBlockCreator}:1`
-
-                if(secondBlockIdThatShouldBeInAfp === proposition.afpForSecondBlock.blockID && proposition.indexOfFirstBlockCreator < minimalIndexOfLeader){
-
-                    minimalIndexOfLeader = proposition.indexOfFirstBlockCreator
-
-                    afpForSecondBlock = proposition.afpForSecondBlock
-
-                }
-
-            }
-
-        }
-
-        // Now get the assumption of first block(block itself), compare hashes and build the pivot to find the real first block
-
-        let position = minimalIndexOfLeader
-
-        let pivotPubKey = arrayOfPools[position]
-        
-        let firstBlockByPivot = await getBlockFunction(epochHandler.id,pivotPubKey,0)
-
-        let firstBlockHash = afpForSecondBlock?.prevBlockHash
-
-        
-        if(firstBlockByPivot && firstBlockHash === Block.genHash(firstBlockByPivot)){
-
-            // Once we find it - set as pivot for further actions
-
-            let pivotTemplate = {position, pivotPubKey, firstBlockByPivot, firstBlockHash}
-
-            cache.set(idOfHandlerWithFirstBlock,pivotTemplate)
-
-        }
-
+    let promises = []
+    
+    
+    for(let node of allKnownNodes){
+    
+        const controller = new AbortController()
+    
+        setTimeout(() => controller.abort(), 2000)
+                
+        promises.push(fetch(node+'/first_block_assumption/'+epochHandler.id,{signal:controller.signal}).then(r=>r.json()).catch(()=>null))
+    
     }
-
     
-    pivotData = cache.get(idOfHandlerWithFirstBlock)
-
-
-    if(pivotData){
-
-        // In pivot we have first block created in epoch by some pool
-
-        // Try to move closer to the beginning of the epochHandler.leadersSequence to find the real first block
-
-        // Based on ALRP in pivot block - find the real first block
-
-        let blockToEnumerateAlrp = pivotData.firstBlockByPivot
-
-        let arrayOfPools = epochHandler.leadersSequence
-
-
-        if(pivotData.position === 0){
-
-            cache.delete(idOfHandlerWithFirstBlock)
-
-            return {firstBlockCreator:pivotData.pivotPubKey,firstBlockHash:pivotData.firstBlockHash}
-
-        }
-
-
-        for(let position = pivotData.position-1 ; position >= 0 ; position--){
-
-        
-            let previousPoolInLeadersSequence = arrayOfPools[position]
+    let afpForSecondBlock
     
-            let leaderRotationProofForPreviousPool = blockToEnumerateAlrp.extraData.aggregatedLeadersRotationProofs[previousPoolInLeadersSequence]
-
-
-            if(position === 0){
-
-                cache.delete(idOfHandlerWithFirstBlock)
-
-                if(leaderRotationProofForPreviousPool.skipIndex === -1){
-
-                    return {firstBlockCreator:pivotData.pivotPubKey,firstBlockHash:pivotData.firstBlockHash}
-
-                } else return {firstBlockCreator:previousPoolInLeadersSequence,firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash}
-
-
-            } else if(leaderRotationProofForPreviousPool.skipIndex !== -1) {
-
-                // This means that we've found new pivot - so update it and break the cycle to repeat procedure later
-
-                let firstBlockByNewPivot = await getBlockFunction(epochHandler.id,previousPoolInLeadersSequence,0)
-
-                if(firstBlockByNewPivot && leaderRotationProofForPreviousPool.firstBlockHash === Block.genHash(firstBlockByNewPivot)){
-
-                    let newPivotTemplate = {
-
-                        position,
+    let propositions = await Promise.all(promises).then(responses=>responses.filter(Boolean)) // array where each element is {indexOfFirstBlockCreator, afpForSecondBlock}
+            
     
-                        pivotPubKey:previousPoolInLeadersSequence,
+    for(let proposition of propositions){
     
-                        firstBlockByPivot:firstBlockByNewPivot,
+        if(await verifyAggregatedFinalizationProof(proposition.afpForSecondBlock,epochHandler)){
     
-                        firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash
+            let secondBlockIdThatShouldBeInAfp = `${epochHandler.id}:${CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER}:1`
     
-                    }
-
-                    cache.set(idOfHandlerWithFirstBlock,newPivotTemplate)
-
-                    break
-
-                } else return
-
+            if(secondBlockIdThatShouldBeInAfp === proposition.afpForSecondBlock.blockID){
+    
+                afpForSecondBlock = proposition.afpForSecondBlock
+    
             }
     
         }
-
+    
+    }
+    
+    // Now get the assumption of first block(block itself), compare hashes and build the pivot to find the real first block
+    
+    let pivotPubKey = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
+            
+    let firstBlockByPivot = await getBlockFunction(epochHandler.id,pivotPubKey,0)
+    
+    let firstBlockHash = afpForSecondBlock?.prevBlockHash
+    
+            
+    if(firstBlockByPivot && firstBlockHash === Block.genHash(firstBlockByPivot)){
+    
+        return {firstBlockCreator:pivotPubKey,firstBlockHash}
+    
     }
 
 }

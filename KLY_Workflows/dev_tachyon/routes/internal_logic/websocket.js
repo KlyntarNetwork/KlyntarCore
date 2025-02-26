@@ -126,7 +126,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
 
-        let allGood = epochHandler.poolsRegistry.includes(block.creator) && currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === block.creator
+        let allGood = epochHandler.poolsRegistry.includes(block.creator) && CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER === block.creator
 
         if(!allGood){
         
@@ -279,7 +279,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                             let objectToStore = {
 
-                                indexOfFirstBlockCreator: epochHandler.leadersSequence.indexOf(block.creator),
+                                indexOfFirstBlockCreator: 0,
 
                                 afpForSecondBlock: previousBlockAFP
 
@@ -420,7 +420,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
         
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
 
-        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === blockCreator
+        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER === blockCreator
     
         
         if(!thisLeaderCanGenerateBlocksNow){
@@ -542,7 +542,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
 
                             let objectToStore = {
 
-                                indexOfFirstBlockCreator: epochHandler.leadersSequence.indexOf(blockCreator),
+                                indexOfFirstBlockCreator: 0,
 
                                 afpForSecondBlock: previousBlockAFP
 

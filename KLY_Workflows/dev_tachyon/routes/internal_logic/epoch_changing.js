@@ -67,99 +67,6 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
         return
 
     }
-    
-    /* 
-    
-        Parse the proposition
-
-        !Reminder:  The structure of proposition is:
-
-        {
-                
-                currentLeader:<int - pointer to current leader based on AT.EPOCH.leadersSequence>
-                
-                afpForFirstBlock:{
-
-                    prevBlockHash,
-                    blockID,
-                    blockHash,
-
-                    proofs:{
-                     
-                        pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.hash+"#"+AT.EPOCH.id
-                        ...
-                        
-                    }
-
-                },
-
-                lastBlockProposition:{
-                    
-                    index:,
-                    hash:,
-
-                    afp:{
-
-                        prevBlockHash,
-                        blockID,
-                        blockHash,
-
-                        proofs:{
-                     
-                            pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.hash+"#"+AT.EPOCH.id
-                            ...
-                        
-                        }                        
-
-                    }
-                    
-                }
-                
-        }
-
-        1) Compare <currentLeader> with our local version of current leader (take it from currentEpochMetadata.CURRENT_LEADER_INFO)
-        
-            [If proposed.currentLeader >= local.currentLeader]:
-
-                1) Verify index & hash & afp in <lastBlockProposition>
-                
-                2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
-
-                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from currentEpochMetadata.FINALIZATION_STATS)
-
-            [Else if proposed.currentLeader < local.currentLeader AND currentEpochMetadata.FINALIZATION_STATS.has(local.currentLeader)]:
-
-                1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from currentEpochMetadata.FINALIZATION_STATS), index and hash
-
-
-
-        !Reminder: Response structure is
-
-        {
-            
-            status:'UPGRADE'|'OK',
-
-            -------------------------------[In case status === 'OK']-------------------------------
-
-            signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
-                        
-            ----------------------------[In case status === 'UPGRADE']-----------------------------
-
-            currentLeader:<index>,
-                
-            lastBlockProposition:{
-                
-                index,
-                hash,
-                afp
-                
-            }   
-    
-        }
-
-
-    */
-   
 
     let proposition = JSON.parse(request.body)
 
@@ -170,11 +77,9 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
         if(typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'){
 
-            // Get the local version of CURRENT_LEADER_INFO and FINALIZATION_STATS
+            let localIndexOfLeader = 0
 
-            let localIndexOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.index
-
-            let pubKeyOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey
+            let pubKeyOfCurrentLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
             // Structure is {index,hash,afp}
 

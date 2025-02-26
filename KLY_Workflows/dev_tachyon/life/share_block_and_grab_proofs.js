@@ -380,7 +380,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     // If we don't generate the blocks - skip this function
     
-    if(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
+    if(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
         setTimeout(shareBlocksAndGetFinalizationProofs,2000)
 
