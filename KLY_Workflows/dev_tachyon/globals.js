@@ -142,6 +142,8 @@ export let WORKING_THREADS = {
     },
 
     GENERATION_THREAD: {
+
+        relativeIndex: 0,
             
         epochFullId:`${blake3Hash('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'+BLOCKCHAIN_GENESIS.NETWORK_ID)}#-1`,
 

@@ -606,7 +606,7 @@ let generateBlocksPortion = async() => {
 
         let atomicBatch = BLOCKCHAIN_DATABASES.BLOCKS.batch()
 
-        for(let i=0;i<numberOfBlocksToGenerate;i++){
+        for(let i=0 ; i<numberOfBlocksToGenerate ; i++){
 
 
             let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
@@ -628,6 +628,10 @@ let generateBlocksPortion = async() => {
     
             // Store block locally
             atomicBatch.put(blockID,blockCandidate)
+
+            atomicBatch.put(WORKING_THREADS.GENERATION_THREAD.relativeIndex,blockID)
+
+            WORKING_THREADS.GENERATION_THREAD.relativeIndex++
                
         }
     
