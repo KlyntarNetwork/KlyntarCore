@@ -901,6 +901,39 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 }
 
 
+let returnBlocksDataForPod = async(data,connection) => {
+
+    // Input data is {fromRid}
+    // Output data is {n:{block,afpForBlock},n+1:{block,afpForBlock},...,n+x:{block,afpForBlock}}
+
+    let responseStructure = {}
+
+    
+    for(let i=1 ; i<50 ; i++){
+
+        let relativeIndex = data.fromRid+i
+
+        let blockIdByRelativeIndex = await BLOCKCHAIN_DATABASES.BLOCKS.get(relativeIndex).catch(()=>null)
+
+        if(blockIdByRelativeIndex){
+
+            let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIdByRelativeIndex).catch(()=>null)
+
+            let afpForBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+blockIdByRelativeIndex).catch(()=>null)
+    
+            responseStructure[relativeIndex] = {block,afpForBlock}
+            
+        }
+
+        else break
+
+    }
+
+    connection.sendUTF(JSON.stringify(responseStructure))
+
+}
+
+
 
 
 let WebSocketServer = WS.server
@@ -977,7 +1010,11 @@ klyntarWebsocketServer.on('request',request=>{
 
                 returnLeaderRotationProof(data,connection)
 
-            }
+            }else if(data.route==='get_blocks_for_pod'){
+
+                returnBlocksDataForPod(data,connection)
+
+            } 
 
             else{
 
