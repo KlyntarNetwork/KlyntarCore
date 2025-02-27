@@ -46,8 +46,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let pubKeyOfLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
-        let indexOfLeader = 0
-
 
         if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
 
@@ -83,7 +81,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let majority = getQuorumMajority(atEpochHandler)
 
-        // Structure is Map(quorumMember=>SIG('EPOCH_DONE'+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId))
+        // Structure is Map(quorumMember=>SIG('EPOCH_DONE'+lastLeaderIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId))
         
         let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
@@ -100,8 +98,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         if(!aefpExistsLocally){
 
             epochFinishProposition = {
-
-                currentLeader:indexOfLeader,
 
                 afpForFirstBlock:{},
 
@@ -130,7 +126,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         
         let quorumMembers = await getQuorumUrlsAndPubkeys(true)
 
-
         //Descriptor is {url,pubKey}
 
         for(let descriptor of quorumMembers){
@@ -153,11 +148,10 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 -------------------------------[In case 'OK']-------------------------------
 
-                                sig: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
+                                sig: SIG('EPOCH_DONE'+lastLeaderIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
                         
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
-                                currentLeader:<index>,
                                 lastBlockProposition:{
                                     index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}
                                 }
@@ -166,7 +160,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                 
                 */
 
-                if(typeof possibleAgreements === 'object'){
+                if(typeof possibleAgreements === 'object'){                    
 
                     let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
 
@@ -176,7 +170,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                             // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                            let dataThatShouldBeSigned = `EPOCH_DONE:${epochFinishProposition.currentLeader}:${epochFinishProposition.lastBlockProposition.index}:${epochFinishProposition.lastBlockProposition.hash}:${epochFinishProposition.afpForFirstBlock.blockHash}:${epochFullID}`
+                            let dataThatShouldBeSigned = `EPOCH_DONE:0:${epochFinishProposition.lastBlockProposition.index}:${epochFinishProposition.lastBlockProposition.hash}:${epochFinishProposition.afpForFirstBlock.blockHash}:${epochFullID}`
 
                             if(await verifyEd25519(dataThatShouldBeSigned,possibleAgreements.sig,descriptor.pubKey)) agreements.set(descriptor.pubKey,possibleAgreements.sig)
 
@@ -226,7 +220,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         
             let aggregatedEpochFinalizationProof = {
 
-                lastLeader: epochFinishProposition.currentLeader,
+                lastLeader: 0,
                 
                 lastIndex: epochFinishProposition.lastBlockProposition.index,
                 

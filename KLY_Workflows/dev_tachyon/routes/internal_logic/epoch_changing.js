@@ -75,9 +75,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     if(typeof proposition === 'object'){
 
-        if(typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'){
-
-            let localIndexOfLeader = 0
+        if(typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'){
 
             let pubKeyOfCurrentLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
@@ -113,103 +111,34 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
             }
 
 
-            //_________________________________________ Now compare _________________________________________
-
-            if(proposition.currentLeader === localIndexOfLeader){
-
-                if(epochManagerForLeader.index === proposition.lastBlockProposition.index && epochManagerForLeader.hash === proposition.lastBlockProposition.hash){
+            if(epochManagerForLeader.index === proposition.lastBlockProposition.index && epochManagerForLeader.hash === proposition.lastBlockProposition.hash){
                     
-                    // Send AEFP signature
+                // Send AEFP signature
 
-                    let {index,hash} = proposition.lastBlockProposition
+                let {index,hash} = proposition.lastBlockProposition
 
-                    let dataToSign = `EPOCH_DONE:${proposition.currentLeader}:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
+                let dataToSign = `EPOCH_DONE:0:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
 
 
-                    responseStructure = {
-                                            
-                        status:'OK',
+                responseStructure = {
                                         
-                        sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-                                        
-                    }
-
-                        
-                }else if(epochManagerForLeader.index < proposition.lastBlockProposition.index){
-
-                    // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send AEFP signature
-
-                    let {index,hash,afp} = proposition.lastBlockProposition
-
-                    let isOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
-
-
-                    if(isOk){
-
-                        // Check that this AFP is for appropriate pool
-
-                        let [epochIndex,pubKeyOfCreator] = afp.blockID.split(':')
-
-                        let blockIdThatShouldBeInAfp = `${epochIndex}:${pubKeyOfCreator}:${index}`
-
-                        if(pubKeyOfCreator === pubKeyOfCurrentLeader && hash === afp.blockHash && blockIdThatShouldBeInAfp === afp.blockID){
-
-                            if(epochManagerForLeader){
-
-                                epochManagerForLeader.index = index
-
-                                epochManagerForLeader.hash = hash
-
-                                epochManagerForLeader.afp = afp
-
-                            } else currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfCurrentLeader,{index,hash,afp})
-
-                        
-                            // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
-
-                            let dataToSign = `EPOCH_DONE:${proposition.currentLeader}:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
-
-                            responseStructure= {
-                        
-                                status:'OK',
-                    
-                                sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-                    
-                            }
-
-                        }
-
-                    }
-
-
-                }else if(epochManagerForLeader.index > proposition.lastBlockProposition.index){
-
-                    // Send 'UPGRADE' msg
-
-                    responseStructure = {
-
-                        status:'UPGRADE',
-                        
-                        currentLeader:localIndexOfLeader,
-            
-                        lastBlockProposition:epochManagerForLeader // {index,hash,afp}
-                
-                    }
-
+                    status:'OK',
+                                    
+                    sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                                    
                 }
 
-            }else if(proposition.currentLeader < localIndexOfLeader){
+                    
+            }else if(epochManagerForLeader.index > proposition.lastBlockProposition.index){
 
                 // Send 'UPGRADE' msg
 
                 responseStructure = {
 
                     status:'UPGRADE',
-                        
-                    currentLeader:localIndexOfLeader,
-            
+        
                     lastBlockProposition:epochManagerForLeader // {index,hash,afp}
-                
+            
                 }
 
             }
