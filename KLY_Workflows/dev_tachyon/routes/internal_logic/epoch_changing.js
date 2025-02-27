@@ -230,53 +230,6 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                     }
 
                         
-                }else if(epochManagerForLeader.index < proposition.lastBlockProposition.index){
-
-                    // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send AEFP signature
-
-                    let {index,hash,afp} = proposition.lastBlockProposition
-
-                    let isOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
-
-
-                    if(isOk){
-
-                        // Check that this AFP is for appropriate pool
-
-                        let [epochIndex,pubKeyOfCreator] = afp.blockID.split(':')
-
-                        let blockIdThatShouldBeInAfp = `${epochIndex}:${pubKeyOfCreator}:${index}`
-
-                        if(pubKeyOfCreator === pubKeyOfCurrentLeader && hash === afp.blockHash && blockIdThatShouldBeInAfp === afp.blockID){
-
-                            if(epochManagerForLeader){
-
-                                epochManagerForLeader.index = index
-
-                                epochManagerForLeader.hash = hash
-
-                                epochManagerForLeader.afp = afp
-
-                            } else currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfCurrentLeader,{index,hash,afp})
-
-                        
-                            // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
-
-                            let dataToSign = `EPOCH_DONE:${proposition.currentLeader}:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
-
-                            responseStructure= {
-                        
-                                status:'OK',
-                    
-                                sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-                    
-                            }
-
-                        }
-
-                    }
-
-
                 }else if(epochManagerForLeader.index > proposition.lastBlockProposition.index){
 
                     // Send 'UPGRADE' msg
