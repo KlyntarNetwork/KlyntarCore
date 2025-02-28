@@ -4,13 +4,9 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/qu
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
-import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
-
 import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyntar_core.js'
-
-import {epochStillFresh} from '../utils.js'
 
 
 
@@ -33,49 +29,12 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     }
 
 
-    let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+    let iAmSequencer = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
 
-    if(iAmInTheQuorum && !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
-        
-        // Stop to generate finalization proofs
-
-        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
-
-        let canGenerateEpochFinalizationProof = true
-
-        let pubKeyOfLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
-
-
-        if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
-
-            canGenerateEpochFinalizationProof = false
-
-        }
-        
-
-        if(canGenerateEpochFinalizationProof){
-
-            await useTemporaryDb('put',currentEpochMetadata.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
-
-                currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
-
-
-            ).catch(()=>{})
-
-        }
-        
-
-        // Check the safety
-
-        if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
-
-            setTimeout(checkIfItsTimeToStartNewEpoch,3000)
-
-            return
-
-        }
+    if(iAmSequencer){
     
+        let pubKeyOfLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
         let epochFinishProposition = {}
 

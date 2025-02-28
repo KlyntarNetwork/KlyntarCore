@@ -60,14 +60,6 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
         return
     }
 
-    if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
-
-        response.send({err:'Not ready'})
-
-        return
-
-    }
-
     let proposition = JSON.parse(request.body)
 
     let responseStructure = {}

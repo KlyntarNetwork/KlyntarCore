@@ -43,18 +43,6 @@ let restoreCachesForApprovementThread=async()=>{
 
     }
 
-    // Finally, once we've started the "next epoch" process - restore it
-
-    let itsTimeForTheNextEpoch = await currentEpochMetadata.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
-
-    if(itsTimeForTheNextEpoch) {
-
-        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
-
-        currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
-
-    }
-
 }
 
 

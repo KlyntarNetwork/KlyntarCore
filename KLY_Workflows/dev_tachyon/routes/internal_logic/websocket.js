@@ -99,7 +99,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         
-    if(!currentEpochMetadata || currentEpochMetadata.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+    if(!currentEpochMetadata){
 
         connection.close()
     
@@ -111,7 +111,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     let {block,previousBlockAFP} = parsedData
     
 
-    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !currentEpochMetadata.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+block.creator)
+    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object'
 
 
     if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
@@ -385,7 +385,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
 
     // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         
-    if(!currentEpochMetadata || currentEpochMetadata.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+    if(!currentEpochMetadata){
 
         connection.close()
     
@@ -401,10 +401,6 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
                                 && 
                                 
                                 typeof previousBlockAFP === 'object' && typeof tmbProofs === 'object'
-                                
-                                &&
-                                
-                                !currentEpochMetadata.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+blockCreator)
 
 
 
