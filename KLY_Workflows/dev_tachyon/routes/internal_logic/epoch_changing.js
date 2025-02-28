@@ -73,66 +73,56 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
             // Structure is {index,hash,afp}
 
-            let epochManagerForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfCurrentLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+            let finalizationStatsForBlockGenerator = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfCurrentLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
-            // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
+            if(proposition.lastBlockProposition.index >= finalizationStatsForBlockGenerator.index){
+
+                let lastBlockAfpIsOk = await verifyAggregatedFinalizationProof(proposition.lastBlockProposition.afp,atEpochHandler)
+
+                if(lastBlockAfpIsOk){
+
+                    // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
                     
-            let hashOfFirstBlockByLastLeaderInThisEpoch
+                    let hashOfFirstBlockByLastLeaderInThisEpoch
 
-            let blockIdOfFirstBlock = atEpochHandler.id+':'+pubKeyOfCurrentLeader+':0' // first block has index 0 - numeration from 0
+                    let blockIdOfFirstBlock = atEpochHandler.id+':'+pubKeyOfCurrentLeader+':0' // first block has index 0 - numeration from 0
 
-            if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.lastBlockProposition.index>=0){
+                    if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.lastBlockProposition.index>=0){
 
-                // Verify the AFP for first block
+                        // Verify the AFP for first block
 
-                let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,atEpochHandler)
+                        let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,atEpochHandler)
 
-                if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
-
-
-            }
+                        if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
 
 
-            if(!hashOfFirstBlockByLastLeaderInThisEpoch){
+                    }
 
-                response.send({err:`Can't verify hash`})
+                    if(hashOfFirstBlockByLastLeaderInThisEpoch){
 
-                return
+                        // Send AEFP signature
 
-            }
+                        let {index,hash} = proposition.lastBlockProposition
 
+                        let dataToSign = `EPOCH_DONE:0:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
+                
+                        // TODO: Disable the ability to send finalization proofs for this epoch
+                        // Request for AEFP means that sequencer wants to finish the epoch, so no sense to sign finalization proofs for blocks in this epoch
+                        // It's also security prevention from malicious sequencer
+                
+                        responseStructure = {
+                                                        
+                            status:'OK',
+                                                    
+                            sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                                                    
+                        }
 
-            if(epochManagerForLeader.index === proposition.lastBlockProposition.index && epochManagerForLeader.hash === proposition.lastBlockProposition.hash){
-                    
-                // Send AEFP signature
+                    }
 
-                let {index,hash} = proposition.lastBlockProposition
-
-                let dataToSign = `EPOCH_DONE:0:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
-
-
-                responseStructure = {
-                                        
-                    status:'OK',
-                                    
-                    sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-                                    
                 }
-
-                    
-            }else if(epochManagerForLeader.index > proposition.lastBlockProposition.index){
-
-                // Send 'UPGRADE' msg
-
-                responseStructure = {
-
-                    status:'UPGRADE',
-        
-                    lastBlockProposition:epochManagerForLeader // {index,hash,afp}
-            
-                }
-
+                
             }
 
         }

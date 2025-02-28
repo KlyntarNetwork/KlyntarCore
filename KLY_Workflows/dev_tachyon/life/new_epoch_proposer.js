@@ -1,6 +1,6 @@
-import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
-
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+
+import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
@@ -11,7 +11,7 @@ import {CONFIGURATION} from '../../../klyntar_core.js'
 
 
 
-export let checkIfItsTimeToStartNewEpoch=async()=>{
+export let grabEpochFinalizationProofs=async()=>{
 
     let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -21,8 +21,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
 
     if(!currentEpochMetadata){
-
-        setTimeout(checkIfItsTimeToStartNewEpoch,3000)
 
         return
 
@@ -103,17 +101,9 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                     
                     
                         {
-                                status:'UPGRADE'|'OK',
+                            status:'OK',
 
-                                -------------------------------[In case 'OK']-------------------------------
-
-                                sig: SIG('EPOCH_DONE'+lastLeaderIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
-                        
-                                -----------------------------[In case 'UPGRADE']----------------------------
-
-                                lastBlockProposition:{
-                                    index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}
-                                }
+                            sig: SIG('EPOCH_DONE'+lastLeaderIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
                         }
                 
                 
@@ -133,32 +123,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                             if(await verifyEd25519(dataThatShouldBeSigned,possibleAgreements.sig,descriptor.pubKey)) agreements.set(descriptor.pubKey,possibleAgreements.sig)
 
-
-                        }else if(possibleAgreements.status==='UPGRADE'){
-
-                            // Check the AFP and update the local data
-
-                            let {index,hash,afp} = possibleAgreements.lastBlockProposition
-                        
-                            let pubKeyOfProposedLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
-                            
-                            let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
-
-                            let blockIDThatShouldBeInAfp = atEpochHandler.id+':'+pubKeyOfProposedLeader+':'+index
-                        
-                            if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
-
-                                let {prevBlockHash,blockID,blockHash,proofs} = afp
-                        
-                                // Update FINALIZATION_STATS
-
-                                currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
-                        
-                                // Clear the mapping with signatures because it becomes invalid
-
-                                agreements.clear()
-
-                            }
 
                         }
 
@@ -206,7 +170,5 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         }
 
     }
-
-    setTimeout(checkIfItsTimeToStartNewEpoch,3000) // each 3 seconds - do monitoring
 
 }

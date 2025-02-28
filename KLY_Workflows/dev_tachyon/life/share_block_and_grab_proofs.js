@@ -6,11 +6,14 @@ import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../
 
 import {logColors,verifyEd25519,customLog} from '../../../KLY_Utils/utils.js'
 
+import {grabEpochFinalizationProofs} from './new_epoch_proposer.js'
+
 import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
 
 import WS from 'websocket'
+import { epochStillFresh } from '../utils.js'
 
 
 
@@ -336,10 +339,15 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
         console.log('\n')
 
-
         TEMP_CACHE.delete('FP_SPAM_FLAG')
 
         TEMP_CACHE.delete(blockIDForHunting)
+
+        if(epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
+
+            await grabEpochFinalizationProofs()
+
+        }
 
 
     }else{

@@ -6,8 +6,6 @@ import {findAefpsAndFirstBlocksForCurrentEpoch} from './life/find_new_epoch.js'
 
 import {startVerificationThread} from './verification_process/verification.js'
 
-import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
-
 import {CONFIGURATION, BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import {blocksGenerationProcess} from './life/block_generation.js'
@@ -41,10 +39,7 @@ export let runBlockchain=async()=>{
     //✅3.Share our blocks within quorum members and get the finalization proofs
     shareBlocksAndGetFinalizationProofs()
 
-    //✅4.Thread to propose AEFPs to move to next epoch
-    checkIfItsTimeToStartNewEpoch()
-
-    //✅5.Start to generate blocks
+    //✅4.Start to generate blocks
     blocksGenerationProcess()
 
 
