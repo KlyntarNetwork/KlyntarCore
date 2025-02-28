@@ -10,11 +10,11 @@ import {grabEpochFinalizationProofs} from './new_epoch_proposer.js'
 
 import {CONFIGURATION} from '../../../klyntar_core.js'
 
+import {epochStillFresh} from '../utils.js'
+
 import Block from '../structures/block.js'
 
 import WS from 'websocket'
-import { epochStillFresh } from '../utils.js'
-
 
 
 
@@ -343,12 +343,6 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
         TEMP_CACHE.delete(blockIDForHunting)
 
-        if(epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
-
-            await grabEpochFinalizationProofs()
-
-        }
-
 
     }else{
 
@@ -437,9 +431,20 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     await openConnectionsWithQuorum(atEpochHandler,currentEpochMetadata)
 
-    await runFinalizationProofsGrabbing(atEpochHandler,proofsGrabber).catch(()=>{})
+    let haveAtLeastOneApprovedBlock = proofsGrabber.acceptedIndex > -1
 
+    let epochIsOutdated = !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)
 
+    if(haveAtLeastOneApprovedBlock && epochIsOutdated){
+
+        await grabEpochFinalizationProofs()
+
+    } else {
+
+        await runFinalizationProofsGrabbing(atEpochHandler,proofsGrabber).catch(()=>{})
+
+    }
+    
     setImmediate(shareBlocksAndGetFinalizationProofs)
 
 }
