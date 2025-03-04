@@ -499,7 +499,7 @@ export let prepareBlockchain=async()=>{
 
     //_________________________________Add the temporary data of current AT__________________________________________
     
-    let temporaryDatabaseForApprovementThread = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
+    let temporaryDatabaseForApprovementThread = level(process.env.CHAINDATA_PATH+`/TEMP_DATA_FOR_EPOCH_${WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id}`,{valueEncoding:'json'})
     
     EPOCH_METADATA_MAPPING.set(epochFullID,{
 

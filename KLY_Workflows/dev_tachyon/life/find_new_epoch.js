@@ -376,7 +376,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 
                 // Create new temporary db for the next epoch
 
-                let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
+                let nextTempDB = level(process.env.CHAINDATA_PATH+`/TEMP_DATA_FOR_EPOCH_${nextEpochId}`,{valueEncoding:'json'})
 
                 // Commit changes
 
@@ -426,32 +426,22 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 // Close & delete the old temporary db
             
                 await EPOCH_METADATA_MAPPING.get(currentEpochFullID).DATABASE.close()
-        
-                fs.rm(process.env.CHAINDATA_PATH+`/${currentEpochFullID}`,{recursive:true},()=>{})
+
+                let tempDataDirId = nextEpochId - 5
+
+                if(tempDataDirId >= 0){
+
+                    fs.rm(process.env.CHAINDATA_PATH+`/TEMP_DATA_FOR_EPOCH_${tempDataDirId}`,{recursive:true},()=>{})
+                    
+                }
         
                 EPOCH_METADATA_MAPPING.delete(currentEpochFullID)
 
-                
-                
-                //________________________________ If it's fresh epoch and we present there as a member of quorum - then continue the logic ________________________________
+                // Fill with the null-data
 
+                let currentEpochManager = nextTemporaryObject.FINALIZATION_STATS
 
-                let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
-
-                if(epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD) && iAmInTheQuorum){
-
-                    // Fill with the null-data
-
-                    let currentEpochManager = nextTemporaryObject.FINALIZATION_STATS
-
-                    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.forEach(poolPubKey=>
-
-                        currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
-
-                    )
-
-                }
+                currentEpochManager.set(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                 // Set next temporary object by ID
 
