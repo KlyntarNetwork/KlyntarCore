@@ -6,8 +6,6 @@ import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
-import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
-
 import {WEBSOCKET_EVM_ROUTE_HANDLER} from '@klyntar/klyntarevmjsonrpc'
 
 import {CONFIGURATION} from '../../../../klyntar_core.js'
@@ -92,6 +90,8 @@ import http from 'http'
 let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+    let epochIndex = epochHandler.id
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -294,9 +294,9 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                 }
 
-                // Store the metadata for FINALIZATION_STATS
+                // Store the voting data
 
-                useTemporaryDb('put',currentEpochMetadata.DATABASE,block.creator,futureMetadataToStore).then(()=>
+                BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+block.creator,futureMetadataToStore).then(()=>
 
                     // Store the block
 
@@ -378,6 +378,8 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+    let epochIndex = epochHandler.id
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -552,9 +554,9 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
     
                 }
 
-                // Store the metadata for FINALIZATION_STATS
+                // Store the voting data
 
-                useTemporaryDb('put',currentEpochMetadata.DATABASE,blockCreator,futureMetadataToStore).then(()=>{
+                BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+blockCreator,futureMetadataToStore).then(()=>{
 
                     // Store the AFP for previous block
 

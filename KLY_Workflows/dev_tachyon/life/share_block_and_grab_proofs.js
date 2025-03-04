@@ -1,6 +1,6 @@
 import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../common_functions/quorum_related.js'
 
-import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
@@ -127,7 +127,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
     if(!currentEpochMetadata) return
 
-    let {FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = currentEpochMetadata
+    let {FINALIZATION_PROOFS,TEMP_CACHE} = currentEpochMetadata
 
 
     // Get the block index & hash that we're currently hunting for
@@ -324,7 +324,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 
         // Repeat procedure for the next block and store the progress
-        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).then(()=>{
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('PROOFS_GRABBER',proofsGrabber).then(()=>{
 
             proofsGrabber.afpForPrevious = aggregatedFinalizationProof
 
@@ -390,7 +390,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     }
 
-    let {DATABASE,TEMP_CACHE} = currentEpochMetadata
+    let {TEMP_CACHE} = currentEpochMetadata
 
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
@@ -400,7 +400,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
         // If we still works on the old epoch - continue
         // Otherwise,update the latest height/hash and send them to the new QUORUM
         
-        proofsGrabber = await useTemporaryDb('get',DATABASE,'PROOFS_GRABBER').catch(()=>false)
+        proofsGrabber = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('PROOFS_GRABBER').catch(()=>null)
 
         if(!proofsGrabber){
 
@@ -422,7 +422,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
         
         // And store new descriptor
 
-        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('PROOFS_GRABBER',proofsGrabber).catch(()=>{})
 
         TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
 

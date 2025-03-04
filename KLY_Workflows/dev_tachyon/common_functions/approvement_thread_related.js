@@ -2,9 +2,6 @@ import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../globals.js'
 
 
 
-
-
-
 export let getFromApprovementThreadState = async recordID => {
 
     return GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(recordID)
@@ -17,23 +14,5 @@ export let getFromApprovementThreadState = async recordID => {
  
     
         }).catch(()=>false)
-
-}
-
-
-
-
-export let useTemporaryDb = async(operationType,dbReference,keys,values) => {
-
-
-    if(operationType === 'get'){
-
-        let value = await dbReference.get(keys)
-
-        return value
-
-    }
-    
-    else if(operationType === 'put') await dbReference.put(keys,values)
 
 }

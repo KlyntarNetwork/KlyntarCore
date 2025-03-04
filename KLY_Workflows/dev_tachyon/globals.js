@@ -170,7 +170,9 @@ export let BLOCKCHAIN_DATABASES = {
 
     APPROVEMENT_THREAD_METADATA: resolveDatabase('APPROVEMENT_THREAD_METADATA'), // metadata for APPROVEMENT_THREAD
 
-    EXPLORER_DATA: resolveDatabase('EXPLORER_DATA') // just a database for misc useful data for explorers & API. Just to store useful artifacts separately from state
+    EXPLORER_DATA: resolveDatabase('EXPLORER_DATA'), // just a database for misc useful data for explorers & API. Just to store useful artifacts separately from state
+
+    FINALIZATION_VOTING_STATS: resolveDatabase('FINALIZATION_VOTING_STATS') // database which stores the voting data
 
 }
 

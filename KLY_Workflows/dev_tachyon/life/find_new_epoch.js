@@ -16,8 +16,6 @@ import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
 
-import level from 'level'
-
 import fs from 'fs'
 
 
@@ -369,16 +367,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 }
                 
+                // Make atomic commits
 
                 atomicBatch.put(`EPOCH_DATA:${nextEpochId}`,nextEpochDataToStore)
 
                 atomicBatch.put('LATEST_BATCH_INDEX',latestBatchIndex)
-                
-                // Create new temporary db for the next epoch
-
-                let nextTempDB = level(process.env.CHAINDATA_PATH+`/TEMP_DATA_FOR_EPOCH_${nextEpochId}`,{valueEncoding:'json'})
-
-                // Commit changes
 
                 atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
 
@@ -390,6 +383,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
 
                 // Create mappings & set for the next epoch
+
                 let nextTemporaryObject = {
 
                     FINALIZATION_PROOFS:new Map(),
@@ -398,9 +392,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     TEMP_CACHE:new Map(),
 
-                    SYNCHRONIZER:new Map(),
-      
-                    DATABASE:nextTempDB
+                    SYNCHRONIZER:new Map()
             
                 }
 
@@ -414,6 +406,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     customLog(`New version detected on APPROVEMENT_THREAD. Please, upgrade your node software`,logColors.YELLOW)
 
                     console.log('\n')
+
                     console.log(fs.readFileSync(pathResolve('images/events/update.txt')).toString())
         
                     // Stop the node to update the software
@@ -422,16 +415,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 }
 
+                let superOldEpochIndex = nextEpochId - 5
 
-                // Close & delete the old temporary db
-            
-                await EPOCH_METADATA_MAPPING.get(currentEpochFullID).DATABASE.close()
+                if(superOldEpochIndex >= 0){
 
-                let tempDataDirId = nextEpochId - 5
-
-                if(tempDataDirId >= 0){
-
-                    fs.rm(process.env.CHAINDATA_PATH+`/TEMP_DATA_FOR_EPOCH_${tempDataDirId}`,{recursive:true},()=>{})
+                    await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.del(superOldEpochIndex+':'+CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER).catch(()=>{})
                     
                 }
         
@@ -439,9 +427,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Fill with the null-data
 
-                let currentEpochManager = nextTemporaryObject.FINALIZATION_STATS
-
-                currentEpochManager.set(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
+                nextTemporaryObject.FINALIZATION_STATS.set(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                 // Set next temporary object by ID
 
@@ -452,6 +438,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
         }
 
         // Continue to find
+
         setImmediate(findAefpsAndFirstBlocksForCurrentEpoch)
 
     } else {

@@ -10,8 +10,6 @@ import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {isMyCoreVersionOld} from './utils.js'
 
-import level from 'level'
-
 import Web3 from 'web3'
 
 import fs from 'fs'
@@ -29,9 +27,11 @@ let restoreCachesForApprovementThread=async()=>{
 
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
+    let epochIndex = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
+
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
-    let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+    let {index,hash,afp} = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
         
     currentEpochMetadata.FINALIZATION_STATS.set(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,{index,hash,afp})
 
@@ -489,10 +489,6 @@ export let prepareBlockchain=async()=>{
 
     }
 
-    //_________________________________Add the temporary data of current AT__________________________________________
-    
-    let temporaryDatabaseForApprovementThread = level(process.env.CHAINDATA_PATH+`/TEMP_DATA_FOR_EPOCH_${WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id}`,{valueEncoding:'json'})
-    
     EPOCH_METADATA_MAPPING.set(epochFullID,{
 
         FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
@@ -501,11 +497,7 @@ export let prepareBlockchain=async()=>{
     
         FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
         
-        SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
-
-        //____________________Mapping which contains temporary databases for____________________
-
-        DATABASE:temporaryDatabaseForApprovementThread // DB with temporary data that we need during epoch    
+        SYNCHRONIZER:new Map() // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
     })
 
