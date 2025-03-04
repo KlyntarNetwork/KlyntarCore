@@ -119,7 +119,9 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
 
 
-let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {    
+let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
+
+    let epochIndex = epochHandler.id
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -324,7 +326,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 
         // Repeat procedure for the next block and store the progress
-        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('PROOFS_GRABBER',proofsGrabber).then(()=>{
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).then(()=>{
 
             proofsGrabber.afpForPrevious = aggregatedFinalizationProof
 
@@ -364,9 +366,11 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 export let shareBlocksAndGetFinalizationProofs = async () => {
 
-    let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+    let epochIndex = epochHandler.id
     
-    let epochFullID = atEpochHandler.hash + "#" + atEpochHandler.id
+    let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
@@ -395,12 +399,12 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-    if(!proofsGrabber || proofsGrabber.epochID !== atEpochHandler.id){
+    if(!proofsGrabber || proofsGrabber.epochID !== epochHandler.id){
 
         // If we still works on the old epoch - continue
         // Otherwise,update the latest height/hash and send them to the new QUORUM
         
-        proofsGrabber = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('PROOFS_GRABBER').catch(()=>null)
+        proofsGrabber = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':PROOFS_GRABBER').catch(()=>null)
 
         if(!proofsGrabber){
 
@@ -408,7 +412,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
             
             proofsGrabber = {
     
-                epochID:atEpochHandler.id,
+                epochID:epochHandler.id,
 
                 acceptedIndex:-1,
 
@@ -422,14 +426,14 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
         
         // And store new descriptor
 
-        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('PROOFS_GRABBER',proofsGrabber).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).catch(()=>{})
 
         TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
 
     }
 
 
-    await openConnectionsWithQuorum(atEpochHandler,currentEpochMetadata)
+    await openConnectionsWithQuorum(epochHandler,currentEpochMetadata)
 
     let haveAtLeastOneApprovedBlock = proofsGrabber.acceptedIndex > -1
 
@@ -441,7 +445,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     } else {
 
-        await runFinalizationProofsGrabbing(atEpochHandler,proofsGrabber).catch(()=>{})
+        await runFinalizationProofsGrabbing(epochHandler,proofsGrabber).catch(()=>{})
 
     }
     

@@ -419,6 +419,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 if(superOldEpochIndex >= 0){
 
+                    await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.del(superOldEpochIndex+':PROOFS_GRABBER').catch(()=>{})
+
                     await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.del(superOldEpochIndex+':'+CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER).catch(()=>{})
                     
                 }
