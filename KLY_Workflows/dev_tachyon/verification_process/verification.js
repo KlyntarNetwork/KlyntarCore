@@ -55,6 +55,19 @@ let getBlockReward = () => {
 
 
 
+let selectQuorumMemberToReward = (quorumMembers, hexString) => {
+    
+    // Take only 32 bits from hash
+    
+    let hashInt = parseInt(hexString.slice(-8), 16)
+
+    // Select pseudo-random index
+
+    const index = hashInt % quorumMembers.length
+
+    return quorumMembers[index]
+}
+
 
 
 
@@ -1042,7 +1055,7 @@ export let startVerificationThread=async()=>{
 
 
 
-let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
+let distributeFeesAmongPoolAndStakers = async (totalFees, blockIndex) => {
 
     /*
 
@@ -1074,23 +1087,33 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
                 2.2) Increase balance - stakerAccount.balance += totalStakerPowerPercentage * restOfFees
     
     */
+
+    let quorumMembers = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum
+
+    let epochHash = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash
+
+    let sessionHash = blake3Hash(epochHash+blockIndex)
+
+    let poolPubKeyToReward = selectQuorumMemberToReward(quorumMembers,sessionHash)
     
     let blockRewardAsBigInt = getBlockReward()
 
     let blockRewardAsNumber = Number(blockRewardAsBigInt)
 
+
     WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.coinsAllocated += blockRewardAsNumber
 
     WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.coinsAllocations.blockRewards += blockRewardAsNumber
 
+    
     let blockRewardAsBigIntInWei = blockRewardAsBigInt * BigInt(10) ** BigInt(18)
 
     totalFees += blockRewardAsBigIntInWei
 
 
-    let blockCreatorContractStorage = await getFromState(blockCreatorPubKey+'(POOL)_STORAGE_POOL')
+    let blockCreatorContractStorage = await getFromState(poolPubKeyToReward+'(POOL)_STORAGE_POOL')
 
-    let blockCreatorAccount = await getUserAccountFromState(blockCreatorPubKey)
+    let blockCreatorAccount = await getUserAccountFromState(poolPubKeyToReward)
 
     let poolTotalPower = BigInt(blockCreatorContractStorage.totalStakedKly) + BigInt(blockCreatorContractStorage.totalStakedUno)
 
@@ -1313,7 +1336,7 @@ let verifyBlock = async block => {
 
         */
         
-        await distributeFeesAmongPoolAndStakers(rewardsAndSuccessfulTxsCollector.fees,block.creator)
+        await distributeFeesAmongPoolAndStakers(rewardsAndSuccessfulTxsCollector.fees,block.index)
 
             
         //________________________________________________COMMIT STATE__________________________________________________    
