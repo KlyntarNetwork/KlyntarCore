@@ -27,21 +27,13 @@ let restoreCachesForApprovementThread=async()=>{
 
     // Function to restore metadata since the last turn off
 
-    let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
-
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
-
-
-    for(let poolPubKey of poolsRegistry){
-
-        let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+    let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
         
-        currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
-
-    }
+    currentEpochMetadata.FINALIZATION_STATS.set(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,{index,hash,afp})
 
 }
 
