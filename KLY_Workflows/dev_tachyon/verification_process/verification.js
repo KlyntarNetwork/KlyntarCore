@@ -965,66 +965,53 @@ export let startVerificationThread=async()=>{
 
         let localVtMetadataForPool, metadataFromAefpForThisPool
 
-
-        // eslint-disable-next-line no-constant-condition
-        while(true){            
-
-            let poolPubKey = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
-
-            localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
-
-            metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPools[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+        let poolPubKey = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
 
-            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index) break
+        localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
+
+        metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPools[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+
+        await checkConnectionWithPool(poolPubKey,vtEpochHandler)
+
+        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
+        GLOBAL_CACHES.STUFF_CACHE.set('FINAL_BLOCK_INFO:'+poolPubKey,infoFromAefpAboutLastBlocksByPools[poolPubKey])
 
 
-            await checkConnectionWithPool(poolPubKey,vtEpochHandler)
-
-
-            let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
-
-            GLOBAL_CACHES.STUFF_CACHE.set('FINAL_BLOCK_INFO:'+poolPubKey,infoFromAefpAboutLastBlocksByPools[poolPubKey])
-
-            if(tunnelHandler){
+        if(tunnelHandler){
             
-                let biggestHeightInCache = tunnelHandler.hasUntilHeight
+            let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
-                let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
+            let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
+            
+            // Start the cycle to process all the blocks
+            
+            while(stepsForWhile > 0){
 
-                if(stepsForWhile <= 0){
+                // Move to next one
+                if(metadataFromAefpForThisPool.index === localVtMetadataForPool.index) break
+    
 
-                    break
+                let blockIdToGet = vtEpochIndex+':'+poolPubKey+':'+(localVtMetadataForPool.index+1)
+    
+                let block = tunnelHandler.cache.get(blockIdToGet)
+    
+    
+                if(block){
+    
+                    await verifyBlock(block)
+
+                    tunnelHandler.cache.delete(blockIdToGet)
 
                 }
                 
-                // Start the cycle to process all the blocks
-                while(stepsForWhile > 0){
-
-                    // Move to next one
-                    if(metadataFromAefpForThisPool.index === localVtMetadataForPool.index) break
+                stepsForWhile--
         
-
-                    let blockIdToGet = vtEpochIndex+':'+poolPubKey+':'+(localVtMetadataForPool.index+1)
-        
-                    let block = tunnelHandler.cache.get(blockIdToGet)
-        
-        
-                    if(block){
-        
-                        await verifyBlock(block)
-
-                        tunnelHandler.cache.delete(blockIdToGet)
-
-                    }
-                    
-                    stepsForWhile--
-            
-                }
-
             }
 
         }
+
 
         if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
