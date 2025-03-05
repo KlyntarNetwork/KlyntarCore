@@ -325,6 +325,9 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         FINALIZATION_PROOFS.delete('TMB:'+blockIDForHunting)
 
 
+        if(proofsGrabber.acceptedIndex >= 1) proofsGrabber.finishedVoting = true
+
+
         // Repeat procedure for the next block and store the progress
         await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).then(()=>{
 
@@ -435,11 +438,11 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     await openConnectionsWithQuorum(epochHandler,currentEpochMetadata)
 
-    let haveAtLeastOneApprovedBlock = proofsGrabber.acceptedIndex > -1
 
     let epochIsOutdated = !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)
 
-    if(haveAtLeastOneApprovedBlock && epochIsOutdated){
+
+    if(proofsGrabber.finishedVoting && epochIsOutdated){
 
         await grabEpochFinalizationProofs()
 

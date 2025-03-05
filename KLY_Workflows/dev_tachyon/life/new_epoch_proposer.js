@@ -27,7 +27,7 @@ export let grabEpochFinalizationProofs=async()=>{
     }
 
 
-    let iAmSequencer = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
+    let iAmSequencer = CONFIGURATION.NODE_LEVEL.PUBLIC_KEY === CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
 
 
     if(iAmSequencer){
@@ -52,26 +52,21 @@ export let grabEpochFinalizationProofs=async()=>{
 
         let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}`).catch(()=>null)
 
-        if(!aefpExistsLocally){
+        let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
+
+        if(!aefpExistsLocally && proofsGrabber && proofsGrabber.acceptedIndex > 1){
+
+            let firstBlockID = atEpochHandler.id+':'+pubKeyOfLeader+':0'
+
+            let afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
 
             epochFinishProposition = {
 
-                afpForFirstBlock:{},
+                afpForFirstBlock,
 
-                lastBlockProposition:currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                lastBlockProposition:{ index: proofsGrabber.acceptedIndex, hash: proofsGrabber.acceptedHash, afp: proofsGrabber.afpForPrevious }
 
             }
-
-            // In case we vote for index > 0 - we need to add the AFP proof to proposition as a proof that first block by this leader has such hash
-            // This will be added to AEFP and used on verification thread
-
-            if(epochFinishProposition.lastBlockProposition.index >= 0){
-
-                let firstBlockID = atEpochHandler.id+':'+pubKeyOfLeader+':0'
-
-                epochFinishProposition.afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
-
-            }    
 
         }
 
@@ -108,6 +103,7 @@ export let grabEpochFinalizationProofs=async()=>{
                 
                 
                 */
+                
 
                 if(typeof possibleAgreements === 'object'){                    
 
