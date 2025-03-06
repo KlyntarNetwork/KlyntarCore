@@ -642,21 +642,25 @@ let returnBlocksDataForPod = async(data,connection) => {
     // Output data is {n:{block,afpForBlock},n+1:{block,afpForBlock},...,n+x:{block,afpForBlock}}
 
     let responseStructure = {}
+
     
-    
-    for(let i=0 ; i<50 ; i++){
+    for(let i=0 ; i<500 ; i++){
 
         let relativeIndex = data.fromRid+i
 
-        let blockIdByRelativeIndex = await BLOCKCHAIN_DATABASES.BLOCKS.get(relativeIndex).catch(()=>null)
+        let blockIdByRelativeIndex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(`RID:${relativeIndex}`).catch(()=>null)
 
         if(blockIdByRelativeIndex){
 
             let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIdByRelativeIndex).catch(()=>null)
 
             let afpForBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+blockIdByRelativeIndex).catch(()=>null)
-    
-            responseStructure[`RID:${relativeIndex}`] = {block,afpForBlock}
+
+            if(block && afpForBlock) {
+
+                responseStructure[`RID:${relativeIndex}`] = {block,afpForBlock}
+
+            } else break
             
         }
 

@@ -462,10 +462,6 @@ let generateBlocksPortion = async() => {
             // Store block locally
             atomicBatch.put(blockID,blockCandidate)
 
-            atomicBatch.put(WORKING_THREADS.GENERATION_THREAD.relativeIndex,blockID)
-
-            WORKING_THREADS.GENERATION_THREAD.relativeIndex++
-               
         }
     
         // Update the GENERATION_THREAD after all

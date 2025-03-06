@@ -329,7 +329,20 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 
         // Repeat procedure for the next block and store the progress
-        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).then(()=>{
+
+        let latestRID = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('RELATIVE_INDEX').catch(()=>0)
+
+        let atomicBatch = BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.batch()
+
+
+        atomicBatch.put(`RID:${latestRID}`,blockIDForHunting)
+
+        atomicBatch.put('RELATIVE_INDEX',latestRID+1)
+
+        atomicBatch.put(epochIndex+':PROOFS_GRABBER',proofsGrabber)
+
+
+        await atomicBatch.write().then(()=>{
 
             proofsGrabber.afpForPrevious = aggregatedFinalizationProof
 
