@@ -46,6 +46,13 @@ export let blocksGenerationProcess=async()=>{
 let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
+let getMempoolsFromOtherNodes = () => {
+
+    return []
+
+}
+
+
 let mockTestPairs = {
 
     // Ed25519 keypairs

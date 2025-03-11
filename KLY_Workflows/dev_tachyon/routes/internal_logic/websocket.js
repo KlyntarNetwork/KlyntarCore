@@ -638,15 +638,15 @@ let returnBlocksRange = async(data,connection)=>{
 
 let returnBlocksDataForPod = async(data,connection) => {
 
-    // Input data is {fromRid}
+    // Input data is {fromHeight}
     // Output data is {n:{block,afpForBlock},n+1:{block,afpForBlock},...,n+x:{block,afpForBlock}}
 
     let responseStructure = {}
 
     
-    for(let i=0 ; i<500 ; i++){
+    for(let i = 0 ; i < 500 ; i++){
 
-        let relativeIndex = data.fromRid+i
+        let relativeIndex = data.fromHeight + i
 
         let blockIdByRelativeIndex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(`RID:${relativeIndex}`).catch(()=>null)
 
@@ -658,7 +658,7 @@ let returnBlocksDataForPod = async(data,connection) => {
 
             if(block && afpForBlock) {
 
-                responseStructure[`RID:${relativeIndex}`] = {block,afpForBlock}
+                responseStructure[`HEIGHT:${relativeIndex}`] = {block, afpForBlock}
 
             } else break
             
