@@ -52,9 +52,13 @@ let getMempoolsFromOtherNodes = async() => {
 
         for(let nodeURL of CONFIGURATION.NODE_LEVEL.MEMPOOL_NODES){
 
-            await fetch(nodeURL+'/mempool').then(r=>r.json()).then(data=>{
+            await fetch(nodeURL+'/mempool/'+CONFIGURATION.NODE_LEVEL.MEMPOOL_SECRET_KEY).then(r=>r.json()).then(data=>{
 
-                console.log(data)                
+                if(Array.isArray(data)){
+
+                    NODE_METADATA.MEMPOOL.push(...data)
+
+                }
 
             }).catch(()=>{})
 
@@ -74,7 +78,7 @@ let startRequestsForMempools = async() => {
 }
 
 
-// startRequestsForMempools()
+startRequestsForMempools()
 
 
 
@@ -162,7 +166,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
         }
 
-        console.log(`TXID is => `,web1337.blake3(signedTx.sig))
+        console.log(`DEBUG: TXID is => `,web1337.blake3(signedTx.sig))
 
         NODE_METADATA.MEMPOOL.push(signedTx)
     }
@@ -200,7 +204,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
     let signedPqcTx = await web1337.createPostQuantumTransaction('TX','bliss',from,myPrivateKey,nonce,fee,payload)
 
-    console.log(`PQC TXID is => `,web1337.blake3(signedPqcTx.sig))
+    console.log(`DEBUG: PQC TXID is => `,web1337.blake3(signedPqcTx.sig))
 
     NODE_METADATA.MEMPOOL.push(signedPqcTx)
 

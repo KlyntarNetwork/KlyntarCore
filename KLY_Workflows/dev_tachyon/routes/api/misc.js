@@ -232,6 +232,24 @@ FASTIFY_SERVER.get('/checkpoints/:epoch_index',(_request,response)=>{
 
 
 
+// Returns mempool
+
+FASTIFY_SERVER.get('/mempool/:secret_key',async(request,response)=>{
+
+    response.header('Access-Control-Allow-Origin','*')
+
+    let secretKey = request.params.secret_key
+
+    if(CONFIGURATION.NODE_LEVEL.MEMPOOL_SECRET_KEY === secretKey){
+
+        response.send(NODE_METADATA.MEMPOOL)
+
+        NODE_METADATA.MEMPOOL = [] // clean
+
+    } else response.send({err:'Wrong secret key'})
+
+})
+
 
 
 // Handler to accept transaction, make overview and add to mempool ✅
@@ -283,21 +301,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
     let whoIsCurrentLeader = await getCurrentLeaderURL()
 
-    if(!whoIsCurrentLeader?.isMeLeader){
-
-        if(whoIsCurrentLeader.url){
-
-            fetch(whoIsCurrentLeader.url+'/transaction',{
-
-                method:'POST', body:request.body
-    
-            }).catch(error=>error)
-
-            response.send({status:`Ok, tx redirected to current leader`})
-
-        } else response.send({err:`Impossible to redirect to current leader`})
-
-    } else if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
+    if(CONFIGURATION.NODE_LEVEL.ANYWAY_PUSH_TO_MEMPOOL && NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
 
         let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -319,7 +323,23 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
 
         } else response.send({err:'Try later'})
 
-    } else response.send({err:'Mempool is fullfilled'})
+    } else if(!whoIsCurrentLeader?.isMeLeader){
+
+        if(whoIsCurrentLeader.url){
+
+            fetch(whoIsCurrentLeader.url+'/transaction',{
+
+                method:'POST', body:request.body
+    
+            }).catch(error=>error)
+
+            response.send({status:`Ok, tx redirected to current leader`})
+
+        } else response.send({err:`Impossible to redirect to current leader`})
+
+    }
+    
+    else response.send({err:'Mempool is fullfilled'})
     
 })
 
