@@ -46,11 +46,36 @@ export let blocksGenerationProcess=async()=>{
 let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
-let getMempoolsFromOtherNodes = () => {
+let getMempoolsFromOtherNodes = async() => {
 
-    return []
+    if(CONFIGURATION.NODE_LEVEL.MEMPOOL_NODES){
+
+        for(let nodeURL of CONFIGURATION.NODE_LEVEL.MEMPOOL_NODES){
+
+            await fetch(nodeURL+'/mempool').then(r=>r.json()).then(data=>{
+
+                console.log(data)                
+
+            }).catch(()=>{})
+
+        }
+
+    }
 
 }
+
+
+let startRequestsForMempools = async() => {
+
+    await getMempoolsFromOtherNodes()
+
+    setTimeout(startRequestsForMempools,3000)
+
+}
+
+
+// startRequestsForMempools()
+
 
 
 let mockTestPairs = {

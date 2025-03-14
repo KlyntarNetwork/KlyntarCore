@@ -19,7 +19,8 @@
 
         "OPTIONAL_SEQUENCER":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
 
-        "POINT_OF_DISTRIBUTION":"ws://localhost:9999",
+        "POINT_OF_DISTRIBUTION_WS":"ws://localhost:9999",
+        "POINT_OF_DISTRIBUTION_HTTP":"http://localhost:7332",
     
         "EXTRA_DATA_TO_BLOCK":{
             "hello":"world"
@@ -32,6 +33,12 @@
         "TXS_MEMPOOL_SIZE":300000,
         
         "BOOTSTRAP_NODES":[
+            "http://localhost:7332",
+            "http://localhost:7333",
+            "http://localhost:44444"
+        ],
+
+        "MEMPOOL_NODES":[
             "http://localhost:7332",
             "http://localhost:7333",
             "http://localhost:44444"

@@ -1,12 +1,12 @@
 import {blake3Hash, logColors, customLog, pathResolve, gracefulStop, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
-import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
-
 import {getFirstBlockInEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_transactions/delayed_transactions.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../globals.js'
+
+import {getCurrentEpochQuorum, getQuorumMajority} from '../common_functions/quorum_related.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
@@ -70,9 +70,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         let majority = getQuorumMajority(currentEpochHandler)
 
-        let quorumNodesUrls = await getQuorumUrlsAndPubkeys()
-
-
 
         let aefpAndFirstBlockData = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`) || {} // {firstBlockCreator,firstBlockHash,aefp}
 
@@ -124,41 +121,35 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 }else{
 
-                    // Ask quorum for AEFP
+                    // Ask point of distribution
 
-                    for(let quorumMemberUrl of quorumNodesUrls){
+                    let urlForRequest = CONFIGURATION.NODE_LEVEL.POINT_OF_DISTRIBUTION_HTTP
 
-                        const controller = new AbortController()
+                    const controller = new AbortController()
 
-                        setTimeout(() => controller.abort(), 2000)
+                    setTimeout(() => controller.abort(), 2000)
+        
+                    let itsProbablyAggregatedEpochFinalizationProof = await fetch(
+                        
+                        urlForRequest+`/aggregated_epoch_finalization_proof/${currentEpochHandler.id}`,{signal:controller.signal}
+                    
+                    ).then(r=>r.json()).catch(()=>false)
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(
-                            
-                            quorumMemberUrl+`/aggregated_epoch_finalization_proof/${currentEpochHandler.id}`,{signal:controller.signal}
-                        
-                        ).then(r=>r.json()).catch(()=>false)
-                
-                        
-                        if(itsProbablyAggregatedEpochFinalizationProof){
-                
-                            let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,currentEpochHandler.quorum,majority,currentEpochFullID)
-    
-                            if(aefpPureObject){
-    
-                                aefpAndFirstBlockData.aefp = aefpPureObject
+                    
+                    if(itsProbablyAggregatedEpochFinalizationProof){
+            
+                        let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,currentEpochHandler.quorum,majority,currentEpochFullID)
 
-                                // Store locally
+                        if(aefpPureObject){
 
-                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${currentEpochHandler.id}`,aefpPureObject).catch(()=>{})
+                            aefpAndFirstBlockData.aefp = aefpPureObject
 
-                                // No sense to find more
+                            // Store locally
 
-                                break
-    
-                            }
-                                        
+                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${currentEpochHandler.id}`,aefpPureObject).catch(()=>{})
+
                         }
-                
+                                    
                     }
 
                 }
