@@ -174,8 +174,8 @@ export let BLOCKCHAIN_DATABASES = {
 
 }
 
-// Required by KLY-EVM JSON-RPC API, so make it available via global
 
-global.STATE = BLOCKCHAIN_DATABASES.STATE
+
+global.STATE = BLOCKCHAIN_DATABASES.STATE // required by KLY-EVM JSON-RPC API, so make it available via global
 
 global.CREATED_EVM_ACCOUNTS = new Set()

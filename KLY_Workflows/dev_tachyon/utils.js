@@ -31,10 +31,10 @@ export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETW
 
 
 export let getCurrentLeaderURL = async () => {
-
+ 
     let sequencerRole = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
 
-    if(sequencerRole) return {isMeLeader:true}
+    if(sequencerRole || CONFIGURATION.NODE_LEVEL.ANYWAY_PUSH_TO_MEMPOOL) return {isMeLeader:true}
 
     else {
 
