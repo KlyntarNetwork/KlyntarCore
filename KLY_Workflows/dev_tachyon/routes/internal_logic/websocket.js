@@ -723,7 +723,7 @@ klyntarWebsocketServer.on('request',request=>{
 
             if(data.jsonrpc && data.method){
 
-                // It's EVM JSO-RPC via webscoket
+                // It's EVM JSON-RPC via webscoket
 
                 let responseData = await WEBSOCKET_EVM_ROUTE_HANDLER(data)
 
