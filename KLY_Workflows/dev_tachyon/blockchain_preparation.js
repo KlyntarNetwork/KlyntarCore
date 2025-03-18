@@ -21,29 +21,6 @@ import fs from 'fs'
 
 
 
-let restoreCachesForApprovementThread=async()=>{
-
-    // Function to restore metadata since the last turn off
-
-    let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-    let epochIndex = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-    
-    let {index,hash,afp} = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-        
-    currentEpochMetadata.FINALIZATION_STATS.set(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,{index,hash,afp})
-
-}
-
-
-
-
-
-
-
-
 let setGenesisToState=async()=>{
 
 
@@ -493,17 +470,8 @@ export let prepareBlockchain=async()=>{
 
         FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
 
-        TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
-    
-        FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
-        
-        SYNCHRONIZER:new Map() // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
-
+        TEMP_CACHE:new Map(),  // simple key => value mapping to be used as temporary cache for epoch
+            
     })
-
-
-    // Fill the FINALIZATION_STATS with the latest, locally stored data
-
-    await restoreCachesForApprovementThread()
 
 }

@@ -4,7 +4,7 @@ import {verifyAggregatedFinalizationProof} from '../../common_functions/work_wit
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
-import {signEd25519} from '../../../../KLY_Utils/utils.js'
+import {signEd25519, verifyEd25519} from '../../../../KLY_Utils/utils.js'
 
 
 
@@ -48,6 +48,8 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
+    let atEpochHandlerIndex = atEpochHandler.id
+
     let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
@@ -67,34 +69,56 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     if(typeof proposition === 'object'){
 
-        if(typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'){
+        // Verify the signature
 
-            let pubKeyOfCurrentLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
+        let pubKeyOfCurrentLeader = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
+
+        let payloadSignaIsOk = await verifyEd25519(JSON.stringify(proposition.payload),proposition.payloadSignature,pubKeyOfCurrentLeader)
+
+        let typeCheckIsOk = typeof proposition.payload.afpForFirstBlock === 'object' && typeof proposition.payload.lastBlockProposition === 'object' && typeof proposition.payload.lastBlockProposition.afp === 'object'
+
+        if(payloadSignaIsOk && typeCheckIsOk){
+
+            // First of all - check if mutex is ok
+
+            let votingMutex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('READY_FOR_EPOCH_FINISH:'+atEpochHandlerIndex).catch(()=>false)
+
+            let votingMutexTmb = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('READY_FOR_EPOCH_FINISH_TMB:'+atEpochHandlerIndex).catch(()=>false)
+
+            if(!votingMutex || !votingMutexTmb){
+
+                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('READY_FOR_EPOCH_FINISH_REQUEST:'+atEpochHandlerIndex,true).catch(()=>{})
+
+                response.send(responseStructure)
+
+                return
+
+            }
 
             // Structure is {index,hash,afp}
 
-            let finalizationStatsForBlockGenerator = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfCurrentLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+            let finalizationStatsForBlockGenerator = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(atEpochHandlerIndex+':'+pubKeyOfCurrentLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
 
-            if(proposition.lastBlockProposition.index >= finalizationStatsForBlockGenerator.index){
+            if(proposition.payload.lastBlockProposition.index >= finalizationStatsForBlockGenerator.index){
 
-                let lastBlockAfpIsOk = await verifyAggregatedFinalizationProof(proposition.lastBlockProposition.afp,atEpochHandler)
+                let lastBlockAfpIsOk = await verifyAggregatedFinalizationProof(proposition.payload.lastBlockProposition.afp,atEpochHandler)
 
                 if(lastBlockAfpIsOk){
 
-                    // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
+                    // Try to define the first block hash. For this, use the proposition.payload.afpForFirstBlock
                     
                     let hashOfFirstBlockByLastLeaderInThisEpoch
 
                     let blockIdOfFirstBlock = atEpochHandler.id+':'+pubKeyOfCurrentLeader+':0' // first block has index 0 - numeration from 0
 
-                    if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.lastBlockProposition.index>=0){
+                    if(blockIdOfFirstBlock === proposition.payload.afpForFirstBlock.blockID && proposition.payload.lastBlockProposition.index>=0){
 
                         // Verify the AFP for first block
 
-                        let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,atEpochHandler)
+                        let afpIsOk = await verifyAggregatedFinalizationProof(proposition.payload.afpForFirstBlock,atEpochHandler)
 
-                        if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
+                        if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.payload.afpForFirstBlock.blockHash
 
 
                     }
@@ -103,7 +127,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                         // Send AEFP signature
 
-                        let {index,hash} = proposition.lastBlockProposition
+                        let {index,hash} = proposition.payload.lastBlockProposition
 
                         let dataToSign = `EPOCH_DONE:0:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
                 

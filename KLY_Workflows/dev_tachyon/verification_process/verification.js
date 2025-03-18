@@ -6,8 +6,6 @@ import {customLog, blake3Hash, logColors, gracefulStop} from '../../../KLY_Utils
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
 
-import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js'
-
 import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
@@ -15,6 +13,8 @@ import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
 import {executeDelayedTransaction} from '../life/find_new_epoch.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
+
+import {isMyCoreVersionOld, epochStillFresh} from '../utils.js'
 
 import {vtStatsLog} from '../common_functions/logging.js'
 
@@ -108,7 +108,7 @@ export let getBlock = async (epochIndex,blockCreator,index) => {
 
             // Combine all nodes we know about and try to find block there
             
-            let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
+            let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
     
             for(let host of allKnownNodes){
 

@@ -23,12 +23,11 @@ export default {
         
         })
 
-        //Вот процесс генерации для участников - они могут это делать приватно у себя
-        //Generation process - signers can do it privately on theirs machines
+        // Generation process - signers can do it privately on theirs machines
         const {verificationVector,secretKeyContribution} = dkg.generateContribution(bls,signers.map(x=>x.id),threshold)
       
-        //To transfer over network in hex
-        //Verification vector можем публиковать - для каждого в группе. Только запоминать порядок индексов
+        // To transfer over network in hex
+        // Verification vector can be published
         let serializedVerificationVector=verificationVector.map(x=>x.serializeToHexStr())
 
         let serializedSecretKeyContribution=secretKeyContribution.map(x=>x.serializeToHexStr())
@@ -48,13 +47,16 @@ export default {
     
     verifyShareTBLS:(hexMyId,hexSomeSignerSecretKeyContribution,hexSomeSignerVerificationVector)=>{
         
-        //Deserialize at first from hex
+        // Deserialize at first from hex
+        
         let someSignerSecretKeyContribution=bls.deserializeHexStrToSecretKey(hexSomeSignerSecretKeyContribution)
         
         let someSignerVerificationVector=hexSomeSignerVerificationVector.map(x=>bls.deserializeHexStrToPublicKey(x))
+        
         let myId = bls.deserializeHexStrToSecretKey(hexMyId)
     
-        // Теперь когда нужный член групы получил этот secret sk,то он проверяет его по VSS с помощью verification vector of the sender и сохраняет его если всё ок
+        // Now when the required group member has received this secret sk, it checks it against VSS using the verification vector of the sender and saves it if everything is ok
+        
         const isVerified = dkg.verifyContributionShare(bls,myId,someSignerSecretKeyContribution,someSignerVerificationVector)
      
         return isVerified
@@ -88,11 +90,11 @@ export default {
 
     /*
 
-    На вход поступают данные вида
+    Input data is
 
     {
 
-        hexMyId - id из первоначального массива signers из generateTBLS
+        hexMyId - id from initial array signers from generateTBLS
         sharedPayload:[
             {
                 verificationVector://VV of signer1 - array of hex values
@@ -115,7 +117,8 @@ export default {
 */
     signTBLS:(hexMyId,sharedPayload,message)=>{
 
-        //Derive group TBLS secret key for this signer
+        // Derive group TBLS secret key for this signer
+
         let groupSecret=dkg.addContributionShares(
 
             sharedPayload
@@ -125,7 +128,7 @@ export default {
 
         )
 
-        //The rest of t signers do the same with the same message
+        // The rest of t signers do the same with the same message
 
         return JSON.stringify({sigShare:groupSecret.sign(message).serializeToHexStr(),id:hexMyId})
 
@@ -140,7 +143,8 @@ export default {
     */
     buildSignature:signaturesArray=>{
 
-        //Now join signatures by t signers
+        // Now join signatures by T signers
+        
         const groupsSig = new bls.Signature()
 
         let sigs=[],signersIds=[]
@@ -155,7 +159,7 @@ export default {
 
         groupsSig.recover(sigs,signersIds)
 
-        //blsA.deserializeHexStrToSignature(groupsSig.serializeToHexStr())
+        // blsA.deserializeHexStrToSignature(groupsSig.serializeToHexStr())
 
         return groupsSig.serializeToHexStr()
 
@@ -164,9 +168,9 @@ export default {
     verifyTBLS:(hexGroupPubKey,hexSignature,signedMessage)=>{
 
 
-        let groupPubKey=bls.deserializeHexStrToPublicKey(hexGroupPubKey),
+        let groupPubKey = bls.deserializeHexStrToPublicKey(hexGroupPubKey)
 
-            verified=groupPubKey.verify(bls.deserializeHexStrToSignature(hexSignature),signedMessage)
+        let verified = groupPubKey.verify(bls.deserializeHexStrToSignature(hexSignature),signedMessage)
 
 
         return verified

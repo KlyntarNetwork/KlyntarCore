@@ -92,6 +92,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 Reminder: AEFP structure is
 
                     {
+                        epochIndex,
+                        epochHash,
                         lastLeader:<index of ed25519 pubkey of some pool in sequence of pools in current epoch>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
@@ -173,19 +175,18 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             
                 let storedFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochHandler.id}`).catch(()=>null)
 
-                if(!storedFirstBlockData){
-
-                    // Try to find via network requests
-
-                    storedFirstBlockData = await getFirstBlockInEpoch(currentEpochHandler,getBlock)
-
-                }
 
                 if(storedFirstBlockData){
 
                     aefpAndFirstBlockData.firstBlockCreator = storedFirstBlockData.firstBlockCreator
 
                     aefpAndFirstBlockData.firstBlockHash = storedFirstBlockData.firstBlockHash
+
+                } else {
+
+                    // Try to find via network requests
+
+                    storedFirstBlockData = await getFirstBlockInEpoch(currentEpochHandler,getBlock)
 
                 }
 
@@ -379,11 +380,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     FINALIZATION_PROOFS:new Map(),
 
-                    FINALIZATION_STATS:new Map(),
-
-                    TEMP_CACHE:new Map(),
-
-                    SYNCHRONIZER:new Map()
+                    TEMP_CACHE:new Map()
             
                 }
 
@@ -417,10 +414,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 }
         
                 EPOCH_METADATA_MAPPING.delete(currentEpochFullID)
-
-                // Fill with the null-data
-
-                nextTemporaryObject.FINALIZATION_STATS.set(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                 // Set next temporary object by ID
 

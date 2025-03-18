@@ -2,6 +2,8 @@ import {pathResolve,blake3Hash} from '../../KLY_Utils/utils.js'
 
 import {BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
+import {getCurrentLeaderURL} from './utils.js'
+
 import level from 'level'
 
 import os from 'os'
@@ -28,20 +30,10 @@ if (platform === 'win32' || platform === 'darwin') {
 } else versionFilePath = '/home/vladartem/KlyntarCore/KLY_Workflows/dev_tachyon/version.txt'
 
 
-// First of all - define the NODE_METADATA globally available object
-
-export let NODE_METADATA = {
-
-    CORE_MAJOR_VERSION:+(fs.readFileSync(versionFilePath).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
-    
-    MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
-
-    PEERS:[] // peers to exchange data with. Just strings with addresses    
-
-}
 
 
-global.MEMPOOL = NODE_METADATA.MEMPOOL
+global.CORE_MAJOR_VERSION = +(fs.readFileSync(versionFilePath).toString()) // major version of core. In case network decides to add modification, fork is created & software should be updated
+
 
 
 
@@ -49,6 +41,10 @@ export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for spec
 
 
 export let GLOBAL_CACHES = {
+
+    VOTING_REQUESTS: new Map(),
+
+    MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
     STATE_CACHE:new Map(), // cache to hold accounts of EOAs/contracts. Mapping(ID => ACCOUNT_STATE). Used by VERIFICATION_THREAD
 
@@ -59,6 +55,8 @@ export let GLOBAL_CACHES = {
     STATE_CHANGES_CACHE: { put: {}, delete: {}, update: {} } // ... contains changes of state between blocks to provide state rollback functionality
 
 }
+
+global.MEMPOOL = GLOBAL_CACHES.MEMPOOL
 
 
 export let WORKING_THREADS = {
@@ -179,3 +177,5 @@ export let BLOCKCHAIN_DATABASES = {
 global.STATE = BLOCKCHAIN_DATABASES.STATE // required by KLY-EVM JSON-RPC API, so make it available via global
 
 global.CREATED_EVM_ACCOUNTS = new Set()
+
+global.getCurrentLeaderURL = getCurrentLeaderURL // required by KLY-EVM JSON-RPC API, so make it available via global

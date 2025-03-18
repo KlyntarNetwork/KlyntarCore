@@ -12,8 +12,6 @@ import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {getUserAccountFromState} from './state_interactions.js'
 
-import {getAllKnownPeers} from '../utils.js'
-
 import Block from '../structures/block.js'
 
 
@@ -86,6 +84,10 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
         &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.epochIndex === 'number'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.epochHash === 'string'
+        &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastLeader === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
@@ -127,39 +129,46 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
         */
 
-        let {lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
+        let {epochIndex,epochHash,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
 
-        let dataThatShouldBeSigned = `EPOCH_DONE:${lastLeader}:${lastIndex}:${lastHash}:${hashOfFirstBlockByLastLeader}:${epochFullID}`
+        let epochFullIDFromAefp = epochHash+'#'+epochIndex
+
+
+        if(epochFullIDFromAefp === epochFullID){
+
+            let dataThatShouldBeSigned = `EPOCH_DONE:${lastLeader}:${lastIndex}:${lastHash}:${hashOfFirstBlockByLastLeader}:${epochFullID}`
         
-        let okSignatures = 0
-
-        let unique = new Set()
-        
-
-        for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
-
-            let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
-
-            if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
-
-                unique.add(signerPubKey)
-
-                okSignatures++
-
-            }
-
-        }
-
+            let okSignatures = 0
     
-        if(okSignatures>=majority){
-
-            return {
+            let unique = new Set()
             
-                lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
-        
-                proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
-
+    
+            for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
+    
+                let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
+    
+                if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+    
+                    unique.add(signerPubKey)
+    
+                    okSignatures++
+    
+                }
+    
             }
+    
+        
+            if(okSignatures>=majority){
+    
+                return {
+                
+                    epochIndex,epochHash,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
+            
+                    proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
+    
+                }
+    
+            }    
 
         }
         
@@ -271,7 +280,7 @@ export let getFirstBlockInEpoch = async(epochHandler,getBlockFunction) => {
 
     // Get all known peers and call GET /first_block_assumption/:epoch_index
 
-    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...getAllKnownPeers()]
+    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
 
     let promises = []
     

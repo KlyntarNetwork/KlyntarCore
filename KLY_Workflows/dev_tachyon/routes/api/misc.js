@@ -1,6 +1,6 @@
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
-import {EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../globals.js'
+import {EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
 
 import {getQuorumUrlsAndPubkeys} from '../../common_functions/quorum_related.js'
 
@@ -242,9 +242,9 @@ FASTIFY_SERVER.get('/mempool/:secret_key',async(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.MEMPOOL_SECRET_KEY === secretKey){
 
-        response.send(NODE_METADATA.MEMPOOL)
+        response.send(GLOBAL_CACHES.MEMPOOL)
 
-        NODE_METADATA.MEMPOOL = [] // clean
+        GLOBAL_CACHES.MEMPOOL = [] // clean
 
     } else response.send({err:'Wrong secret key'})
 
@@ -301,7 +301,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
     let whoIsCurrentLeader = await getCurrentLeaderURL()
 
-    if(CONFIGURATION.NODE_LEVEL.ANYWAY_PUSH_TO_MEMPOOL && NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
+    if(CONFIGURATION.NODE_LEVEL.ANYWAY_PUSH_TO_MEMPOOL && GLOBAL_CACHES.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
 
         let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -317,7 +317,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
         
                 response.send({status:'OK'})
         
-                NODE_METADATA.MEMPOOL.push(filteredTx)
+                GLOBAL_CACHES.MEMPOOL.push(filteredTx)
                                 
             }else response.send({err:`Can't get filtered value of tx`})
 
@@ -341,80 +341,4 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
     else response.send({err:'Mempool is fullfilled'})
     
-})
-
-
-
-
-// Handler to accept peers to exchange data with ✅
-/*
-
-To add node to local set of peers to exchange data with
-
-Params:
-
-    [symbioteID,hostToAdd(initiator's valid and resolved host)]
-
-    [0] - chain ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-    [1] - host to add       EXAMPLE: http://example.org | https://some.subdomain.org | http://cafe::babe:8888
-
-
-Returns:
-
-    'OK' - if node was added to local peers
-    '<MSG>' - if some error occured
-
-*/
-
-FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE},(request,response)=>{
-
-    let acceptedData = JSON.parse(request.body)
-
-    if(!Array.isArray(acceptedData)){
-
-        response.send({err:'Input must be a 2-elements array like [symbioteID,you_endpoint]'})
-        
-        return
-
-    }
-
-    let [networkID,domain] = acceptedData
-   
-    if(BLOCKCHAIN_GENESIS.NETWORK_ID !== networkID){
-
-        response.send({err:'Symbiotic chain not supported'})
-        
-        return
-
-    }
-
-    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.NEW_NODES){
-
-        response.send({err:'Route is off'})
-        
-        return
-    }
-
-    if(typeof domain==='string' && domain.length<=256){
-        
-        //Add more advanced logic in future(or use plugins - it's even better)
-
-        let nodes = NODE_METADATA.PEERS
-        
-        if(!(nodes.includes(domain) || CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.includes(domain))){
-            
-            nodes.length<CONFIGURATION.NODE_LEVEL.MAX_CONNECTIONS
-            ?
-            nodes.push(domain)
-            :
-            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
-    
-            response.send({ok:'Your node has been added'})
-    
-        }else response.send({ok:'Your node already in scope'})
-    
-    }else response.send({err:'Wrong types => endpoint(domain) must be 256 chars in length or less'})
-
-
-
 })

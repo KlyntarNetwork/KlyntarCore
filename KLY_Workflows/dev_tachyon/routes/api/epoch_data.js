@@ -10,6 +10,8 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
+        epochIndex:<index of epoch>,
+        epochHash:<hash of epoch>,
         lastLeader:<index of Ed25519 pubkey of some pool in leaders sequence>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,

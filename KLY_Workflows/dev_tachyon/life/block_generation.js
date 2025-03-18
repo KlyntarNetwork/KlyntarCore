@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS, NODE_METADATA} from '../globals.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
@@ -11,8 +11,6 @@ import {signEd25519, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 import {blockLog} from '../common_functions/logging.js'
 
 import {CONFIGURATION} from '../../../klyntar_core.js'
-
-import {getAllKnownPeers} from '../utils.js'
 
 import Block from '../structures/block.js'
 
@@ -43,7 +41,7 @@ export let blocksGenerationProcess=async()=>{
 }
 
 
-let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
+let getTransactionsFromMempool = () => GLOBAL_CACHES.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
 let getMempoolsFromOtherNodes = async() => {
@@ -56,7 +54,7 @@ let getMempoolsFromOtherNodes = async() => {
 
                 if(Array.isArray(data)){
 
-                    NODE_METADATA.MEMPOOL.push(...data)
+                    GLOBAL_CACHES.MEMPOOL.push(...data)
 
                 }
 
@@ -168,7 +166,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
         console.log(`DEBUG: TXID is => `,web1337.blake3(signedTx.sig))
 
-        NODE_METADATA.MEMPOOL.push(signedTx)
+        GLOBAL_CACHES.MEMPOOL.push(signedTx)
     }
 
     // Also, for tests, create tx with PQC account
@@ -206,7 +204,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
     console.log(`DEBUG: PQC TXID is => `,web1337.blake3(signedPqcTx.sig))
 
-    NODE_METADATA.MEMPOOL.push(signedPqcTx)
+    GLOBAL_CACHES.MEMPOOL.push(signedPqcTx)
 
 }
 
@@ -227,7 +225,13 @@ Ask the network in special order:
 let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => {
 
 
-    let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
+    let allKnownNodes = [
+        
+        CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,
+        
+        ...await getQuorumUrlsAndPubkeys(), ...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES
+    
+    ]
 
     let previousEpochIndex = epochHandler.id-1
 
@@ -461,7 +465,7 @@ let generateBlocksPortion = async() => {
     
         */
 
-        let numberOfBlocksToGenerate = Math.ceil(NODE_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
+        let numberOfBlocksToGenerate = Math.ceil(GLOBAL_CACHES.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
         //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
