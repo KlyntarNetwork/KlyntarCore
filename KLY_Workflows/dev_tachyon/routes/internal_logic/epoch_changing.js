@@ -77,9 +77,9 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
         let typeCheckIsOk = typeof proposition.payload.afpForFirstBlock === 'object' && typeof proposition.payload.lastBlockProposition === 'object' && typeof proposition.payload.lastBlockProposition.afp === 'object'
 
-        if(payloadSignaIsOk && typeCheckIsOk){
+        if(payloadSignaIsOk && typeCheckIsOk && proposition.payload.epochIndex === atEpochHandlerIndex){
 
-            // First of all - check if mutex is ok
+            // First of all - check if you're ready for epoch finish and stopped the finalization proofs generation
 
             let readyToVoteForEpochFinish = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+atEpochHandlerIndex).catch(()=>false)
 

@@ -29,6 +29,8 @@ let votingThreadIteration = async() => {
 
         await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('EPOCH_FINISH_RESPONSE:'+epochIndex,true).catch(()=>{})
 
+        GLOBAL_CACHES.VOTING_REQUESTS.clear()
+
     } else {
 
         for (const [blockID, votingRequest] of GLOBAL_CACHES.VOTING_REQUESTS) {
