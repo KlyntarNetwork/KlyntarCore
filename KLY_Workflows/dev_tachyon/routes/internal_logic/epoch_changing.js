@@ -81,13 +81,13 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
             // First of all - check if mutex is ok
 
-            let votingMutex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('READY_FOR_EPOCH_FINISH:'+atEpochHandlerIndex).catch(()=>false)
+            let readyToVoteForEpochFinish = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+atEpochHandlerIndex).catch(()=>false)
 
-            let votingMutexTmb = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('READY_FOR_EPOCH_FINISH_TMB:'+atEpochHandlerIndex).catch(()=>false)
+            if(!readyToVoteForEpochFinish){
 
-            if(!votingMutex || !votingMutexTmb){
-
-                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('READY_FOR_EPOCH_FINISH_REQUEST:'+atEpochHandlerIndex,true).catch(()=>{})
+                // Send the request to stop finalization proofs generation
+                
+                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('EPOCH_FINISH_REQUEST:'+atEpochHandlerIndex,true).catch(()=>{})
 
                 response.send(responseStructure)
 

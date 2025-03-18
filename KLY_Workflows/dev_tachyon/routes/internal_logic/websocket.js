@@ -293,7 +293,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                         let votingRequest = {
 
-                            epochIndex, finalizationProof, tmbProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
+                            epochIndex, blockCreator:block.creator, finalizationProof, tmbProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
                     
                         }
 
@@ -514,7 +514,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
 
                         let votingRequest = {
 
-                            epochIndex, finalizationProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
+                            epochIndex, blockCreator, finalizationProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
                     
                         }
 

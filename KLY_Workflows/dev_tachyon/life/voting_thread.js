@@ -1,4 +1,7 @@
-import { GLOBAL_CACHES } from "../globals.js"
+import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../globals.js"
+
+import { CONFIGURATION } from "../../../klyntar_core.js"
+
 
 
 
@@ -13,18 +16,53 @@ export let startVotingThread = async() => {
 
 let votingThreadIteration = async() => {
 
-    let epochFinishPropositionAccepted = ''
-
-    for (const [key, value] of GLOBAL_CACHES.VOTING_REQUESTS) {
-
-        console.log(`Ключ: ${key}, Значение: ${value}`);
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
+    let epochIndex = epochHandler.id
+    
+
+    // Check if we have the request for epoch finish - if so, send response and skip the following loop
+
+    let epochFinishRequest = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_REQUEST:'+epochIndex).catch(()=>false)
+
+    if(epochFinishRequest){
+
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('EPOCH_FINISH_RESPONSE:'+epochIndex,true).catch(()=>{})
+
+    } else {
+
+        for (const [blockID, votingRequest] of GLOBAL_CACHES.VOTING_REQUESTS) {
+
+            // Make sure that the local value of height in BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS is <= than the index you're going to vote for
+
+            let {epochIndex, blockCreator, finalizationProof, tmbProof, futureVotingDataToStore, connection, votedForHash} = votingRequest
+    
+            let localVotingStats = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+blockCreator).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
+
+            if(localVotingStats.index <= futureVotingDataToStore.index){
+
+                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+blockCreator,futureVotingDataToStore).then(()=>{
+
+                    // Finally send response
+
+                    if(tmbProof){
+
+                        connection.sendUTF(JSON.stringify({type:'tmb',voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,tmbProof,votedForHash}))
+
+                    } else {
+
+                        connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash}))
+
+                    }
+
+                }).catch(()=>{})
+
+            }
+
+            GLOBAL_CACHES.VOTING_REQUESTS.delete(blockID)
+        
+        }    
+
     }
-
-    // BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+block.creator,futureVotingDataToStore).then(()=>{})
-
-    // connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
-
-    // connection.sendUTF(JSON.stringify({type:'tmb',voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash:proposedBlockHash}))
 
 }
