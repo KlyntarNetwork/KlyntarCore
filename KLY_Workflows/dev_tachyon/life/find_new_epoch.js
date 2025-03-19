@@ -175,18 +175,13 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             
                 let storedFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochHandler.id}`).catch(()=>null)
 
+                storedFirstBlockData ||= await getFirstBlockInEpoch(currentEpochHandler)
 
                 if(storedFirstBlockData){
 
                     aefpAndFirstBlockData.firstBlockCreator = storedFirstBlockData.firstBlockCreator
 
                     aefpAndFirstBlockData.firstBlockHash = storedFirstBlockData.firstBlockHash
-
-                } else {
-
-                    // Try to find via network requests
-
-                    storedFirstBlockData = await getFirstBlockInEpoch(currentEpochHandler,getBlock)
 
                 }
 
@@ -372,6 +367,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 // Clean the cache
 
                 GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.clear()
+
+                GLOBAL_CACHES.VOTING_REQUESTS.clear()
 
 
                 // Create mappings & set for the next epoch

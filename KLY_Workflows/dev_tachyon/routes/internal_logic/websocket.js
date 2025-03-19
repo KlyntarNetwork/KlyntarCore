@@ -242,30 +242,6 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                         return
 
                     }
-                    
-                    // In case it's request for the third block, we'll receive AFP for the second block which includes .prevBlockHash field
-                    // This will be the assumption of hash of the first block in epoch
-
-                    if(block.index === 2) {
-
-                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`).catch(()=>false)
-
-                        if(!firstBlockAssumptionAlreadyExists){
-
-                            let objectToStore = {
-
-                                indexOfFirstBlockCreator: 0,
-
-                                afpForSecondBlock: previousBlockAFP
-
-                            }
-
-                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`,objectToStore).catch(()=>{})
-
-                        }
-
-                    }
-
 
                 }
 
@@ -474,30 +450,6 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
     
                         return
     
-                    }
-
-                    
-                    // In case it's request for the third block, we'll receive AFP for the second block which includes .prevBlockHash field
-                    // This will be the assumption of hash of the first block in epoch
-
-                    if(blockIndex === 2) {
-
-                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`).catch(()=>false)
-
-                        if(!firstBlockAssumptionAlreadyExists){
-
-                            let objectToStore = {
-
-                                indexOfFirstBlockCreator: 0,
-
-                                afpForSecondBlock: previousBlockAFP
-
-                            }
-
-                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`,objectToStore).catch(()=>{})
-
-                        }
-
                     }
     
                 }

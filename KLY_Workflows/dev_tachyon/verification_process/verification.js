@@ -435,7 +435,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
         if(!handlerWithFirstBlockOnNextEpoch.firstBlockCreator){
 
-            let findResult = await getFirstBlockInEpoch(nextEpochHandlerTemplate,getBlock)
+            let findResult = await getFirstBlockInEpoch(nextEpochHandlerTemplate)
 
             if(findResult){
 

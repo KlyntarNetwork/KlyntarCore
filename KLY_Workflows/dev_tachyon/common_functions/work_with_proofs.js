@@ -12,8 +12,6 @@ import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {getUserAccountFromState} from './state_interactions.js'
 
-import Block from '../structures/block.js'
-
 
 
 
@@ -274,61 +272,18 @@ export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epoc
 
 
 
-export let getFirstBlockInEpoch = async(epochHandler,getBlockFunction) => {
+export let getFirstBlockInEpoch = async epochHandler => {
 
-    // Check if we already tried to find first block by finding pivot in cache
+    let secondBlockIdThatShouldBeInAfp = `${epochHandler.id}:${CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER}:1`
 
-    // Get all known peers and call GET /first_block_assumption/:epoch_index
+    let afpForSecondBlock = await getVerifiedAggregatedFinalizationProofByBlockId(secondBlockIdThatShouldBeInAfp,epochHandler)
 
-    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
+    if(afpForSecondBlock){
 
-    let promises = []
-    
-    
-    for(let node of allKnownNodes){
-    
-        const controller = new AbortController()
-    
-        setTimeout(() => controller.abort(), 2000)
-                
-        promises.push(fetch(node+'/first_block_assumption/'+epochHandler.id,{signal:controller.signal}).then(r=>r.json()).catch(()=>null))
-    
-    }
-    
-    let afpForSecondBlock
-    
-    let propositions = await Promise.all(promises).then(responses=>responses.filter(Boolean)) // array where each element is {indexOfFirstBlockCreator, afpForSecondBlock}
-            
-    
-    for(let proposition of propositions){
-    
-        if(await verifyAggregatedFinalizationProof(proposition.afpForSecondBlock,epochHandler)){
-    
-            let secondBlockIdThatShouldBeInAfp = `${epochHandler.id}:${CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER}:1`
-    
-            if(secondBlockIdThatShouldBeInAfp === proposition.afpForSecondBlock.blockID){
-    
-                afpForSecondBlock = proposition.afpForSecondBlock
-    
-            }
-    
-        }
-    
-    }
-    
-    // Now get the assumption of first block(block itself), compare hashes and build the pivot to find the real first block
-    
-    let pivotPubKey = CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER
-            
-    let firstBlockByPivot = await getBlockFunction(epochHandler.id,pivotPubKey,0)
-    
-    let firstBlockHash = afpForSecondBlock?.prevBlockHash
-    
-            
-    if(firstBlockByPivot && firstBlockHash === Block.genHash(firstBlockByPivot)){
-    
-        return {firstBlockCreator:pivotPubKey,firstBlockHash}
-    
+        let firstBlockHash = afpForSecondBlock?.prevBlockHash
+
+        return {firstBlockCreator:CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER,firstBlockHash}
+
     }
 
 }

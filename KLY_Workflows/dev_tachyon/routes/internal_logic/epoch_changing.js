@@ -9,37 +9,6 @@ import {signEd25519, verifyEd25519} from '../../../../KLY_Utils/utils.js'
 
 
 
-
-/*
-
-[Info]:
-
-    Accept epoch index to return own assumption about the first block
-
-[Returns]:
-
-    {indexOfFirstBlockCreator, afpForSecondBlock}
-
-*/
-
-// Function to return assumption about the first block in epoch
-
-FASTIFY_SERVER.get('/first_block_assumption/:epoch_index',async(request,response)=>{
-
-    let firstBlockAssumption = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${request.params.epoch_index}`).catch(()=>null)
-        
-    if(firstBlockAssumption){
-
-        response.send(firstBlockAssumption)
-
-    }else response.send({err:'No assumptions found'})
-
-})
-
-
-
-
-
 // Handler to acccept propositions to finish the epoch and return agreement to build AEFP - Aggregated Epoch Finalization Proof ✅
 
 FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
@@ -82,7 +51,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
             // First of all - check if you're ready for epoch finish and stopped the finalization proofs generation
 
             let readyToVoteForEpochFinish = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+atEpochHandlerIndex).catch(()=>false)
-
+            
             if(!readyToVoteForEpochFinish){
 
                 // Send the request to stop finalization proofs generation
@@ -97,8 +66,8 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
             // Structure is {index,hash,afp}
 
-            let finalizationStatsForBlockGenerator = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(atEpochHandlerIndex+':'+pubKeyOfCurrentLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
-
+            let finalizationStatsForBlockGenerator = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(atEpochHandlerIndex+':'+pubKeyOfCurrentLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))            
+            
 
             if(proposition.payload.lastBlockProposition.index >= finalizationStatsForBlockGenerator.index){
 

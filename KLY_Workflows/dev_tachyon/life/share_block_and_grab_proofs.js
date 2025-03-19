@@ -325,9 +325,6 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         FINALIZATION_PROOFS.delete('TMB:'+blockIDForHunting)
 
 
-        if(proofsGrabber.acceptedIndex >= 1) proofsGrabber.finishedVoting = true
-
-
         // Repeat procedure for the next block and store the progress
 
         let latestRID = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('RELATIVE_INDEX').catch(()=>0)
@@ -339,10 +336,23 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
         atomicBatch.put('RELATIVE_INDEX',latestRID+1)
 
-        atomicBatch.put(epochIndex+':PROOFS_GRABBER',proofsGrabber)
+
+        let epochIsOutdated = !epochStillFresh(epochHandler)
+
+        let copyOfProofsGrabber = {...proofsGrabber}
+
+        let shouldStopVotingProcess = copyOfProofsGrabber.acceptedIndex >= 1 && epochIsOutdated
+
+
+        if(shouldStopVotingProcess) copyOfProofsGrabber.finishedVoting = true
+
+        
+        atomicBatch.put(epochIndex+':PROOFS_GRABBER',copyOfProofsGrabber)
 
 
         await atomicBatch.write().then(()=>{
+
+            if(shouldStopVotingProcess) proofsGrabber.finishedVoting = true
 
             proofsGrabber.afpForPrevious = aggregatedFinalizationProof
 
