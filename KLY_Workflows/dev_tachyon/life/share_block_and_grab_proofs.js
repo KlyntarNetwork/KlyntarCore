@@ -48,7 +48,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                 
                 client.on('connect',connection=>{
 
-                    connection.on('message',async message=>{
+                    connection.on('message',async message=>{                        
 
                         if(message.type === 'utf8'){
 
@@ -175,7 +175,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
     proofsGrabber.huntingForBlockID = blockIDForHunting
 
     proofsGrabber.huntingForHash = blockHash
-
+    
 
     if(finalizationProofsMapping.size<majority){
 
@@ -337,7 +337,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         atomicBatch.put('RELATIVE_INDEX',latestRID+1)
 
 
-        let epochIsOutdated = !epochStillFresh(epochHandler)
+        let epochIsOutdated = !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)
 
         let copyOfProofsGrabber = {...proofsGrabber}
 
@@ -352,7 +352,11 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
         await atomicBatch.write().then(()=>{
 
-            if(shouldStopVotingProcess) proofsGrabber.finishedVoting = true
+            if(shouldStopVotingProcess){
+
+                proofsGrabber.finishedVoting = true
+
+            }
 
             proofsGrabber.afpForPrevious = aggregatedFinalizationProof
 
@@ -471,7 +475,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     } else {
 
-        await runFinalizationProofsGrabbing(epochHandler,proofsGrabber).catch(()=>{})
+        await runFinalizationProofsGrabbing(epochHandler,proofsGrabber)
 
     }
     
