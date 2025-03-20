@@ -1155,14 +1155,14 @@ let distributeFeesAmongPoolAndStakers = async (totalFees, blockIndex) => {
 
 
 
-let executeTransaction = async (currentBlockID,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
+let executeTransaction = async (currentBlockID,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping,blockTimestamp) => {
     
 
     if(VERIFIERS[transaction.type]){
 
         let txCopy = JSON.parse(JSON.stringify(transaction))
 
-        let {isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee} = await VERIFIERS[transaction.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
+        let {isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee} = await VERIFIERS[transaction.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch,blockTimestamp).catch(err=>({isOk:false,reason:err}))
 
         // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
         
@@ -1185,7 +1185,7 @@ let executeTransaction = async (currentBlockID,transaction,rewardsAndSuccessfulT
 
 
 
-let executeGroupOfTransaction = async (currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
+let executeGroupOfTransaction = async (currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping,blockTimestamp) => {
 
     for(let txFromIndependentGroup of independentGroup){
 
@@ -1193,7 +1193,7 @@ let executeGroupOfTransaction = async (currentBlockID,independentGroup,rewardsAn
 
             let txCopy = JSON.parse(JSON.stringify(txFromIndependentGroup))
     
-            let {isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee} = await VERIFIERS[txFromIndependentGroup.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
+            let {isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee} = await VERIFIERS[txFromIndependentGroup.type](txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch,blockTimestamp).catch(err=>({isOk:false,reason:err}))
     
             // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
             if(reason!=='EVM'){
@@ -1280,7 +1280,7 @@ let verifyBlock = async block => {
 
             for(let independentTransaction of txsPreparedForParallelization.independentTransactions){
 
-                txsPromises.push(executeTransaction(currentBlockID,independentTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping))
+                txsPromises.push(executeTransaction(currentBlockID,independentTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping,block.time))
 
             }
 
@@ -1292,7 +1292,7 @@ let verifyBlock = async block => {
                 
                 txsPromises.push(
 
-                    executeGroupOfTransaction(currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
+                    executeGroupOfTransaction(currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping,block.time)
 
                 )
 
@@ -1304,7 +1304,7 @@ let verifyBlock = async block => {
 
             for(let sequentialTransaction of txsPreparedForParallelization.syncTransactions){
 
-                await executeTransaction(currentBlockID,sequentialTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
+                await executeTransaction(currentBlockID,sequentialTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping,block.time)
 
             }        
 

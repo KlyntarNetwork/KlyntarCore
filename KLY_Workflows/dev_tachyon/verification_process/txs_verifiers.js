@@ -124,11 +124,11 @@ let performStakingActionsForEVM = async (txCreator,transferValue,parsedData) => 
 
 
 
-let trackTransactionsList=async(txid,txType,sigType,priorityFee,totalFee,touchedAccounts)=>{
+let trackTransactionsList=async(txid,txType,sigType,priorityFee,totalFee,touchedAccounts,blockTimestamp)=>{
 
     // Function to allow to fill the list of transaction per address
 
-    let dataToPush = {txid,txType,sigType,priorityFee,totalFee}
+    let dataToPush = {txid,txType,sigType,priorityFee,totalFee,blockTimestamp}
 
 
     for(let account of touchedAccounts){
@@ -278,7 +278,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async(tx,rewardsAndSuccessfulTxsCollector,_atomicBatch)=>{
+    TX:async(tx,rewardsAndSuccessfulTxsCollector,_atomicBatch,blockTimestamp)=>{
 
         let senderAccount = await getUserAccountFromState(tx.creator)
         
@@ -382,7 +382,7 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,touchedAccounts)
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,touchedAccounts,blockTimestamp)
         
                     return {isOk:true, priorityFee: tx.fee, totalFee: spendData.pureFee}
 
@@ -429,7 +429,7 @@ export let VERIFIERS = {
 
     */
 
-    WVM_CONTRACT_DEPLOY:async (tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    WVM_CONTRACT_DEPLOY:async (tx,rewardsAndSuccessfulTxsCollector,atomicBatch,blockTimestamp)=>{
 
         if(tx) return {isOk:false,reason:`Contract deployment to WASM vm disabled for a while`}
 
@@ -493,7 +493,7 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,contractID],blockTimestamp)
 
                     return {isOk:true, createdContractAddress: contractID, priorityFee: tx.fee, totalFee: spendData.pureFee}
 
@@ -524,7 +524,7 @@ export let VERIFIERS = {
 
 
     */
-    WVM_CALL:async(tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    WVM_CALL:async(tx,rewardsAndSuccessfulTxsCollector,atomicBatch,blockTimestamp)=>{
 
 
         let senderAccount = await getUserAccountFromState(tx.creator)
@@ -656,7 +656,7 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += spendData.pureFee
 
-                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,tx.payload.contractID])
+                    trackTransactionsList(blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,spendData.pureFee,[tx.creator,tx.payload.contractID],blockTimestamp)
 
                     execResultWithStatusAndReason.priorityFee = tx.fee
 
@@ -680,7 +680,7 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    EVM_CALL:async(txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch,blockTimestamp)=>{
 
         let evmResult = await KLY_EVM.callEVM(txWithPayload.payload)
 
@@ -798,7 +798,7 @@ export let VERIFIERS = {
 
                 trackStateChange('TX:'+tx.hash,1,'put')
 
-                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',priorityFee,totalFee,touchedAccounts)
+                trackTransactionsList(tx.hash,'EVM_CALL','ECDSA',priorityFee,totalFee,touchedAccounts,blockTimestamp)
 
                 return returnToReceipt || {isOk:true,reason:'EVM'}
 
