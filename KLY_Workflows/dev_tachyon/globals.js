@@ -38,6 +38,8 @@ export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for spec
 
 export let GLOBAL_CACHES = {
 
+    VOTING_REQUESTS: new Map(),
+
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
     STATE_CACHE:new Map(), // cache to hold accounts of EOAs/contracts. Mapping(ID => ACCOUNT_STATE). Used by VERIFICATION_THREAD
@@ -168,10 +170,8 @@ export let BLOCKCHAIN_DATABASES = {
 
 }
 
-// Required by KLY-EVM JSON-RPC API, so make it available via global
-
-global.STATE = BLOCKCHAIN_DATABASES.STATE
+global.STATE = BLOCKCHAIN_DATABASES.STATE // required by KLY-EVM JSON-RPC API, so make it available via global
 
 global.CREATED_EVM_ACCOUNTS = new Set()
 
-global.getCurrentLeaderURL = getCurrentLeaderURL
+global.getCurrentLeaderURL = getCurrentLeaderURL // required by KLY-EVM JSON-RPC API, so make it available via global
