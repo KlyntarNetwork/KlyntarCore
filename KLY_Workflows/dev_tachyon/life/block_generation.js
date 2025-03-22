@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS, NODE_METADATA} from '../globals.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
@@ -43,7 +43,7 @@ export let blocksGenerationProcess=async()=>{
 }
 
 
-let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
+let getTransactionsFromMempool = () => GLOBAL_CACHES.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
 let mockTestPairs = {
@@ -132,7 +132,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
         console.log(`TXID is => `,web1337.blake3(signedTx.sig))
 
-        NODE_METADATA.MEMPOOL.push(signedTx)
+        GLOBAL_CACHES.MEMPOOL.push(signedTx)
     }
 
     // Also, for tests, create tx with PQC account
@@ -170,7 +170,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
     console.log(`PQC TXID is => `,web1337.blake3(signedPqcTx.sig))
 
-    NODE_METADATA.MEMPOOL.push(signedPqcTx)
+    GLOBAL_CACHES.MEMPOOL.push(signedPqcTx)
 
 }
 
@@ -592,7 +592,7 @@ let generateBlocksPortion = async() => {
     
         */
 
-        let numberOfBlocksToGenerate = Math.ceil(NODE_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
+        let numberOfBlocksToGenerate = Math.ceil(GLOBAL_CACHES.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
         //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________

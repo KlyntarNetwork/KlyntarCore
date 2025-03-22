@@ -1,6 +1,6 @@
 import {getFromApprovementThreadState} from './common_functions/approvement_thread_related.js'
 
-import { EPOCH_METADATA_MAPPING, WORKING_THREADS, NODE_METADATA } from './globals.js'
+import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from './globals.js'
 
 import {getUtcTimestamp} from '../../KLY_Utils/utils.js'
 
@@ -18,13 +18,13 @@ export let getRandomFromArray = arr => {
 }
 
 
-export let getAllKnownPeers=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...NODE_METADATA.PEERS]
+export let getAllKnownPeers=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
 
 
-// NODE_METADATA.CORE_MAJOR_VERSION shows the major version of your node(core)
+// global.CORE_MAJOR_VERSION shows the major version of your node(core)
 // We use this function on VERIFICATION_THREAD and APPROVEMENT_THREAD to make sure your node can continue to work
 // If major version for network-level was changed but you still has an old version - it should be stopped and update software
-export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].CORE_MAJOR_VERSION > NODE_METADATA.CORE_MAJOR_VERSION
+export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].CORE_MAJOR_VERSION > global.CORE_MAJOR_VERSION
 
 
 export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETWORK_PARAMETERS.EPOCH_TIME > getUtcTimestamp()
@@ -55,8 +55,3 @@ export let getCurrentLeaderURL = async () => {
     }
     
 }
-
-
-// Required by KLY-EVM JSON-RPC API, so make it available via global
-
-global.getCurrentLeaderURL = getCurrentLeaderURL
