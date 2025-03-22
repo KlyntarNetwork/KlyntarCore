@@ -18,7 +18,8 @@
         "STORE_BLOCKS_IN_LOCAL_DATABASE":true,
 
 
-        "POINT_OF_DISTRIBUTION":"ws://localhost:9999",
+        "POINT_OF_DISTRIBUTION_WS":"ws://localhost:9999",
+        "POINT_OF_DISTRIBUTION_HTTP":"http://localhost:7332",
     
         "EXTRA_DATA_TO_BLOCK":{
             "hello":"world"
