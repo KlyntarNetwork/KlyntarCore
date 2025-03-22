@@ -14,11 +14,7 @@ import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
 
 import {setLeadersSequence} from './leaders_monitoring.js'
 
-import {CONFIGURATION} from '../../../klyntar_core.js'
-
 import Block from '../structures/block.js'
-
-import level from 'level'
 
 import fs from 'fs'
 
@@ -376,10 +372,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 atomicBatch.put('LATEST_BATCH_INDEX',latestBatchIndex)
                 
-                // Create new temporary db for the next epoch
-
-                let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
-
                 // Commit changes
 
                 atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
@@ -396,15 +388,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     FINALIZATION_PROOFS:new Map(),
 
-                    FINALIZATION_STATS:new Map(),
-
                     TEMP_CACHE:new Map(),
-
-                    SYNCHRONIZER:new Map(),
             
-                    CURRENT_LEADER_INFO:{index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]},
-      
-                    DATABASE:nextTempDB
+                    CURRENT_LEADER_INFO:{index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]}
             
                 }
 
@@ -425,37 +411,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     gracefulStop()
 
                 }
-
-
-                // Close & delete the old temporary db
-            
-                await EPOCH_METADATA_MAPPING.get(currentEpochFullID).DATABASE.close()
-        
-                fs.rm(process.env.CHAINDATA_PATH+`/${currentEpochFullID}`,{recursive:true},()=>{})
         
                 EPOCH_METADATA_MAPPING.delete(currentEpochFullID)
-
-                
-                
-                //________________________________ If it's fresh epoch and we present there as a member of quorum - then continue the logic ________________________________
-
-
-                let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
-
-                if(epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD) && iAmInTheQuorum){
-
-                    // Fill with the null-data
-
-                    let currentEpochManager = nextTemporaryObject.FINALIZATION_STATS
-
-                    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.forEach(poolPubKey=>
-
-                        currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
-
-                    )
-
-                }
 
                 // Set next temporary object by ID
 

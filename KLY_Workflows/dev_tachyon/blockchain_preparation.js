@@ -12,8 +12,6 @@ import {BLOCKCHAIN_GENESIS} from '../../klyntar_core.js'
 
 import {isMyCoreVersionOld} from './utils.js'
 
-import level from 'level'
-
 import Web3 from 'web3'
 
 import fs from 'fs'
@@ -29,35 +27,11 @@ let restoreCachesForApprovementThread=async()=>{
 
     // Function to restore metadata since the last turn off
 
-    let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
-
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
-
-
-    for(let poolPubKey of poolsRegistry){
-
-        let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-        
-        currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
-
-    }
-
     currentEpochMetadata.CURRENT_LEADER_INFO = await currentEpochMetadata.DATABASE.get('CURRENT_LEADER_INFO').catch(()=>({index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]}))
-
-    // Finally, once we've started the "next epoch" process - restore it
-
-    let itsTimeForTheNextEpoch = await currentEpochMetadata.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
-
-    if(itsTimeForTheNextEpoch) {
-
-        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
-
-        currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
-
-    }
 
 }
 
@@ -513,9 +487,6 @@ export let prepareBlockchain=async()=>{
 
     }
 
-    //_________________________________Add the temporary data of current AT__________________________________________
-    
-    let temporaryDatabaseForApprovementThread = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
     
     EPOCH_METADATA_MAPPING.set(epochFullID,{
 
@@ -523,16 +494,7 @@ export let prepareBlockchain=async()=>{
 
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
     
-        FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
-        
-        SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
-
-        CURRENT_LEADER_INFO:{}, // {index,pubKey}
-
-
-        //____________________Mapping which contains temporary databases for____________________
-
-        DATABASE:temporaryDatabaseForApprovementThread // DB with temporary data that we need during epoch    
+        CURRENT_LEADER_INFO:{} // {index,pubKey}
 
     })
 
