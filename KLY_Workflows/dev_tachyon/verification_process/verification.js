@@ -1019,7 +1019,7 @@ let checkConnectionWithPool = async(poolToCheckConnectionWith,vtEpochHandler) =>
 
 
 
-
+// eslint-disable-next-line no-unused-vars
 let getTouchedAccountsByEvmTx = serializedEVMTx => {
 
     let serializedEVMTxWithout0x = serializedEVMTx.slice(2) // delete 0x
