@@ -4,15 +4,13 @@ import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.j
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
+
 import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {getUserAccountFromState} from './state_interactions.js'
-
-import {BLOCKCHAIN_GENESIS} from '../../../klyntar_core.js'
-
-import {getAllKnownPeers} from '../utils.js'
 
 import Block from '../structures/block.js'
 
@@ -283,7 +281,7 @@ export let getFirstBlockInEpoch = async(threadID,epochHandler,getBlockFunction) 
 
         // Get all known peers and call GET /first_block_assumption/:epoch_index
 
-        let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...getAllKnownPeers()]
+        let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
 
         let promises = []
 

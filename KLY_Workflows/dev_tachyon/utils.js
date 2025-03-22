@@ -18,7 +18,6 @@ export let getRandomFromArray = arr => {
 }
 
 
-export let getAllKnownPeers=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
 
 
 // global.CORE_MAJOR_VERSION shows the major version of your node(core)

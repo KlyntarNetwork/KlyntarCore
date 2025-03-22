@@ -2,9 +2,9 @@ import {checkAlrpChainValidity, getFirstBlockInEpoch, verifyAggregatedFinalizati
 
 import {getFromState, getUserAccountFromState, trackStateChange} from '../common_functions/state_interactions.js'
 
-import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
-
 import {customLog, blake3Hash, logColors, gracefulStop} from '../../../KLY_Utils/utils.js'
+
+import {isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
 
@@ -95,7 +95,7 @@ export let getBlock = async (epochIndex,blockCreator,index) => {
 
             // Combine all nodes we know about and try to find block there
             
-            let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
+            let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
     
             for(let host of allKnownNodes){
 
@@ -156,7 +156,7 @@ export let getMultipleBlocks = async (epochHandler,blockCreator,fromIndex) => {
 
     let epochIndex = epochHandler.id
 
-    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
+    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
 
     let randomTargetURL = getRandomFromArray(allKnownNodes)
 

@@ -12,8 +12,6 @@ import {blockLog} from '../common_functions/logging.js'
 
 import {CONFIGURATION} from '../../../klyntar_core.js'
 
-import {getAllKnownPeers} from '../utils.js'
-
 import Block from '../structures/block.js'
 
 import fetch from 'node-fetch'
@@ -191,7 +189,7 @@ Ask the network in special order:
 let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => {
 
 
-    let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
+    let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await getQuorumUrlsAndPubkeys(),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
 
     let previousEpochIndex = epochHandler.id-1
 
