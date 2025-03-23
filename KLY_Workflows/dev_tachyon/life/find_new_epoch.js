@@ -389,8 +389,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     FINALIZATION_PROOFS:new Map(),
 
                     TEMP_CACHE:new Map(),
-            
-                    CURRENT_LEADER_INFO:{index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]}
+
+                    CURRENT_LEADER_PUBKEY: nextEpochDataToStore.nextEpochLeadersSequence[0]
             
                 }
 

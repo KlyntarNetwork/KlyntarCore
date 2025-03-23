@@ -459,7 +459,7 @@ let generateBlocksPortion = async() => {
 
     // Safe "if" branch to prevent unnecessary blocks generation    
     
-    if(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
+    if(currentEpochMetadata.CURRENT_LEADER_PUBKEY === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
         generateBatchOfMockTransactionsAndPushToMempool()
 
@@ -534,7 +534,7 @@ let generateBlocksPortion = async() => {
             let previousLeaderPubkey = epochHandler.leadersSequence[indexOfPreviousLeaderInSequence]
 
 
-            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(currentEpochMetadata.CURRENT_LEADER_INFO.index)
+            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(epochHandler.leadersSequence.indexOf(currentEpochMetadata.CURRENT_LEADER_PUBKEY))
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________

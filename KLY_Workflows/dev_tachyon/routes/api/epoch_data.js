@@ -1,8 +1,6 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
-
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
-
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
 
 /*
@@ -78,7 +76,7 @@ FASTIFY_SERVER.get('/current_epoch/:threadID',(request,response)=>{
 
 // Returns the info about the current leader (leader = pool with the right to generate blocks in current timeframe of epoch)
 
-FASTIFY_SERVER.get('/current_leader',(_request,response)=>{
+FASTIFY_SERVER.get('/current_leader',async(_request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.GET_CURRENT_SHARD_LEADERS){
 
@@ -96,9 +94,15 @@ FASTIFY_SERVER.get('/current_leader',(_request,response)=>{
 
         let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-        let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentEpochMetadata.CURRENT_LEADER_INFO.pubKey }
+        if(currentEpochMetadata){
 
-        response.send(dataToReturn)
+            let currentLeaderPubkey = currentEpochMetadata.CURRENT_LEADER_PUBKEY
+
+            let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentLeaderPubkey }
+    
+            response.send(dataToReturn)    
+
+        }
 
     }else response.send({err:'Route is off'})
 

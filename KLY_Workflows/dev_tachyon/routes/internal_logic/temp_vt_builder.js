@@ -1,9 +1,8 @@
 import {getVerifiedAggregatedFinalizationProofByBlockId} from '../../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
-
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
 
 
 /*
@@ -47,15 +46,13 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
         return
     }
 
-
     let proposedIndexOfLeader = JSON.parse(request.body) // format {proposedIndex:index}
-
 
     if(typeof proposedIndexOfLeader === 'object'){
 
         let objectToReturn = {}
 
-        let indexOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INFO?.index
+        let indexOfCurrentLeader = epochHandler.leadersSequence.indexOf(currentEpochMetadata.CURRENT_LEADER_PUBKEY)
 
         if(typeof indexOfCurrentLeader === 'number' && epochHandler.leadersSequence){
 

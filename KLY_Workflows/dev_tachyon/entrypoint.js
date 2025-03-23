@@ -16,6 +16,8 @@ import {blocksGenerationProcess} from './life/block_generation.js'
 
 import {prepareBlockchain} from './blockchain_preparation.js'
 
+import {startVotingThread} from './life/voting_thread.js'
+
 
 
 
@@ -51,5 +53,8 @@ export let runBlockchain=async()=>{
 
     //✅6.Start to generate blocks
     blocksGenerationProcess()
+
+    //✅7.Start a separate thread to work with voting for blocks in a sync way (for security)
+    startVotingThread()
 
 }

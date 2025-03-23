@@ -126,7 +126,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
 
-        let allGood = epochHandler.poolsRegistry.includes(block.creator) && currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === block.creator
+        let allGood = epochHandler.poolsRegistry.includes(block.creator) && currentEpochMetadata.CURRENT_LEADER_PUBKEY === block.creator
 
         if(!allGood){
         
@@ -444,7 +444,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
         
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
 
-        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === blockCreator
+        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && currentEpochMetadata.CURRENT_LEADER_PUBKEY === blockCreator
     
         
         if(!thisLeaderCanGenerateBlocksNow){
@@ -765,10 +765,11 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
     }
 
 
+    let indexOfLeader = epochHandler.leadersSequence.indexOf(currentEpochMetadata.CURRENT_LEADER_PUBKEY)
 
     let overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
 
-        overviewIsOk &&= currentEpochMetadata.CURRENT_LEADER_INFO.index > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of leader is bigger/equal to requested
+        overviewIsOk &&= indexOfLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of leader is bigger/equal to requested
         
 
     if(overviewIsOk){

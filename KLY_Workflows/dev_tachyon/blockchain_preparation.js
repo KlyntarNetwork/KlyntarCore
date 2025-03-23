@@ -23,25 +23,6 @@ import fs from 'fs'
 
 
 
-let restoreCachesForApprovementThread=async()=>{
-
-    // Function to restore metadata since the last turn off
-
-    let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-    
-    currentEpochMetadata.CURRENT_LEADER_INFO = await currentEpochMetadata.DATABASE.get('CURRENT_LEADER_INFO').catch(()=>({index:0,pubKey:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[0]}))
-
-}
-
-
-
-
-
-
-
-
 let setGenesisToState=async()=>{
 
 
@@ -487,20 +468,19 @@ export let prepareBlockchain=async()=>{
 
     }
 
+    // Get the info about last known leader
+
+    let currentLeaderPubkey = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('CURRENT_LEADER:'+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id).catch(()=>null)
+
     
     EPOCH_METADATA_MAPPING.set(epochFullID,{
 
         FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
 
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
-    
-        CURRENT_LEADER_INFO:{} // {index,pubKey}
+
+        CURRENT_LEADER_PUBKEY: currentLeaderPubkey
 
     })
-
-
-    // Fill the FINALIZATION_STATS with the latest, locally stored data
-
-    await restoreCachesForApprovementThread()
 
 }

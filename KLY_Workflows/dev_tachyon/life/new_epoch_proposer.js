@@ -43,9 +43,9 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let canGenerateEpochFinalizationProof = true
 
-        let pubKeyOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey
+        let pubKeyOfLeader = currentEpochMetadata.CURRENT_LEADER_PUBKEY
 
-        let indexOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.index
+        let indexOfLeader = atEpochHandler.leadersSequence.indexOf(pubKeyOfLeader)
 
 
         if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
@@ -132,84 +132,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         
         }
 
-                    /*
-            
-                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by leader will contain all the ALRPs
-        
-                1) Start to build epoch finalization proposition. This object has the following structure
-
-
-                {
-
-                 currentLeader:<int - pointer to current leader based on AT.EPOCH.leadersSequence>
-
-                        lastBlockProposition:{
-                            index:,
-                            hash:,
-                            
-                            afp:{
-
-                                prevBlockHash:<must be the same as lastBlockProposition.hash>
-
-                                blockID:<must be next to lastBlockProposition.index>,
-
-                                blockHash,
-
-                                proofs:{
-
-                                    quorumMember0_Ed25519PubKey: ed25519Signa0,
-                                    ...
-                                    quorumMemberN_Ed25519PubKey: ed25519SignaN
-                
-                                }
-
-                            }
-                    
-                        }
-
-                }
-
-
-                2) Take the <lastBlockProposition> for <currentLeader> from TEMP.get(<epochFullID>).FINALIZATION_STATS
-
-                3) If nothing in FINALIZATION_STATS - then set index to -1 and hash to default(0123...)
-
-                4) Send epoch propostion to POST /epoch_proposition to all(or at least 2/3N+1) quorum members
-
-
-                ____________________________________________After we get responses____________________________________________
-
-                5) If validator agree with all the propositions - it generate signatures to paste this short proof to the fist block in the next epoch(to section block.extraData.aefpForPreviousEpoch)
-
-                6) If we get 2/3N+1 agreements - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
-
-                    The structure is
-
-
-                       {
-                
-                            lastLeader:<index of Ed25519 pubkey of some pool in sequence of validators>,
-                            lastIndex:<index of his block in previous epoch>,
-                            lastHash:<hash of this block>,
-                            firstBlockHash,
-
-                            proofs:{
-
-                                ed25519PubKey0:ed25519Signa0,
-                                ...
-                                ed25519PubKeyN:ed25519SignaN
-                         
-                            }
-
-                        }
-
-
-                7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID
-
-                8) Pools can query network for this proofs to set to <block.extraData.aefpForPreviousEpoch> to know where to start VERIFICATION_THREAD in a new epoch                
-                
-
-            */
 
 
         let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}`).catch(()=>false)

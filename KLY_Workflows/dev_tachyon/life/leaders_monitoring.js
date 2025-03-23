@@ -1,8 +1,8 @@
-import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
+
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
 import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
-
-import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
 import {epochStillFresh} from '../utils.js'
 
@@ -95,6 +95,8 @@ export let setLeadersSequence = async (epochHandler,epochSeed) => {
 export let leadersSequenceMonitoring=async()=>{
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    
+    let epochIndex = epochHandler.id
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -117,13 +119,10 @@ export let leadersSequenceMonitoring=async()=>{
 
     }
 
-
-    let infoAboutCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INFO
         
-    let indexOfCurrentLeader = infoAboutCurrentLeader.index
-        
-    let pubKeyOfCurrentLeader = infoAboutCurrentLeader.pubKey
+    let pubKeyOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_PUBKEY
 
+    let indexOfCurrentLeader = epochHandler.leadersSequence.indexOf(pubKeyOfCurrentLeader)
 
     // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
 
@@ -131,38 +130,21 @@ export let leadersSequenceMonitoring=async()=>{
 
     if(itsNotFinishOfSequence && timeIsOutForCurrentLeader(epochHandler,indexOfCurrentLeader,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME)){
 
-        // Inform websocket server that we shouldn't generate proofs for this leader anymore
-        currentEpochMetadata.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentLeader,true)
+        // Now, update the LEADERS_HANDLER
 
-        // But anyway - in async env wait until server callback us here that proofs creation is stopped
-        if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfCurrentLeader)){
+        let nextLeaderPubkey = epochHandler.leadersSequence[indexOfCurrentLeader+1]
 
-            // Now, update the LEADERS_HANDLER
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,nextLeaderPubkey).then(()=>{
 
-            let newInfoAboutCurrentLeader = {
-                    
-                index: indexOfCurrentLeader+1,
+            currentEpochMetadata.CURRENT_LEADER_PUBKEY = nextLeaderPubkey
 
-                pubKey: epochHandler.leadersSequence[indexOfCurrentLeader+1]
-                
-            }
-
-            await useTemporaryDb('put',currentEpochMetadata.DATABASE,'CURRENT_LEADER_INFO',newInfoAboutCurrentLeader).then(()=>{
-
-                // Set new leader and delete the old one
-
-                currentEpochMetadata.CURRENT_LEADER_INFO = newInfoAboutCurrentLeader
-                
-                currentEpochMetadata.SYNCHRONIZER.delete('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentLeader)
-
-            }).catch(()=>false)
-
-        }
+        }).catch(()=>null)
 
     }
 
 
     // Start again
+
     setImmediate(leadersSequenceMonitoring)
     
 }

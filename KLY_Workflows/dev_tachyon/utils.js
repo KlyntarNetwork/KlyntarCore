@@ -37,20 +37,22 @@ export let getCurrentLeaderURL = async () => {
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    if(!currentEpochMetadata) return
+    let currentLeaderPubkey = currentEpochMetadata?.CURRENT_LEADER_PUBKEY
 
-    let canGenerateBlocksNow = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
+    if(currentLeaderPubkey){
 
-    if(canGenerateBlocksNow) return {isMeLeader:true}
+        if(currentLeaderPubkey === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY) return {isMeLeader:true}
 
-    else {
+        else {
+    
+            // Get the url of current leader
+    
+            let poolStorage = await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
+    
+            if(poolStorage) return {isMeLeader:false,url:poolStorage.poolURL}
+            
+        }    
 
-        // Get the url of current leader
-
-        let poolStorage = await getFromApprovementThreadState(currentEpochMetadata.CURRENT_LEADER_INFO.pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-        if(poolStorage) return {isMeLeader:false,url:poolStorage.poolURL}
-        
     }
     
 }
