@@ -191,40 +191,17 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
                             if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
 
-                                if(parsedData.type === 'tmb'){
-
-                                    let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+epochFullID
+                                // Verify the finalization proof
                         
-                                    let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await verifyEd25519(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
-
-                                    if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                                let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+epochFullID
                         
-                                        FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
-                        
-                                    }
+                                let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await verifyEd25519(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
 
-                                } else if(parsedData.tmbProof) {
 
-                                    // Verify the finalization proof
-                        
-                                    let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+epochFullID
-                        
-                                    let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await verifyEd25519(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
-
-                                    // Now verify the TMB proof(that block was delivered)
-
-                                    dataThatShouldBeSigned += 'VALID_BLOCK_RECEIVED'
-
-                                    let tmbProofIsOk = await verifyEd25519(dataThatShouldBeSigned,parsedData.tmbProof,parsedData.voter)
-                            
-                                    if(finalizationProofIsOk && tmbProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
-                        
-                                        FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
-
-                                        FINALIZATION_PROOFS.get('TMB:'+proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.tmbProof)
-                        
-                                    }
-
+                                if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                    
+                                    FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
+                    
                                 }
 
                             }
@@ -267,25 +244,20 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
     let blockIDForHunting = epochHandler.id+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+(proofsGrabber.acceptedIndex+1)
 
-    let finalizationProofsMapping, tmbProofsMapping
+    let finalizationProofsMapping
 
 
     if(FINALIZATION_PROOFS.has(blockIDForHunting)){
 
         finalizationProofsMapping = FINALIZATION_PROOFS.get(blockIDForHunting)
 
-        tmbProofsMapping = FINALIZATION_PROOFS.get('TMB:'+blockIDForHunting)
     }
 
     else{
 
         finalizationProofsMapping = new Map()
         
-        tmbProofsMapping = new Map()
-
         FINALIZATION_PROOFS.set(blockIDForHunting,finalizationProofsMapping)
-        
-        FINALIZATION_PROOFS.set('TMB:'+blockIDForHunting,tmbProofsMapping)
 
     }
 
@@ -310,95 +282,40 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
     if(finalizationProofsMapping.size<majority){
 
-        // To prevent spam
+        if(TEMP_CACHE.has('FP_SPAM_FLAG')) return
+    
+        TEMP_CACHE.set('FP_SPAM_FLAG',true)
 
-        // In case we already have enough TMB proofs - no sense to send blocks to the rest. Send just TMB proofs as proofs that "enough number of validators from quorum has a valid block"
 
-        if(tmbProofsMapping.size > 21){
+        let dataToSend = JSON.stringify({
 
-            // Otherwise - send blocks to safe minority to grab TMB proofs
-
-            let templateToSend = {}
-
-            tmbProofsMapping.forEach((signa,pubKey)=>templateToSend[pubKey] = signa)
-
-            let dataToSend = JSON.stringify({
-
-                route:'tmb',
+            route:'get_finalization_proof',
+        
+            block:blockToSend,
             
-                blockCreator: blockToSend.creator,
+            previousBlockAFP:proofsGrabber.afpForPrevious
 
-                blockIndex:blockToSend.index,
+        })
 
-                blockHash: blockHash,
-                
-                previousBlockAFP:proofsGrabber.afpForPrevious,
+        // Send only to safe subset of validators from quorum
 
-                tmbProofs: templateToSend,
+        let subsetToSendBlocks = getPseudoRandomSubsetFromQuorumByTicketId(0,epochHandler)
 
-                tmbTicketID:0
-    
-            })
-    
-    
-            for(let pubKeyOfQuorumMember of epochHandler.quorum){
-    
-                // No sense to get finalization proof again if we already have
-    
-                if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
-    
-                let connection = TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
-    
-                if(connection) connection.sendUTF(dataToSend)
-    
+        for(let pubKeyOfQuorumMember of subsetToSendBlocks){
+
+            // No sense to contact if we already have a proof
+
+            if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
+
+            let connection = TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
+
+            if(connection){
+
+                connection.sendUTF(dataToSend)
+
             }
 
-            await new Promise(resolve=>
-
-                setTimeout(()=>resolve(),200)
-        
-            )
-
-
-        } else {
-
-            if(TEMP_CACHE.has('FP_SPAM_FLAG')) return
-    
-            TEMP_CACHE.set('FP_SPAM_FLAG',true)
-
-            // Otherwise - send blocks to safe minority to grab TMB proofs
-
-            let dataToSend = JSON.stringify({
-
-                route:'get_finalization_proof',
-            
-                block:blockToSend,
-                
-                previousBlockAFP:proofsGrabber.afpForPrevious
-    
-            })
-    
-            // Send only to safe subset of validators from quorum
-
-            let subsetToSendBlocks = getPseudoRandomSubsetFromQuorumByTicketId(0,epochHandler)
-    
-            for(let pubKeyOfQuorumMember of subsetToSendBlocks){
-    
-                // No sense to contact if we already have a proof
-    
-                if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
-    
-                let connection = TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
-    
-                if(connection){
-
-                    connection.sendUTF(dataToSend)
-
-                }
-    
-            }    
-
-        }
+        }    
 
     }
 
@@ -452,8 +369,6 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
         // Delete finalization proofs that we don't need more
         FINALIZATION_PROOFS.delete(blockIDForHunting)
-
-        FINALIZATION_PROOFS.delete('TMB:'+blockIDForHunting)
 
 
         // Repeat procedure for the next block and store the progress

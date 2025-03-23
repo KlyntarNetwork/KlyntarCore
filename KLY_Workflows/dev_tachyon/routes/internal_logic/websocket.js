@@ -1,10 +1,10 @@
 import {checkAlrpChainValidity, verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
-import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../../common_functions/quorum_related.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
 
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
+import {getQuorumMajority} from '../../common_functions/quorum_related.js'
 
 import {WEBSOCKET_EVM_ROUTE_HANDLER} from '@klyntar/klyntarevmjsonrpc'
 
@@ -308,16 +308,9 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     
                         let finalizationProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
 
-                        // Once we get the block - return the TMB(Trust Me Bro) proof that we have received the valid block
-
-                        dataToSign += 'VALID_BLOCK_RECEIVED'
-
-                        let tmbProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-
-
                         let votingRequest = {
 
-                            epochIndex, blockCreator:block.creator, finalizationProof, tmbProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
+                            epochIndex, blockCreator:block.creator, finalizationProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
                     
                         }
 
@@ -328,232 +321,6 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                     })    
 
                 })
-
-
-            } else {
-
-                connection.close()
-
-            }
-
-        }        
-
-    }
-        
-}
-
-
-
-
-/*
-
-    Accept
-    
-    {
-        blockCreator,
-
-        blockIndex,
-
-        blockHash,
-
-        previousBlockAFP,
-
-        tmbProofs:{
-
-            poolPubKey0: Ed25519Signa(previousBlockHash+proposedBlockID+proposedBlockHash+epochFullID+'VALID_BLOCK_RECEIVED'),
-            ...
-            (20 more proofs)
-        }
-
-        tmbTicketID:<int in range 0-9999>
-
-    }
-
-*/
-let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
-
-    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-
-    let epochIndex = epochHandler.id
-
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
-
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-    // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-        
-    if(!currentEpochMetadata){
-
-        connection.close()
-    
-        return
-    
-    }
-
-    let {blockCreator,blockIndex,blockHash,previousBlockAFP,tmbProofs,tmbTicketID} = parsedData
-
-
-    let typeCheckOverviewIsOk = typeof blockCreator === 'string' && typeof blockHash === 'string' && typeof blockIndex === 'number' && typeof tmbTicketID === 'number'
-    
-                                && 
-                                
-                                typeof previousBlockAFP === 'object' && typeof tmbProofs === 'object'
-
-
-    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !typeCheckOverviewIsOk){
-    
-        connection.close()
-                   
-        return
-    
-    } else {
-
-        let currentVotingDataForPool = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+blockCreator).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
-
-        let proposedBlockHash = blockHash
-
-        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && currentEpochMetadata.CURRENT_LEADER_PUBKEY === blockCreator
-    
-        
-        if(!thisLeaderCanGenerateBlocksNow){
-    
-            connection.close()
-    
-            return
-    
-        }
-
-        // Check that a new proposed block is a part of a valid segment
-
-        let sameSegment = currentVotingDataForPool.index < blockIndex || currentVotingDataForPool.index === blockIndex && proposedBlockHash === currentVotingDataForPool.hash
-
-
-        if(sameSegment){
-
-            let proposedBlockID = epochHandler.id+':'+blockCreator+':'+blockIndex
-
-            let dataToSignToApproveProposedBlock = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
-
-            let futureVotingDataToStore
-
-            // Verify the TMB proofs
-
-            let subsetOfValidators = getPseudoRandomSubsetFromQuorumByTicketId(tmbTicketID,epochHandler)
-
-            let dataThatShouldBeSignedInTMB = dataToSignToApproveProposedBlock+'VALID_BLOCK_RECEIVED'
-
-            // Now, we have to get valid signatures for all the members in this array
-
-            let tmbVerificationIsOk = true
-
-
-            for(let choosenValidator of subsetOfValidators) {
-
-                let signaIsOk = await verifyEd25519(dataThatShouldBeSignedInTMB,tmbProofs[choosenValidator],choosenValidator)
-
-                if(!signaIsOk) {
-
-                    tmbVerificationIsOk = false
-
-                    break
-
-                }
-
-            }
-
-
-            if(tmbVerificationIsOk){
-
-                if(currentVotingDataForPool.index === blockIndex){
-
-                    futureVotingDataToStore = currentVotingDataForPool
-    
-                }else{
-    
-                    futureVotingDataToStore = {
-    
-                        index:blockIndex-1,
-                        
-                        hash:previousBlockAFP.blockHash,
-    
-                        afp:previousBlockAFP
-    
-                    }
-    
-                }
-
-
-                // Now verify the AFP
-
-                let {prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs} = previousBlockAFP
-
-                if(blockIndex !== 0){
-
-                    let previousBlockID = epochHandler.id+':'+blockCreator+':'+(blockIndex-1)
-    
-                    let itsReallyAfpForPreviousBlock = blockIDFromAFP === previousBlockID
-    
-    
-                    if(!itsReallyAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockIDFromAFP !== 'string' || typeof blockHashFromAFP !== 'string' || typeof proofs !== 'object'){
-                            
-                        connection.close()
-                    
-                        return
-                
-                    }
-    
-                    if(!await verifyAggregatedFinalizationProof(previousBlockAFP,epochHandler)){
-    
-                        return
-    
-                    }
-
-                    
-                    // In case it's request for the third block, we'll receive AFP for the second block which includes .prevBlockHash field
-                    // This will be the assumption of hash of the first block in epoch
-
-                    if(blockIndex === 2) {
-
-                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`).catch(()=>false)
-
-                        if(!firstBlockAssumptionAlreadyExists){
-
-                            let objectToStore = {
-
-                                indexOfFirstBlockCreator: epochHandler.leadersSequence.indexOf(blockCreator),
-
-                                afpForSecondBlock: previousBlockAFP
-
-                            }
-
-                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}`,objectToStore).catch(()=>{})
-
-                        }
-
-                    }
-    
-                }
-
-
-                BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+blockCreator,futureVotingDataToStore).then(()=>{
-
-                    // Store the AFP for previous block
-
-                    BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDFromAFP,{prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs}).then(async()=>{
-            
-                        let finalizationProof = await signEd25519(dataToSignToApproveProposedBlock,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)    
-
-                        let votingRequest = {
-
-                            epochIndex, blockCreator, finalizationProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
-                    
-                        }
-
-                        if(!GLOBAL_CACHES.VOTING_REQUESTS.has(proposedBlockID)) GLOBAL_CACHES.VOTING_REQUESTS.set(proposedBlockID,votingRequest)
-    
-                    })
-    
-                }).catch(()=>{})
 
 
             } else {
@@ -949,13 +716,6 @@ klyntarWebsocketServer.on('request',request=>{
             } else if(data.route==='get_finalization_proof'){
 
                 returnFinalizationProofForBlock(data,connection)
-
-            }else if(data.route==='tmb'){
-
-                // For TMB(Trust Me Bro) requests
-
-                returnFinalizationProofBasedOnTmbProof(data,connection)
-                
 
             }else if(data.route==='get_blocks'){
 

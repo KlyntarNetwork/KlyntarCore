@@ -37,7 +37,7 @@ let votingThreadIteration = async() => {
 
             // Make sure that the local value of height in BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS is <= than the index you're going to vote for
 
-            let {epochIndex, blockCreator, finalizationProof, tmbProof, futureVotingDataToStore, connection, votedForHash} = votingRequest
+            let {epochIndex, blockCreator, finalizationProof, futureVotingDataToStore, connection, votedForHash} = votingRequest
     
             let localVotingStats = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+blockCreator).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
@@ -47,15 +47,7 @@ let votingThreadIteration = async() => {
 
                     // Finally send response
 
-                    if(tmbProof){
-
-                        connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,tmbProof,votedForHash}))
-
-                    } else {
-
-                        connection.sendUTF(JSON.stringify({type:'tmb',voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash}))
-
-                    }
+                    connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash}))
 
                 }).catch(()=>{})
 
