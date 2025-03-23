@@ -4,7 +4,7 @@ import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../.
 
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
 
 import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
@@ -93,6 +93,8 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
+    let epochIndex = epochHandler.id
+
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
@@ -111,7 +113,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     let {block,previousBlockAFP} = parsedData
     
 
-    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !currentEpochMetadata.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+block.creator)
+    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && epochHandler.poolsRegistry.includes(block.creator) && currentEpochMetadata.CURRENT_LEADER_PUBKEY === block.creator
 
 
     if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
@@ -120,52 +122,33 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                    
         return
     
-    }else if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+block.creator)){
-    
-        // Smth like mutex
-
-        currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
-
-        let allGood = epochHandler.poolsRegistry.includes(block.creator) && currentEpochMetadata.CURRENT_LEADER_PUBKEY === block.creator
-
-        if(!allGood){
+    } else {
         
-            connection.close()
-
-            currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
-    
-            return
-
-        }
-
-        
-        // Make sure that we work in a sync mode + verify the signature for the latest block
-    
-        let finalizationStatsForThisPool = currentEpochMetadata.FINALIZATION_STATS.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+        let currentVotingDataForPool = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+block.creator).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
         let proposedBlockHash = Block.genHash(block)
 
         // Check that a new proposed block is a part of a valid segment
 
-        let sameSegment = finalizationStatsForThisPool.index < block.index || finalizationStatsForThisPool.index === block.index && proposedBlockHash === finalizationStatsForThisPool.hash && block.epoch === epochFullID
+        let sameSegment = currentVotingDataForPool.index < block.index || currentVotingDataForPool.index === block.index && proposedBlockHash === currentVotingDataForPool.hash && block.epoch === epochFullID
 
 
         if(sameSegment){
 
             let proposedBlockID = epochHandler.id+':'+block.creator+':'+block.index
 
-            let futureMetadataToStore
+            let futureVotingDataToStore
             
 
             if(await verifyEd25519(proposedBlockHash,block.sig,block.creator).catch(()=>false)){
 
-                if(finalizationStatsForThisPool.index === block.index){
+                if(currentVotingDataForPool.index === block.index){
 
-                    futureMetadataToStore = finalizationStatsForThisPool
+                    futureVotingDataToStore = currentVotingDataForPool
     
                 }else{
     
-                    futureMetadataToStore = {
+                    futureVotingDataToStore = {
     
                         index:block.index-1,
                         
@@ -257,8 +240,6 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                         connection.close()
 
-                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
-
                         return
 
                     }
@@ -275,8 +256,6 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                     if(!itsAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || typeof proofs !== 'object'){
                         
                         connection.close()
-
-                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
                 
                         return
                 
@@ -285,8 +264,6 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                     let isOK = await verifyAggregatedFinalizationProof(previousBlockAFP,epochHandler)
     
                     if(!isOK){
-
-                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
 
                         return
 
@@ -318,51 +295,47 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                 }
 
-                // Store the metadata for FINALIZATION_STATS
 
-                useTemporaryDb('put',currentEpochMetadata.DATABASE,block.creator,futureMetadataToStore).then(()=>
+                // Store the block
 
-                    // Store the block
+                BLOCKCHAIN_DATABASES.BLOCKS.put(proposedBlockID,block).then(()=>{
 
-                    BLOCKCHAIN_DATABASES.BLOCKS.put(proposedBlockID,block).then(()=>{
+                    // Store the AFP for previous block
 
-                        // Store the AFP for previous block
+                    let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
 
-                        let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
+                    BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+previousBlockID,{prevBlockHash,blockID,blockHash,proofs}).then(async()=>{
 
-                        BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+previousBlockID,{prevBlockHash,blockID,blockHash,proofs}).then(async()=>{
-
-                            currentEpochMetadata.FINALIZATION_STATS.set(block.creator,futureMetadataToStore)
+                        let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
     
+                        let finalizationProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
 
-                            let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
-        
-                            let finalizationProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                        // Once we get the block - return the TMB(Trust Me Bro) proof that we have received the valid block
 
-                            // Once we get the block - return the TMB(Trust Me Bro) proof that we have received the valid block
+                        dataToSign += 'VALID_BLOCK_RECEIVED'
 
-                            dataToSign += 'VALID_BLOCK_RECEIVED'
+                        let tmbProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
 
-                            let tmbProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-    
-    
-                            currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
-        
-                            connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
-    
 
-                        })    
-  
-                    })
-    
-                ).catch(()=>{})
+                        let votingRequest = {
+
+                            epochIndex, blockCreator:block.creator, finalizationProof, tmbProof, futureVotingDataToStore, connection, votedForHash:proposedBlockHash
+                    
+                        }
+
+                        if(!GLOBAL_CACHES.VOTING_REQUESTS.has(blockID)) GLOBAL_CACHES.VOTING_REQUESTS.set(blockID,votingRequest)
+
+
+
+                    })    
+
+                })
 
 
             } else {
 
                 connection.close()
 
-                currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
             }
 
         }        
