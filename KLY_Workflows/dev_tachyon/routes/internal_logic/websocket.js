@@ -99,7 +99,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         
-    if(!currentEpochMetadata || currentEpochMetadata.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+    if(!currentEpochMetadata){
 
         connection.close()
     
@@ -385,94 +385,10 @@ let returnBlocksRange = async(data,connection)=>{
 
 let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=>{
 
-/*
-
-[Info]:
-
-            Route to return LRP(leader rotation proof)
-    
-            Returns the signature if requested height >= than our own
-    
-            Otherwise - send the UPDATE message with FINALIZATION_PROOF 
-
-
-
-        [Accept]:
-
-        {
-
-            poolPubKey,
-
-            hisIndexInLeadersSequence,
-
-            skipData:{
-
-                index,
-                hash,
-
-                afp:{
-                
-                    prevBlockHash,
-                    blockID,
-                    blockHash,
-
-                    proofs:{
-                     
-                        pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
-                        ...
-                        
-                    }
-                }
-            }
-
-        }
-
-
-[Response]:
-
-
-[1] In case we have info about voting for this pool in FINALIZATION_STATS and if height in handler has <= index than in <skipData> from request we can response
-
-    {
-        type:'OK',
-        sig: ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
-    }
-
-
-[2] In case we have bigger index in handler than in proposed <skipData> - response with 'UPDATE' message:
-
-    {
-        type:'UPDATE',
-                        
-        skipData:{
-
-            index,
-            hash,
-
-            afp:{
-                
-                prevBlockHash,
-                blockID,
-                blockHash,
-
-                proofs:{
-                     
-                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+AT.EPOCH.hash+"#"+AT.EPOCH.id
-                    ...
-                        
-                }
-
-            }
-
-        }
-                        
-    }
-    
-    
-    */
-
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+    let epochIndex = epochHandler.id
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -497,8 +413,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
         
         let {index,hash,afp} = requestForLeaderRotationProof.skipData
 
-        let localFinalizationStats = currentEpochMetadata.FINALIZATION_STATS.get(requestForLeaderRotationProof.poolPubKey)
-
+        let localFinalizationStats = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+requestForLeaderRotationProof.poolPubKey).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
 
         // We can't sign the LRP(leader rotation proof) in case requested height is lower than our local version. So, send 'UPDATE' message to requester
@@ -717,13 +632,13 @@ klyntarWebsocketServer.on('request',request=>{
 
                 returnFinalizationProofForBlock(data,connection)
 
-            }else if(data.route==='get_blocks'){
-
-                returnBlocksRange(data,connection)
-
             }else if(data.route==='get_leader_rotation_proof'){
 
                 returnLeaderRotationProof(data,connection)
+
+            }else if(data.route==='get_blocks'){
+
+                returnBlocksRange(data,connection)
 
             }else if(data.route==='get_blocks_for_pod'){
 

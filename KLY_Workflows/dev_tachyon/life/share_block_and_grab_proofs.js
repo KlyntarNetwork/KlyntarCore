@@ -58,62 +58,6 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
                             if(parsedData.route === 'get_leader_rotation_proof'){                                
 
-                                
-                            /*                                
- 
-                                ___________________________ Now analyze the responses ___________________________
-
-                            [1] In case quroum member has the same or lower index in own FINALIZATION_STATS for this pool - we'll get the response like this:
-
-                            {
-                                type:'OK',
-                                sig: ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
-                            }
-
-                            We should just verify this signature and add to local list for further aggregation
-                            And this quorum member update his own local version of FP to have FP with bigger index
-
-
-                            [2] In case quorum member has bigger index in FINALIZATION_STATS - it sends us 'UPDATE' message with the following format:
-
-                            {
-                
-                                type:'UPDATE',
-             
-                                skipData:{
-                                
-                                    index,
-                                    hash,
-                                    afp:{
-
-                                        prevBlockHash,      => must be the same as skipData.hash
-                                        blockID,            => must be skipData.index+1 === blockID
-                                        blockHash,
-                                        proofs:{
-
-                                            pubKey0:signa0,         => prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
-                                        ...
-
-                                        }
-
-                                    }
-
-                                }
-             
-                            }
-
-
-                                parsedData format is:
-
-                                {
-                                    route,voter,type,forPoolPubkey
-
-                                    skipData:{index,hash,afp} | sig:string
-                                }
-
-                                    
-                                    
-                            */
 
                                 let localMetadataForPotentialAlrp = TEMP_CACHE.get(`LRPS:${parsedData.forPoolPubkey}`) // format is {afpForFirstBlock,skipIndex,skipHash,skipAfp,proofs}
 

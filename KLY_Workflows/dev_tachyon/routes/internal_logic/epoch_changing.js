@@ -46,11 +46,11 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     // CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE - set the limit mb
 
-    let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    let atEpochHandlerIndex = atEpochHandler.id
+    let epochIndex = epochHandler.id
 
-    let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
+    let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
@@ -74,7 +74,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
         if(typeCheckIsOk){
 
-            // Get the local version of CURRENT_LEADER_INFO and FINALIZATION_STATS
+            // Get the local version about voting
 
             let localIndexOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.index
 
@@ -82,20 +82,20 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
             // Structure is {index,hash,afp}
 
-            let epochManagerForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfCurrentLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+            let votingDataForLeader = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+pubKeyOfCurrentLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
 
             // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
                     
             let hashOfFirstBlockByLastLeaderInThisEpoch
 
-            let blockIdOfFirstBlock = atEpochHandler.id+':'+pubKeyOfCurrentLeader+':0' // first block has index 0 - numeration from 0
+            let blockIdOfFirstBlock = epochHandler.id+':'+pubKeyOfCurrentLeader+':0' // first block has index 0 - numeration from 0
 
             if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.lastBlockProposition.index>=0){
 
                 // Verify the AFP for first block
 
-                let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,atEpochHandler)
+                let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,epochHandler)
 
                 if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
 
@@ -116,7 +116,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
             if(proposition.currentLeader === localIndexOfLeader){
 
-                if(epochManagerForLeader.index === proposition.lastBlockProposition.index && epochManagerForLeader.hash === proposition.lastBlockProposition.hash){
+                if(votingDataForLeader.index === proposition.lastBlockProposition.index && votingDataForLeader.hash === proposition.lastBlockProposition.hash){
                     
                     // Send AEFP signature
 
@@ -134,7 +134,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                     }
 
                         
-                }else if(epochManagerForLeader.index > proposition.lastBlockProposition.index){
+                }else if(votingDataForLeader.index > proposition.lastBlockProposition.index){
 
                     // Send 'UPGRADE' msg
 
@@ -144,7 +144,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                         
                         currentLeader:localIndexOfLeader,
             
-                        lastBlockProposition:epochManagerForLeader // {index,hash,afp}
+                        lastBlockProposition:votingDataForLeader // {index,hash,afp}
                 
                     }
 
@@ -160,7 +160,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                         
                     currentLeader:localIndexOfLeader,
             
-                    lastBlockProposition:epochManagerForLeader // {index,hash,afp}
+                    lastBlockProposition:votingDataForLeader // {index,hash,afp}
                 
                 }
 
