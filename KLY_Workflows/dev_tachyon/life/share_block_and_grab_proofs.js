@@ -1,10 +1,10 @@
-import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../common_functions/quorum_related.js'
-
 import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
 import {logColors,verifyEd25519,customLog} from '../../../KLY_Utils/utils.js'
+
+import {getQuorumMajority} from '../common_functions/quorum_related.js'
 
 import {grabEpochFinalizationProofs} from './new_epoch_proposer.js'
 
@@ -168,9 +168,8 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
         })
 
-        // Send only to safe subset of validators from quorum
 
-        let subsetToSendBlocks = getPseudoRandomSubsetFromQuorumByTicketId(0,epochHandler)
+        let subsetToSendBlocks = epochHandler.quorum
 
         for(let pubKeyOfQuorumMember of subsetToSendBlocks){
 
