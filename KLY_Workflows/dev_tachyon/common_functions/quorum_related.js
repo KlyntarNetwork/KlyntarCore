@@ -48,47 +48,6 @@ export let getQuorumUrlsAndPubkeys = async (withPubkey,epochHandler) => {
 
 
 
-export let getPseudoRandomSubsetFromQuorumByTicketId=(ticketID,epochHandler)=>{
-
-    // If QUORUM_SIZE > 21 - do challenge, otherwise - return the whole quorum
-    
-    if(epochHandler.quorum.length > 21){
-
-        // Based on ticket_id + epochHandler.hash as a seed value - generate 21 values in range [0;quorum.size]
-
-        // Then, return the resulting array of 21 validators by indexes in <quorum> array
-
-        let subsetToReturn = []
-
-        for(let i=0 ; i < 21 ; i++) {
-
-            let seed = blake3Hash(`${epochHandler.hash}:${ticketID}:${i}`)
-
-            // Hex => Number
-            let hashAsNumber = parseInt(seed, 16);
-    
-            // Normalize to [0, 1]
-            let normalizedValue = hashAsNumber / (parseInt('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 16) + 1);
-    
-            let min = 0, max = epochHandler.quorum.length-1
-    
-            // Normalize to [min, max]
-            let scaledValue = min + Math.floor(normalizedValue * (max - min + 1))
-                
-            subsetToReturn.push(epochHandler.quorum[scaledValue])
-
-        }
-
-        return subsetToReturn
-
-
-    } else return epochHandler.quorum
-
-
-}
-
-
-
 // We get the quorum based on pools' metadata(pass via parameter)
 
 export let getCurrentEpochQuorum = async (poolsRegistry, networkParams, newEpochSeed) => {
