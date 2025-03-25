@@ -96,9 +96,7 @@ FASTIFY_SERVER.get('/current_leader',async(_request,response)=>{
 
         if(currentEpochMetadata){
 
-            let currentLeaderPubkey = currentEpochMetadata.CURRENT_LEADER_PUBKEY
-
-            let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentLeaderPubkey }
+            let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentEpochMetadata.CURRENT_LEADER_PUBKEY }
     
             response.send(dataToReturn)    
 

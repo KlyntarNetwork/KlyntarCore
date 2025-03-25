@@ -74,7 +74,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
             
         */
 
-        let localVotingDataForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+        let localVotingDataForLeader = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+pubKeyOfLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
         if(localVotingDataForLeader.index === -1){
 
@@ -84,17 +84,13 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                 let previousLeader = atEpochHandler.leadersSequence[position]
 
-                let localVotingData = currentEpochMetadata.FINALIZATION_STATS.get(previousLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                let localVotingData = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+previousLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
                 if(localVotingData.index > -1){
 
                     pubKeyOfLeader = previousLeader
 
                     indexOfLeader = position
-
-                    // Also, change the value in pointer to current leader
-
-                    currentEpochMetadata.CURRENT_LEADER_INFO = {index:position, pubKey:previousLeader}
 
                     break
 
@@ -128,7 +124,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                 afpForFirstBlock:{},
 
-                lastBlockProposition:currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                lastBlockProposition: await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+pubKeyOfLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
             }
 
@@ -224,8 +220,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 currentEpochMetadata.CURRENT_LEADER_INFO = {index:possibleAgreements.currentLeader, pubKey:pubKeyOfProposedLeader}
                                 
-                                // Update FINALIZATION_STATS
-
+                                
                                 currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
                         
                                 // Clear the mapping with signatures because it becomes invalid
