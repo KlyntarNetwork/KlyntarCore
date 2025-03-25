@@ -33,63 +33,6 @@ FASTIFY_SERVER.get('/block/:id',(request,response)=>{
 
 
 
-// Returns batch of blocks with proof that it's valid chain
-// 0 - blockID(in format <EpochID>:<ValidatorPubkey>:<Index of block in epoch>)
-
-FASTIFY_SERVER.get('/multiple_blocks/:epoch_index/:pool_id/:from_index',async(request,response)=>{
-
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK){
-
-        response
-        
-            .header('Access-Control-Allow-Origin','*')    
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.BLOCK}`)
-    
-
-        // We need to send range of blocks from <from_index+1> to <from_index+100>
-        // Also, send the AFP for latest block - so the response structure is {blocks:[],afpForLatest}
-
-        let responseStructure = {
-
-            blocks:[],
-
-            afpForLatest:{}
-
-        }
-
-    
-        for(let i=0 ; i<100 ; i++){
-
-            let blockIdToFind = request.params.epoch_index+':'+request.params.pool_id+':'+(request.params.from_index+i)
-
-            let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIdToFind).catch(()=>null)
-
-            if(block){
-
-                responseStructure.blocks.push(block)
-
-            } else break
-
-        }
-
-        let latestBlock = responseStructure.blocks[responseStructure.blocks.length-1]
-
-        let blockIdToFindAfp = request.params.epoch_index+':'+request.params.pool_id+':'+(latestBlock.index+1)
-
-        let afpForLatest = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+blockIdToFindAfp).catch(()=>null)
-
-        responseStructure.afpForLatest = afpForLatest
-
-        response.send(responseStructure)
-        
-
-    } else response.send({err:'Route is off'})
-
-})
-
-
-
-
 
 // 0 - index
 

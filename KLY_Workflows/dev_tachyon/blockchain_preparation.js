@@ -38,9 +38,6 @@ let setGenesisToState=async()=>{
 
 
 
-
-    WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT = -1
-
     shardsRegistry.push(BLOCKCHAIN_GENESIS.SHARD)
 
     //__________________________________ Load info about pools __________________________________
