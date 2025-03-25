@@ -1156,12 +1156,11 @@ export let startVerificationThread=async()=>{
 
         // Take the pool by it's position
         
-        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[tempInfoAboutFinalBlocksByPreviousPools.currentToVerify]
+        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[tempInfoAboutFinalBlocksByPreviousPools.currentToVerify]        
         
         let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash}
 
-        let infoAboutLastBlockByThisPool = tempInfoAboutFinalBlocksByPreviousPools.infoAboutFinalBlocksInThisEpoch[poolToVerifyRightNow] // {index,hash}
-
+        let infoAboutLastBlockByThisPool = tempInfoAboutFinalBlocksByPreviousPools.infoAboutFinalBlocksInThisEpoch[poolToVerifyRightNow] // {index,hash}        
         
         if(infoAboutLastBlockByThisPool && verificationStatsOfThisPool.index === infoAboutLastBlockByThisPool.index){
 

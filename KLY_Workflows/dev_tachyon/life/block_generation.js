@@ -568,7 +568,7 @@ let generateBlocksPortion = async() => {
 
                 let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,leaderPubKey,indexOfPreviousLeaderInSequence)
                 
-                if(aggregatedLeaderRotationProof){                    
+                if(aggregatedLeaderRotationProof){    
 
                     extraData.aggregatedLeadersRotationProofs[leaderPubKey] = aggregatedLeaderRotationProof
 

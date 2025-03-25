@@ -19,8 +19,6 @@ import Block from '../structures/block.js'
 
 
 
-
-
 export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject) => {
 
     
