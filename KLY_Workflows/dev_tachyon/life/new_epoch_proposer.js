@@ -114,7 +114,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
 
 
-        let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}`).catch(()=>false)
+        let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${epochIndex}`).catch(()=>false)
 
         if(!aefpExistsLocally){
 
@@ -133,7 +133,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
             if(epochFinishProposition.lastBlockProposition.index >= 0){
 
-                let firstBlockID = atEpochHandler.id+':'+pubKeyOfLeader+':0'
+                let firstBlockID = epochIndex+':'+pubKeyOfLeader+':0'
 
                 epochFinishProposition.afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
 
@@ -210,7 +210,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                             
                             let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
 
-                            let blockIDThatShouldBeInAfp = atEpochHandler.id+':'+pubKeyOfProposedLeader+':'+index
+                            let blockIDThatShouldBeInAfp = epochIndex+':'+pubKeyOfProposedLeader+':'+index
                         
                             if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
 
@@ -218,10 +218,13 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                         
                                 // Update the info about current leader
 
-                                currentEpochMetadata.CURRENT_LEADER_INFO = {index:possibleAgreements.currentLeader, pubKey:pubKeyOfProposedLeader}
+                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,pubKeyOfProposedLeader).then(()=>{
+
+                                    currentEpochMetadata.CURRENT_LEADER_PUBKEY = pubKeyOfProposedLeader
+                        
+                                }).catch(()=>null)
                                 
-                                
-                                currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
+                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}}).catch(()=>{})
                         
                                 // Clear the mapping with signatures because it becomes invalid
 
@@ -264,7 +267,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
             if(await verifyAggregatedEpochFinalizationProof(aggregatedEpochFinalizationProof,atEpochHandler.quorum,majority,epochFullID)){
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}`,aggregatedEpochFinalizationProof).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${epochIndex}`,aggregatedEpochFinalizationProof).catch(()=>{})
 
             } else {
 
