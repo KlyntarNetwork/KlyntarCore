@@ -4,8 +4,6 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/qu
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
-import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
-
 import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyntar_core.js'
@@ -18,6 +16,8 @@ import {epochStillFresh} from '../utils.js'
 export let checkIfItsTimeToStartNewEpoch=async()=>{
 
     let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+    let epochIndex = atEpochHandler.id
 
     let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
@@ -35,47 +35,31 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
     let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
+    let timeForNewEpoch = !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)
 
-    if(iAmInTheQuorum && !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
-        
-        // Stop to generate finalization proofs
-        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
+    // First of all - prevent generation of new finalization proofs
 
-        let canGenerateEpochFinalizationProof = true
+    let epochFinishResponse = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+epochIndex).catch(()=>false)
+
+    if(timeForNewEpoch && !epochFinishResponse){
+
+        // Send the signal
+
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('EPOCH_FINISH_REQUEST:'+epochIndex,true).catch(()=>false)
+
+        setTimeout(checkIfItsTimeToStartNewEpoch,3000)
+
+        return
+
+    }
+
+    if(iAmInTheQuorum && timeForNewEpoch && epochFinishResponse){
+    
 
         let pubKeyOfLeader = currentEpochMetadata.CURRENT_LEADER_PUBKEY
 
-        let indexOfLeader = atEpochHandler.leadersSequence.indexOf(pubKeyOfLeader)
+        let indexOfLeader = atEpochHandler.leadersSequence.indexOf(pubKeyOfLeader)        
 
-
-        if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
-
-            canGenerateEpochFinalizationProof = false
-
-        }
-        
-
-        if(canGenerateEpochFinalizationProof){
-
-            await useTemporaryDb('put',currentEpochMetadata.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
-
-                currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
-
-
-            ).catch(()=>{})
-
-        }
-        
-
-        // Check the safety
-        if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
-
-            setTimeout(checkIfItsTimeToStartNewEpoch,3000)
-
-            return
-
-        }
-    
 
         let epochFinishProposition = {}
 

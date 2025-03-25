@@ -1,4 +1,4 @@
-import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
 
@@ -177,16 +177,18 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
+    let epochIndex = epochHandler.id
+
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
     if(!currentEpochMetadata) return
 
-    let {FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = currentEpochMetadata
+    let {FINALIZATION_PROOFS,TEMP_CACHE} = currentEpochMetadata
 
 
     // Get the block index & hash that we're currently hunting for
 
-    let blockIDForHunting = epochHandler.id+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+(proofsGrabber.acceptedIndex+1)
+    let blockIDForHunting = epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+(proofsGrabber.acceptedIndex+1)
 
     let finalizationProofsMapping
 
@@ -316,7 +318,8 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 
         // Repeat procedure for the next block and store the progress
-        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).then(()=>{
+
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).then(()=>{
 
             proofsGrabber.afpForPrevious = aggregatedFinalizationProof
 
@@ -327,7 +330,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         }).catch(()=>{})
 
 
-        customLog(`Approved height for epoch \u001b[38;5;50m${epochHandler.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex-1} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,logColors.RED)
+        customLog(`Approved height for epoch \u001b[38;5;50m${epochIndex} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex-1} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,logColors.RED)
 
         console.log('\n')
 
@@ -357,9 +360,11 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 export let shareBlocksAndGetFinalizationProofs = async () => {
 
-    let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+    let epochIndex = epochHandler.id
     
-    let epochFullID = atEpochHandler.hash + "#" + atEpochHandler.id
+    let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
@@ -383,17 +388,17 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     }
 
-    let {DATABASE,TEMP_CACHE} = currentEpochMetadata
+    let {TEMP_CACHE} = currentEpochMetadata
 
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-    if(!proofsGrabber || proofsGrabber.epochID !== atEpochHandler.id){
+    if(!proofsGrabber || proofsGrabber.epochID !== epochIndex){
 
         // If we still works on the old epoch - continue
         // Otherwise,update the latest height/hash and send them to the new QUORUM
         
-        proofsGrabber = await useTemporaryDb('get',DATABASE,'PROOFS_GRABBER').catch(()=>false)
+        proofsGrabber = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':PROOFS_GRABBER').catch(()=>null)
 
         if(!proofsGrabber){
 
@@ -401,7 +406,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
             
             proofsGrabber = {
     
-                epochID:atEpochHandler.id,
+                epochID:epochIndex,
 
                 acceptedIndex:-1,
 
@@ -415,16 +420,16 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
         
         // And store new descriptor
 
-        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).catch(()=>{})
 
         TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
 
     }
 
 
-    await openConnectionsWithQuorum(atEpochHandler,currentEpochMetadata)
+    await openConnectionsWithQuorum(epochHandler,currentEpochMetadata)
 
-    await runFinalizationProofsGrabbing(atEpochHandler,proofsGrabber).catch(()=>{})
+    await runFinalizationProofsGrabbing(epochHandler,proofsGrabber).catch(()=>{})
 
 
     setImmediate(shareBlocksAndGetFinalizationProofs)

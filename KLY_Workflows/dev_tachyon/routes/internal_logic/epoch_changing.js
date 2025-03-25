@@ -62,114 +62,119 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
         return
     }
 
+    let epochFinishResponse = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+epochIndex).catch(()=>false)
 
-    let proposition = JSON.parse(request.body)
+    if(epochFinishResponse){
 
-    let responseStructure = {}
+        let proposition = JSON.parse(request.body)
+
+        let responseStructure = {}
+        
     
-
-    if(typeof proposition === 'object'){
-
-        let typeCheckIsOk = typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'
-
-        if(typeCheckIsOk){
-
-            // Get the local version about voting
-
-            let localIndexOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.index
-
-            let pubKeyOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey
-
-            // Structure is {index,hash,afp}
-
-            let votingDataForLeader = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+pubKeyOfCurrentLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
-
-
-            // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
-                    
-            let hashOfFirstBlockByLastLeaderInThisEpoch
-
-            let blockIdOfFirstBlock = epochHandler.id+':'+pubKeyOfCurrentLeader+':0' // first block has index 0 - numeration from 0
-
-            if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.lastBlockProposition.index>=0){
-
-                // Verify the AFP for first block
-
-                let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,epochHandler)
-
-                if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
-
-
-            }
-
-
-            if(!hashOfFirstBlockByLastLeaderInThisEpoch){
-
-                response.send({err:`Can't verify hash`})
-
-                return
-
-            }
-
-
-            //_________________________________________ Now compare _________________________________________
-
-            if(proposition.currentLeader === localIndexOfLeader){
-
-                if(votingDataForLeader.index === proposition.lastBlockProposition.index && votingDataForLeader.hash === proposition.lastBlockProposition.hash){
-                    
-                    // Send AEFP signature
-
-                    let {index,hash} = proposition.lastBlockProposition
-
-                    let dataToSign = `EPOCH_DONE:${proposition.currentLeader}:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
-
-
-                    responseStructure = {
+        if(typeof proposition === 'object'){
+    
+            let typeCheckIsOk = typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'
+    
+            if(typeCheckIsOk){
+    
+                // Get the local version about voting
+    
+                let localIndexOfLeader = currentEpochMetadata.CURRENT_LEADER_INFO.index
+    
+                let pubKeyOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INFO.pubKey
+    
+                // Structure is {index,hash,afp}
+    
+                let votingDataForLeader = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+pubKeyOfCurrentLeader).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
+    
+    
+                // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
+                        
+                let hashOfFirstBlockByLastLeaderInThisEpoch
+    
+                let blockIdOfFirstBlock = epochHandler.id+':'+pubKeyOfCurrentLeader+':0' // first block has index 0 - numeration from 0
+    
+                if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.lastBlockProposition.index>=0){
+    
+                    // Verify the AFP for first block
+    
+                    let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,epochHandler)
+    
+                    if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
+    
+    
+                }
+    
+    
+                if(!hashOfFirstBlockByLastLeaderInThisEpoch){
+    
+                    response.send({err:`Can't verify hash`})
+    
+                    return
+    
+                }
+    
+    
+                //_________________________________________ Now compare _________________________________________
+    
+                if(proposition.currentLeader === localIndexOfLeader){
+    
+                    if(votingDataForLeader.index === proposition.lastBlockProposition.index && votingDataForLeader.hash === proposition.lastBlockProposition.hash){
+                        
+                        // Send AEFP signature
+    
+                        let {index,hash} = proposition.lastBlockProposition
+    
+                        let dataToSign = `EPOCH_DONE:${proposition.currentLeader}:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
+    
+    
+                        responseStructure = {
+                                                
+                            status:'OK',
                                             
-                        status:'OK',
-                                        
-                        sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-                                        
+                            sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                                            
+                        }
+    
+                            
+                    }else if(votingDataForLeader.index > proposition.lastBlockProposition.index){
+    
+                        // Send 'UPGRADE' msg
+    
+                        responseStructure = {
+    
+                            status:'UPGRADE',
+                            
+                            currentLeader:localIndexOfLeader,
+                
+                            lastBlockProposition:votingDataForLeader // {index,hash,afp}
+                    
+                        }
+    
                     }
-
-                        
-                }else if(votingDataForLeader.index > proposition.lastBlockProposition.index){
-
+    
+                }else if(proposition.currentLeader < localIndexOfLeader){
+    
                     // Send 'UPGRADE' msg
-
+    
                     responseStructure = {
-
+    
                         status:'UPGRADE',
-                        
+                            
                         currentLeader:localIndexOfLeader,
-            
+                
                         lastBlockProposition:votingDataForLeader // {index,hash,afp}
-                
+                    
                     }
-
+    
                 }
-
-            }else if(proposition.currentLeader < localIndexOfLeader){
-
-                // Send 'UPGRADE' msg
-
-                responseStructure = {
-
-                    status:'UPGRADE',
-                        
-                    currentLeader:localIndexOfLeader,
-            
-                    lastBlockProposition:votingDataForLeader // {index,hash,afp}
-                
-                }
-
+    
             }
+    
+            response.send(responseStructure)
+    
+        } else response.send({err:'Wrong format'})
 
-        }
-
-        response.send(responseStructure)
-
-    } else response.send({err:'Wrong format'})
+    } else response.send({err:'Too early'})
 
 })
