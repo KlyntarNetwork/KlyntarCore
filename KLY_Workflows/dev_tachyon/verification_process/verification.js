@@ -1170,9 +1170,13 @@ let executeTransaction = async (currentBlockID,transaction,rewardsAndSuccessfulT
 
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
-            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee})
+            if(!reason.startsWith("Replay:")){
 
-            trackStateChange('TX:'+txid,1,'put')
+                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee})
+
+                trackStateChange('TX:'+txid,1,'put')    
+
+            }
 
         }
 
@@ -1200,9 +1204,13 @@ let executeGroupOfTransaction = async (currentBlockID,independentGroup,rewardsAn
     
                 let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
     
-                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee})
+                if(!reason.startsWith("Replay:")){
+
+                    atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason,createdContractAddress,extraDataToReceipt,priorityFee,totalFee})
     
-                trackStateChange('TX:'+txid,1,'put')
+                    trackStateChange('TX:'+txid,1,'put')    
+
+                }
 
             }
 
