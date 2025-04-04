@@ -18,16 +18,16 @@ let votingThreadIteration = async() => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
-    let epochIndex = epochHandler.id
+    let epochIndexLocal = epochHandler.id
     
 
     // Check if we have the request for epoch finish - if so, send response and skip the following loop
 
-    let epochFinishRequest = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_REQUEST:'+epochIndex).catch(()=>false)
+    let epochFinishRequest = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_REQUEST:'+epochIndexLocal).catch(()=>false)
 
     if(epochFinishRequest){
 
-        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('EPOCH_FINISH_RESPONSE:'+epochIndex,true).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('EPOCH_FINISH_RESPONSE:'+epochIndexLocal,true).catch(()=>{})
 
         GLOBAL_CACHES.VOTING_REQUESTS.clear()
 
@@ -38,21 +38,25 @@ let votingThreadIteration = async() => {
             // Make sure that the local value of height in BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS is <= than the index you're going to vote for
 
             let {epochIndex, blockCreator, finalizationProof, futureVotingDataToStore, connection, votedForHash} = votingRequest
+
+            if(epochIndex === epochIndexLocal){
+
+                let localVotingStats = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+blockCreator).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
+
+                if(localVotingStats.index <= futureVotingDataToStore.index){
     
-            let localVotingStats = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+blockCreator).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
-
-            if(localVotingStats.index <= futureVotingDataToStore.index){
-
-                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+blockCreator,futureVotingDataToStore).then(()=>{
-
-                    // Finally send response
-
-                    connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash}))
-
-                }).catch(()=>{})
+                    await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+blockCreator,futureVotingDataToStore).then(()=>{
+    
+                        // Finally send response
+    
+                        connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash}))
+    
+                    }).catch(()=>{})
+    
+                }    
 
             }
-
+    
             GLOBAL_CACHES.VOTING_REQUESTS.delete(blockID)
         
         }    
