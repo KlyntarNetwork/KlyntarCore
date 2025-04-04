@@ -49,7 +49,7 @@ export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
 
 
 
-export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
+export let startEpochRotationThread=async()=>{
 
     
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
@@ -62,7 +62,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
         if(!temporaryObject){
     
-            setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
+            setTimeout(startEpochRotationThread,3000)
     
             return
     
@@ -422,11 +422,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         // Continue to find
 
-        setImmediate(findAefpsAndFirstBlocksForCurrentEpoch)
+        setImmediate(startEpochRotationThread)
 
     } else {
 
-        setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
+        setTimeout(startEpochRotationThread,3000)
 
     }
 
