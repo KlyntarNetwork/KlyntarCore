@@ -31,28 +31,28 @@ export let runBlockchain=async()=>{
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
-    //✅0.Start verification process - process blocks and find new epoch step-by-step
+    //✅1.Start verification process - process blocks and find new epoch step-by-step
     startVerificationThread()
 
-    //✅1.Thread to find AEFPs and change the epoch for AT
+    //✅2.Thread to find AEFPs and change the epoch for AT
     findAefpsAndFirstBlocksForCurrentEpoch()
 
-    //✅2.Share our blocks within quorum members and get the finalization proofs
+    //✅3.Share our blocks within quorum members and get the finalization proofs
     shareBlocksAndGetFinalizationProofs()
 
-    //✅3.Thread to propose AEFPs to move to next epoch
+    //✅4.Thread to propose AEFPs to move to next epoch
     checkIfItsTimeToStartNewEpoch()
 
-    //✅4.Thread to track changes of leaders rotation
+    //✅5.Thread to track changes of leaders rotation
     leadersSequenceMonitoring()
 
-    //✅5.Function to build the temporary sequence of blocks to verify them
+    //✅6.Function to build the temporary sequence of blocks to verify them
     findTemporaryInfoAboutFinalBlocksByPreviousPools()
 
-    //✅6.Start to generate blocks
+    //✅7.Start to generate blocks
     blocksGenerationProcess()
 
-    //✅7.Start a separate thread to work with voting for blocks in a sync way (for security)
+    //✅8.Start a separate thread to work with voting for blocks in a sync way (for security)
     startVotingThread()
 
 }
