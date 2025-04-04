@@ -13,7 +13,7 @@ import {epochStillFresh} from '../utils.js'
 
 
 
-export let checkIfItsTimeToStartNewEpoch=async()=>{
+export let startNewEpochProposerThread=async()=>{
 
     let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -26,7 +26,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
     if(!currentEpochMetadata){
 
-        setTimeout(checkIfItsTimeToStartNewEpoch,3000)
+        setTimeout(startNewEpochProposerThread,3000)
 
         return
 
@@ -47,7 +47,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('EPOCH_FINISH_REQUEST:'+epochIndex,true).catch(()=>false)
 
-        setTimeout(checkIfItsTimeToStartNewEpoch,3000)
+        setTimeout(startNewEpochProposerThread,3000)
 
         return
 
@@ -279,6 +279,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
     }
 
-    setTimeout(checkIfItsTimeToStartNewEpoch,3000) // each 3 seconds - do monitoring
+    setTimeout(startNewEpochProposerThread,3000) // each 3 seconds - do monitoring
 
 }

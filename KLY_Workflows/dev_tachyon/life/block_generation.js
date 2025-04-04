@@ -32,11 +32,11 @@ let web1337 = new Web1337({
 
 
 
-export let blocksGenerationProcess=async()=>{
+export let startBlocksGenerationThread=async()=>{
 
     await generateBlocksPortion()
 
-    setTimeout(blocksGenerationProcess,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)    
+    setTimeout(startBlocksGenerationThread,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)    
  
 }
 

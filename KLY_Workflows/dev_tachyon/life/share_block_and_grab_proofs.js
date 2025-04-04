@@ -358,7 +358,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 
 
-export let shareBlocksAndGetFinalizationProofs = async () => {
+export let startBlocksSharingAndProofsGrabingThread = async () => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -372,7 +372,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     if(!currentEpochMetadata){
 
-        setTimeout(shareBlocksAndGetFinalizationProofs,2000)
+        setTimeout(startBlocksSharingAndProofsGrabingThread,2000)
 
         return
 
@@ -382,7 +382,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
     
     if(currentEpochMetadata.CURRENT_LEADER_PUBKEY !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
-        setTimeout(shareBlocksAndGetFinalizationProofs,2000)
+        setTimeout(startBlocksSharingAndProofsGrabingThread,2000)
 
         return
 
@@ -432,6 +432,6 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
     await runFinalizationProofsGrabbing(epochHandler,proofsGrabber).catch(()=>{})
 
 
-    setImmediate(shareBlocksAndGetFinalizationProofs)
+    setImmediate(startBlocksSharingAndProofsGrabingThread)
 
 }

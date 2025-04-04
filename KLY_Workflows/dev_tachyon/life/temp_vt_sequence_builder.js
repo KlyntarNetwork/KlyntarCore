@@ -16,7 +16,7 @@ import Block from '../structures/block.js'
 
 
 
-export let findTemporaryInfoAboutFinalBlocksByPreviousPools=async()=>{
+export let startBlocksOrderingForExecutionThread=async()=>{
 
     /*
     
@@ -263,6 +263,6 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPools=async()=>{
         
     }
         
-    setTimeout(findTemporaryInfoAboutFinalBlocksByPreviousPools,CONFIGURATION.NODE_LEVEL.TIMEOUT_TO_FIND_TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS)
+    setTimeout(startBlocksOrderingForExecutionThread,CONFIGURATION.NODE_LEVEL.TIMEOUT_TO_FIND_TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS)
     
 }

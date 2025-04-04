@@ -1,16 +1,16 @@
-import {findTemporaryInfoAboutFinalBlocksByPreviousPools} from './life/temp_vt_sequence_builder.js'
+import {startBlocksOrderingForExecutionThread} from './life/temp_vt_sequence_builder.js'
 
-import {shareBlocksAndGetFinalizationProofs} from './life/share_block_and_grab_proofs.js'
+import {startBlocksSharingAndProofsGrabingThread} from './life/share_block_and_grab_proofs.js'
 
-import {findAefpsAndFirstBlocksForCurrentEpoch} from './life/find_new_epoch.js'
+import {startEpochRotationThread} from './life/find_new_epoch.js'
 
 import {startVerificationThread} from './verification_process/verification.js'
 
-import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
+import {startNewEpochProposerThread} from './life/new_epoch_proposer.js'
 
 import {leadersSequenceMonitoring} from './life/leaders_monitoring.js'
 
-import {blocksGenerationProcess} from './life/block_generation.js'
+import {startBlocksGenerationThread} from './life/block_generation.js'
 
 import {prepareBlockchain} from './blockchain_preparation.js'
 
@@ -35,22 +35,22 @@ export let runBlockchain=async()=>{
     startVerificationThread()
 
     //✅2.Thread to find AEFPs and change the epoch for AT
-    findAefpsAndFirstBlocksForCurrentEpoch()
+    startEpochRotationThread()
 
     //✅3.Share our blocks within quorum members and get the finalization proofs
-    shareBlocksAndGetFinalizationProofs()
+    startBlocksSharingAndProofsGrabingThread()
 
     //✅4.Thread to propose AEFPs to move to next epoch
-    checkIfItsTimeToStartNewEpoch()
+    startNewEpochProposerThread()
 
     //✅5.Thread to track changes of leaders rotation
     leadersSequenceMonitoring()
 
     //✅6.Function to build the temporary sequence of blocks to verify them
-    findTemporaryInfoAboutFinalBlocksByPreviousPools()
+    startBlocksOrderingForExecutionThread()
 
     //✅7.Start to generate blocks
-    blocksGenerationProcess()
+    startBlocksGenerationThread()
 
     //✅8.Start a separate thread to work with voting for blocks in a sync way (for security)
     startVotingThread()
