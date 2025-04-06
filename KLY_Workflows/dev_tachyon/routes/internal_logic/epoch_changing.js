@@ -62,9 +62,9 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
         return
     }
 
-    let epochFinishResponse = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+epochIndex).catch(()=>false)
+    let signalAboutFinishOfEpoch = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+epochIndex).catch(()=>false)
 
-    if(epochFinishResponse){
+    if(signalAboutFinishOfEpoch){
 
         let proposition = JSON.parse(request.body)
 

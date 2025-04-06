@@ -413,12 +413,12 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
         
         let {index,hash,afp} = requestForLeaderRotationProof.skipData
 
-        let localFinalizationStats = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+requestForLeaderRotationProof.poolPubKey).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
+        let localVotingData = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+requestForLeaderRotationProof.poolPubKey).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
 
         // We can't sign the LRP(leader rotation proof) in case requested height is lower than our local version. So, send 'UPDATE' message to requester
 
-        if(localFinalizationStats && localFinalizationStats.index > index){
+        if(localVotingData && localVotingData.index > index){
 
             // Try to return with AFP for the first block
 
@@ -438,7 +438,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
                 afpForFirstBlock,
 
-                skipData:localFinalizationStats // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
+                skipData:localVotingData // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
 
             }
 
