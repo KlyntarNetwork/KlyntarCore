@@ -34,9 +34,15 @@ let web1337 = new Web1337({
 
 export let startBlocksGenerationThread=async()=>{
 
-    await generateBlocksPortion()
+    // Safe "if" branch to prevent unnecessary blocks generation    
+    
+    if(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
-    setTimeout(startBlocksGenerationThread,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)    
+        await generateBlocksPortion()
+
+        setTimeout(startBlocksGenerationThread,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)    
+
+    }
  
 }
 
@@ -389,126 +395,120 @@ let generateBlocksPortion = async() => {
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
-    // Safe "if" branch to prevent unnecessary blocks generation    
-    
-    if(CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
+    generateBatchOfMockTransactionsAndPushToMempool()
 
-        generateBatchOfMockTransactionsAndPushToMempool()
+    // Check if <epochFullID> is the same in APPROVEMENT_THREAD and in GENERATION_THREAD
 
-        // Check if <epochFullID> is the same in APPROVEMENT_THREAD and in GENERATION_THREAD
+    if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
 
-        if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
+        // If new epoch - add the aggregated proof of previous epoch finalization
 
-            // If new epoch - add the aggregated proof of previous epoch finalization
+        if(epochIndex !== 0){
 
-            if(epochIndex !== 0){
+            let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(epochHandler)
 
-                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(epochHandler)
+            // If we can't find a proof - try to do it later
+            // Only in case it's initial epoch(index is -1) - no sense to push it
+            if(!aefpForPreviousEpoch) return
 
-                // If we can't find a proof - try to do it later
-                // Only in case it's initial epoch(index is -1) - no sense to push it
-                if(!aefpForPreviousEpoch) return
-
-                WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
-
-            }
-
-            // Update the index & hash of epoch
-
-            WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
-
-            WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
-
-            // Recount new values
-
-            WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
-
-            WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(epochHandler)
-
-
-            // And nullish the index & hash in generation thread for new epoch
-
-            WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
- 
-            WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
-    
-        }
-
-        let extraData = {}
-
-
-        // Do it only for the first block in epoch(with index 0)
-
-        if(WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
-
-            //___________________ Add the AEFP to the first block of epoch ___________________
-
-            if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0){
-
-                // Add the AEFP for previous epoch
-
-                extraData.aefpForPreviousEpoch = WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch
-
-                if(!extraData.aefpForPreviousEpoch) return
-
-            }
-
-            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum()
+            WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
 
         }
 
-        /*
+        // Update the index & hash of epoch
 
-        _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
-    
-        Here we check how many transactions(events) we have locally and generate as many blocks as it's possible
-    
-        */
+        WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
 
-        let numberOfBlocksToGenerate = Math.ceil(GLOBAL_CACHES.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
+        WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
 
+        // Recount new values
 
-        //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
+        WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
 
-        // 0. Add the extra data to block from configs(it might be your note, for instance)
-
-        extraData.rest = {...CONFIGURATION.NODE_LEVEL.EXTRA_DATA_TO_BLOCK}
+        WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(epochHandler)
 
 
-        if(numberOfBlocksToGenerate===0) numberOfBlocksToGenerate++
+        // And nullish the index & hash in generation thread for new epoch
 
-        let atomicBatch = BLOCKCHAIN_DATABASES.BLOCKS.batch()
+        WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
-        for(let i=0 ; i<numberOfBlocksToGenerate ; i++){
+        WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
 
-
-            let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
-                            
-            let hash = Block.genHash(blockCandidate)
-    
-    
-            blockCandidate.sig = await signEd25519(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-                
-            blockLog(`New block generated`,hash,blockCandidate,WORKING_THREADS.GENERATION_THREAD.epochIndex)
-    
-    
-            WORKING_THREADS.GENERATION_THREAD.prevHash = hash
-     
-            WORKING_THREADS.GENERATION_THREAD.nextIndex++
-        
-            // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
-            let blockID = WORKING_THREADS.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
-    
-            // Store block locally
-            atomicBatch.put(blockID,blockCandidate)
-
-        }
-    
-        // Update the GENERATION_THREAD after all
-        atomicBatch.put('GT',WORKING_THREADS.GENERATION_THREAD)
-    
-        await atomicBatch.write()
-    
     }
+
+    let extraData = {}
+
+
+    // Do it only for the first block in epoch(with index 0)
+
+    if(WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
+
+        //___________________ Add the AEFP to the first block of epoch ___________________
+
+        if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0){
+
+            // Add the AEFP for previous epoch
+
+            extraData.aefpForPreviousEpoch = WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch
+
+            if(!extraData.aefpForPreviousEpoch) return
+
+        }
+
+        extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum()
+
+    }
+
+    /*
+
+    _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
+
+    Here we check how many transactions(events) we have locally and generate as many blocks as it's possible
+
+    */
+
+    let numberOfBlocksToGenerate = Math.ceil(GLOBAL_CACHES.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
+
+
+    //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
+
+    // 0. Add the extra data to block from configs(it might be your note, for instance)
+
+    extraData.rest = {...CONFIGURATION.NODE_LEVEL.EXTRA_DATA_TO_BLOCK}
+
+
+    if(numberOfBlocksToGenerate===0) numberOfBlocksToGenerate++
+
+    let atomicBatch = BLOCKCHAIN_DATABASES.BLOCKS.batch()
+
+    for(let i=0 ; i<numberOfBlocksToGenerate ; i++){
+
+
+        let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
+                        
+        let hash = Block.genHash(blockCandidate)
+
+
+        blockCandidate.sig = await signEd25519(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+            
+        blockLog(`New block generated`,hash,blockCandidate,WORKING_THREADS.GENERATION_THREAD.epochIndex)
+
+
+        WORKING_THREADS.GENERATION_THREAD.prevHash = hash
+ 
+        WORKING_THREADS.GENERATION_THREAD.nextIndex++
+    
+        // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
+        let blockID = WORKING_THREADS.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
+
+        // Store block locally
+        atomicBatch.put(blockID,blockCandidate)
+
+    }
+
+    // Update the GENERATION_THREAD after all
+    atomicBatch.put('GT',WORKING_THREADS.GENERATION_THREAD)
+
+    await atomicBatch.write()
 
 }
