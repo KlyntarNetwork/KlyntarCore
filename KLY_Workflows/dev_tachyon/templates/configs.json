@@ -114,8 +114,6 @@
         "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
         "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
     
-        "ANIMATION_DURATION":0,
-    
         "PLUGINS":[],
     
         "INTERFACE":"::",
