@@ -126,13 +126,11 @@ export let leadersSequenceMonitoring=async()=>{
 
     // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
 
-    let itsNotFinishOfSequence = epochHandler.leadersSequence[indexOfCurrentLeader+1]
+    let nextLeaderPubkey = epochHandler.leadersSequence[indexOfCurrentLeader+1]
 
-    if(itsNotFinishOfSequence && timeIsOutForCurrentLeader(epochHandler,indexOfCurrentLeader,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME)){
+    if(nextLeaderPubkey && timeIsOutForCurrentLeader(epochHandler,indexOfCurrentLeader,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME)){
 
         // Now, update the LEADERS_HANDLER
-
-        let nextLeaderPubkey = epochHandler.leadersSequence[indexOfCurrentLeader+1]
 
         await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,nextLeaderPubkey).then(()=>{
 
@@ -141,7 +139,6 @@ export let leadersSequenceMonitoring=async()=>{
         }).catch(()=>null)
 
     }
-
 
     // Start again
 
