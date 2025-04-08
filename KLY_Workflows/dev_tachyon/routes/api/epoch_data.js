@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
-
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
+
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
 
 /*
@@ -96,7 +96,7 @@ FASTIFY_SERVER.get('/current_leader',async(_request,response)=>{
 
         if(currentEpochMetadata){
 
-            let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentEpochMetadata.CURRENT_LEADER_PUBKEY }
+            let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: atEpochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX] }
     
             response.send(dataToReturn)    
 

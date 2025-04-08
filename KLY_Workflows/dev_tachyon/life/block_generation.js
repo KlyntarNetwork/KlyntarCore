@@ -457,9 +457,11 @@ let generateBlocksPortion = async() => {
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
-    // Safe "if" branch to prevent unnecessary blocks generation    
+    // Safe "if" branch to prevent unnecessary blocks generation
     
-    if(currentEpochMetadata.CURRENT_LEADER_PUBKEY === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
+    let currentLeader = epochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX]
+    
+    if(currentLeader === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
         generateBatchOfMockTransactionsAndPushToMempool()
 
@@ -534,7 +536,7 @@ let generateBlocksPortion = async() => {
             let previousLeaderPubkey = epochHandler.leadersSequence[indexOfPreviousLeaderInSequence]
 
 
-            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(epochHandler.leadersSequence.indexOf(currentEpochMetadata.CURRENT_LEADER_PUBKEY))
+            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(currentEpochMetadata.CURRENT_LEADER_INDEX)
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________

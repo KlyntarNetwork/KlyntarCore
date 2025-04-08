@@ -1,8 +1,6 @@
-import {startBlocksOrderingForExecutionThread} from './life/temp_vt_sequence_builder.js'
-
 import {startBlocksSharingAndProofsGrabingThread} from './life/share_block_and_grab_proofs.js'
 
-import {startEpochRotationThread} from './life/find_new_epoch.js'
+import {startBlocksOrderingForExecutionThread} from './life/temp_vt_sequence_builder.js'
 
 import {startVerificationThread} from './verification_process/verification.js'
 
@@ -11,6 +9,8 @@ import {startNewEpochProposerThread} from './life/new_epoch_proposer.js'
 import {leadersSequenceMonitoring} from './life/leaders_monitoring.js'
 
 import {startBlocksGenerationThread} from './life/block_generation.js'
+
+import {startEpochRotationThread} from './life/find_new_epoch.js'
 
 import {prepareBlockchain} from './blockchain_preparation.js'
 

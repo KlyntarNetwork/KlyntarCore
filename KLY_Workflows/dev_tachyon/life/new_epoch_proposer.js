@@ -54,12 +54,11 @@ export let startNewEpochProposerThread=async()=>{
     }
 
     if(iAmInTheQuorum && timeForNewEpoch && epochFinishResponse){
-    
+     
 
-        let pubKeyOfLeader = currentEpochMetadata.CURRENT_LEADER_PUBKEY
+        let indexOfLeader = currentEpochMetadata.CURRENT_LEADER_INDEX        
 
-        let indexOfLeader = atEpochHandler.leadersSequence.indexOf(pubKeyOfLeader)        
-
+        let pubKeyOfLeader = atEpochHandler.leadersSequence[indexOfLeader]
 
         let epochFinishProposition = {}
 
@@ -218,9 +217,9 @@ export let startNewEpochProposerThread=async()=>{
                         
                                 // Update the info about current leader
 
-                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,pubKeyOfProposedLeader).then(()=>{
+                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,possibleAgreements.currentLeader).then(()=>{
 
-                                    currentEpochMetadata.CURRENT_LEADER_PUBKEY = pubKeyOfProposedLeader
+                                    currentEpochMetadata.CURRENT_LEADER_INDEX = possibleAgreements.currentLeader
                         
                                 }).catch(()=>null)
                                 

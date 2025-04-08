@@ -54,7 +54,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
         let objectToReturn = {}
 
-        let indexOfCurrentLeader = epochHandler.leadersSequence.indexOf(currentEpochMetadata.CURRENT_LEADER_PUBKEY)
+        let indexOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INDEX
 
         if(typeof indexOfCurrentLeader === 'number' && epochHandler.leadersSequence){
 

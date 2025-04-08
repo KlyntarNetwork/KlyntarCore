@@ -37,7 +37,7 @@ export let getCurrentLeaderURL = async () => {
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    let currentLeaderPubkey = currentEpochMetadata?.CURRENT_LEADER_PUBKEY
+    let currentLeaderPubkey = epochHandler.leadersSequence[currentEpochMetadata?.CURRENT_LEADER_INDEX]
 
     if(currentLeaderPubkey){
 

@@ -390,7 +390,7 @@ export let startEpochRotationThread=async()=>{
 
                     TEMP_CACHE:new Map(),
 
-                    CURRENT_LEADER_PUBKEY: nextEpochDataToStore.nextEpochLeadersSequence[0]
+                    CURRENT_LEADER_INDEX: 0
             
                 }
 

@@ -369,7 +369,6 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
 
-
     if(!currentEpochMetadata){
 
         setTimeout(startBlocksSharingAndProofsGrabingThread,2000)
@@ -378,9 +377,11 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
 
     }
 
+    let currentLeader = epochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX]
+
     // If we don't generate the blocks - skip this function
     
-    if(currentEpochMetadata.CURRENT_LEADER_PUBKEY !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
+    if(currentLeader !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
         setTimeout(startBlocksSharingAndProofsGrabingThread,2000)
 

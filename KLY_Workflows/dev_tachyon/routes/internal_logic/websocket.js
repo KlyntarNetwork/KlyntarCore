@@ -113,7 +113,11 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     let {block,previousBlockAFP} = parsedData
     
 
-    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && epochHandler.poolsRegistry.includes(block.creator) && currentEpochMetadata.CURRENT_LEADER_PUBKEY === block.creator
+    let typeCheckIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' 
+
+    let itsLeader = epochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX] === block.creator
+
+    let overviewIsOk = typeCheckIsOk && itsLeader
 
 
     if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
@@ -404,7 +408,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
     }
 
 
-    let indexOfLeader = epochHandler.leadersSequence.indexOf(currentEpochMetadata.CURRENT_LEADER_PUBKEY)
+    let indexOfLeader = currentEpochMetadata.CURRENT_LEADER_INDEX
 
     let overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
 

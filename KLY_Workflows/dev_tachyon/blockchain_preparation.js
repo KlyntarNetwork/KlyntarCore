@@ -467,7 +467,7 @@ export let prepareBlockchain=async()=>{
 
     // Get the info about last known leader
 
-    let currentLeaderPubkey = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('CURRENT_LEADER:'+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id).catch(()=>null)
+    let currentLeaderIndex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('CURRENT_LEADER:'+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id).catch(()=>null)
 
     
     EPOCH_METADATA_MAPPING.set(epochFullID,{
@@ -476,7 +476,7 @@ export let prepareBlockchain=async()=>{
 
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
 
-        CURRENT_LEADER_PUBKEY: currentLeaderPubkey
+        CURRENT_LEADER_INDEX: currentLeaderIndex
 
     })
 

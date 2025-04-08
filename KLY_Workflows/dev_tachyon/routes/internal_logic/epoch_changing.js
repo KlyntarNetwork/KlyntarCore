@@ -78,10 +78,10 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
             if(typeCheckIsOk){
     
                 // Get the local version about voting
-
-                let pubKeyOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_PUBKEY
                 
-                let localIndexOfLeader = epochHandler.leadersSequence.indexOf(pubKeyOfCurrentLeader)
+                let localIndexOfLeader = currentEpochMetadata.CURRENT_LEADER_INDEX
+
+                let pubKeyOfCurrentLeader = epochHandler.leadersSequence[localIndexOfLeader]
 
     
                 // Structure is {index,hash,afp}

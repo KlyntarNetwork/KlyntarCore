@@ -120,9 +120,7 @@ export let leadersSequenceMonitoring=async()=>{
     }
 
         
-    let pubKeyOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_PUBKEY
-
-    let indexOfCurrentLeader = epochHandler.leadersSequence.indexOf(pubKeyOfCurrentLeader)
+    let indexOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INDEX
 
     // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
 
@@ -132,9 +130,9 @@ export let leadersSequenceMonitoring=async()=>{
 
         // Now, update the LEADERS_HANDLER
 
-        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,nextLeaderPubkey).then(()=>{
+        await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,indexOfCurrentLeader + 1).then(()=>{
 
-            currentEpochMetadata.CURRENT_LEADER_PUBKEY = nextLeaderPubkey
+            currentEpochMetadata.CURRENT_LEADER_INDEX = indexOfCurrentLeader + 1
 
         }).catch(()=>null)
 
