@@ -107,6 +107,8 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     
     }
 
+    if(GLOBAL_CACHES.VOTING_REQUESTS.has('LOCK')) return
+
 
     let {block,previousBlockAFP} = parsedData
     

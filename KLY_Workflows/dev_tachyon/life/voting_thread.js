@@ -2,6 +2,8 @@ import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../globals
 
 import { CONFIGURATION } from "../../../klyntar_core.js"
 
+import { epochStillFresh } from "../utils.js"
+
 
 
 
@@ -23,7 +25,9 @@ let votingThreadIteration = async() => {
 
     // Check if we have the request for epoch finish - if so, send response and skip the following loop
 
-    let epochFinishRequest = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_REQUEST:'+epochIndex).catch(()=>false)
+    let timeForNewEpoch = !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)
+
+    let epochFinishRequest = timeForNewEpoch && await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_REQUEST:'+epochIndex).catch(()=>false)
 
     if(epochFinishRequest){
 
@@ -31,7 +35,9 @@ let votingThreadIteration = async() => {
 
         GLOBAL_CACHES.VOTING_REQUESTS.clear()
 
-    } else {
+    } else if(GLOBAL_CACHES.VOTING_REQUESTS.size !== 0) {
+
+        GLOBAL_CACHES.VOTING_REQUESTS.set('LOCK',true) // prevent adding keys during iteration
 
         for (const [blockID, votingRequest] of GLOBAL_CACHES.VOTING_REQUESTS) {
 
@@ -55,8 +61,10 @@ let votingThreadIteration = async() => {
 
             GLOBAL_CACHES.VOTING_REQUESTS.delete(blockID)
         
-        }    
+        }
 
     }
+
+    GLOBAL_CACHES.VOTING_REQUESTS.delete('LOCK') // release lock
 
 }
