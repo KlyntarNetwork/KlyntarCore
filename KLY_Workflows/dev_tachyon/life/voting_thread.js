@@ -49,7 +49,7 @@ let votingThreadIteration = async() => {
 
                 let localVotingStats = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+blockCreator).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
-                let sameSegment = localVotingStats.index < futureVotingDataToStore.index || localVotingStats.index === futureVotingDataToStore.index && localVotingStats.hash === futureVotingDataToStore.hash
+                let sameSegment = localVotingStats.index < futureVotingDataToStore.index || futureVotingDataToStore.index === -1 || localVotingStats.index === futureVotingDataToStore.index && localVotingStats.hash === futureVotingDataToStore.hash
 
                 if(sameSegment){
     
