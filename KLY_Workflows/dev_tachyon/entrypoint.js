@@ -6,8 +6,6 @@ import {startVerificationThread} from './verification_process/verification.js'
 
 import {startNewEpochProposerThread} from './life/new_epoch_proposer.js'
 
-import {leadersSequenceMonitoring} from './life/leaders_monitoring.js'
-
 import {startBlocksGenerationThread} from './life/block_generation.js'
 
 import {startEpochRotationThread} from './life/find_new_epoch.js'
@@ -43,16 +41,13 @@ export let runBlockchain=async()=>{
     //✅4.Thread to propose AEFPs to move to next epoch
     startNewEpochProposerThread()
 
-    //✅5.Thread to track changes of leaders rotation
-    leadersSequenceMonitoring()
-
-    //✅6.Function to build the temporary sequence of blocks to verify them
+    //✅5.Function to build the temporary sequence of blocks to verify them
     startBlocksOrderingForExecutionThread()
 
-    //✅7.Start to generate blocks
+    //✅6.Start to generate blocks
     startBlocksGenerationThread()
 
-    //✅8.Start a separate thread to work with voting for blocks in a sync way (for security)
+    //✅7.Start a separate thread to work with voting for blocks in a sync way (for security)
     startVotingThread()
 
 }

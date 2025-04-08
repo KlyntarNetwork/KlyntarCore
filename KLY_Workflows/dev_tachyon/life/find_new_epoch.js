@@ -1,6 +1,6 @@
-import {blake3Hash, logColors, customLog, pathResolve, gracefulStop, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
+import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys, setLeadersSequence} from '../common_functions/quorum_related.js'
 
-import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+import {blake3Hash, logColors, customLog, pathResolve, gracefulStop, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import {getFirstBlockInEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
@@ -11,8 +11,6 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAP
 import {getBlock} from '../verification_process/verification.js'
 
 import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
-
-import {setLeadersSequence} from './leaders_monitoring.js'
 
 import Block from '../structures/block.js'
 

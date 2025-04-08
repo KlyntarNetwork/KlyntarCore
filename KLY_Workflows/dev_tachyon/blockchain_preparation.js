@@ -1,10 +1,8 @@
+import {getCurrentEpochQuorum, getQuorumMajority, setLeadersSequence} from './common_functions/quorum_related.js'
+
 import {customLog, pathResolve, logColors, blake3Hash, gracefulStop} from '../../KLY_Utils/utils.js'
 
-import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
-
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from './globals.js'
-
-import {setLeadersSequence} from './life/leaders_monitoring.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -467,7 +465,7 @@ export let prepareBlockchain=async()=>{
 
     // Get the info about last known leader
 
-    let currentLeaderIndex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('CURRENT_LEADER:'+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id).catch(()=>null)
+    let currentLeaderIndex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('CURRENT_LEADER:'+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id).catch(()=>0)
 
     
     EPOCH_METADATA_MAPPING.set(epochFullID,{
