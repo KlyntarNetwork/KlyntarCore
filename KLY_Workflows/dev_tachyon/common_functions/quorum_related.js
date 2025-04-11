@@ -13,7 +13,7 @@ export let setLeadersSequence = async (epochHandler,epochSeed) => {
     epochHandler.leadersSequence = [] // [pool0,pool1,...poolN] 
 
 
-    let hashOfMetadataFromOldEpoch = blake3Hash(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
+    let hashOfMetadataFromOldEpoch = blake3Hash(epochSeed)
 
 
     // Change order of validators pseudo-randomly
