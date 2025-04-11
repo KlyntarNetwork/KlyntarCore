@@ -1,9 +1,6 @@
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
-
-import Block from '../../structures/block.js'
-
+import {BLOCKCHAIN_DATABASES} from '../../globals.js'
 
 
 
@@ -26,125 +23,6 @@ FASTIFY_SERVER.get('/block/:id',(request,response)=>{
             
         ).catch(()=>response.send({err:'No block'}))
 
-
-    }else response.send({err:'Route is off'})
-
-})
-
-
-
-
-// 0 - index
-
-FASTIFY_SERVER.get('/block_by_sid/:sid',(request,response)=>{
-
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
-
-        response
-        
-            .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.BLOCK_BY_SID}`)
-            
-        
-        let absoluteHeight = request.params.sid
-
-        BLOCKCHAIN_DATABASES.STATE.get(`SID:${absoluteHeight}`).then(blockID =>
-
-            BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).then(
-                
-                block => response.send(block)
-            
-            )
-
-        ).catch(()=>response.send({err:'No block receipt'}))
-
-
-    }else response.send({err:'Route is off'})
-
-})
-
-
-
-/*
-
-0 - start from (indexation by SID)
-1 - limit (20 by default)
-
-Returns array of blocks sorted by SID in reverse order
-
-*/
-
-FASTIFY_SERVER.get('/latest_n_blocks/:start_index/:limit',async(request,response)=>{
-
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
-
-        response
-        
-            .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
-
-        let limit = +request.params.limit
-
-        let promises = []
-
-        // In case <start_index> is equal to "x" - this is a signal that requestor doesn't know the latest block height, so we set it manually based on this node data
-
-        if(request.params.start_index === "x"){
-
-            request.params.start_index = WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT
-
-        }
-
-
-        for(let i=0 ; i < limit ; i++){
-
-            let index = request.params.start_index - i
-
-            let sid = index
-
-            let blockPromise = BLOCKCHAIN_DATABASES.STATE.get('SID:'+sid).then(
-            
-                blockID => BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).then(block=>{
-
-                    block.hash = Block.genHash(block)
-
-                    block.sid = BLOCKCHAIN_GENESIS.SHARD+':'+sid
-
-                    return block
-
-                })
-                
-            ).catch(()=>false)
-    
-            promises.push(blockPromise)
-
-        }
-
-
-        let blocksArray = await Promise.all(promises).then(array=>array.filter(Boolean))
-
-        response.send(blocksArray)
-
-
-    }else response.send({err:'Route is off'})
-
-})
-
-
-
-
-// Returns stats - total number of blocks, total number of txs and number of succesful txs
-
-FASTIFY_SERVER.get('/verification_thread_stats',(_,response)=>{
-
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VT_TOTAL_STATS){
-
-        response
-        
-            .header('Access-Control-Allow-Origin','*')    
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VT_TOTAL_STATS}`)
-    
-        response.send(WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS)
 
     }else response.send({err:'Route is off'})
 

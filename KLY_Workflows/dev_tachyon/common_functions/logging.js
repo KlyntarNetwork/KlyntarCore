@@ -2,40 +2,6 @@ import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import {logColors} from '../../../KLY_Utils/utils.js'
 
-import {WORKING_THREADS} from '../globals.js'
-
-
-
-
-
-
-
-
-
-
-// Function for pretty output the information about verification thread(VT)
-
-export let vtStatsLog = (epochFullID,currentLeader,blockIndex,blockHash,txsNumber) => {
-
-    console.log(logColors.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,logColors.CYAN,'Local VERIFICATION_THREAD state is',logColors.CLEAR)
-    
-    console.log('\n')
-
-    console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${(WORKING_THREADS.VERIFICATION_THREAD.LAST_HEIGHT)}`,logColors.CLEAR)
-    
-    console.log(` \u001b[38;5;168m│\x1b[33m  Created by:\x1b[36;1m`,currentLeader,logColors.CLEAR)
-
-    console.log(` \u001b[38;5;168m│\x1b[33m  Txs number:\x1b[36;1m`,txsNumber,logColors.CLEAR)
-
-    console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,`${epochFullID}`,logColors.CLEAR)
-
-    console.log(` \u001b[38;5;168m│\x1b[33m  Index and hash:\x1b[36;1m`,blockIndex+' : '+blockHash,logColors.CLEAR)
-
-    console.log('\n')
-
-}
-
-
 
 
 // Function just for pretty output about information on symbiotic chain

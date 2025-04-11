@@ -4,8 +4,6 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/qu
 
 import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {getUserAccountFromState} from '../common_functions/state_interactions.js'
-
 import {signEd25519, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
@@ -83,11 +81,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
         const myPrivateKey = privateKey;
 
-        let nonce = nonces.get(pubKey) || await getUserAccountFromState(pubKey).then(acc=>{
-
-            return acc.nonce
-
-        })
+        let nonce = nonces.get(pubKey) || 0
 
         nonce += 1
 
@@ -139,11 +133,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async () => {
 
     const myPrivateKey = postQuantumBlissKeypair.privateKey;
 
-    let nonce = nonces.get(from) || await getUserAccountFromState(from).then(acc=>{
-
-        return acc.nonce
-
-    })
+    let nonce = nonces.get(from) || 0
 
     nonce += 1
 
@@ -344,7 +334,7 @@ let getBatchOfApprovedDelayedTxsByQuorum = async indexOfLeader => {
 
     // Get the batch of delayed operations from storage
 
-    let epochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+    let epochIndex = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id-2
 
     if(indexOfLeader !== 0) return {epochIndex,delayedTransactions:[],proofs:{}}
 
@@ -556,11 +546,9 @@ let generateBlocksPortion = async() => {
 
             for(let leaderPubKey of pubKeysOfAllThePreviousPools){
 
-                let vtStatsPerPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[leaderPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-
                 let votingFinalizationPerPool = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+leaderPubKey).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
-                let proofThatAtLeastFirstBlockWasCreated = vtStatsPerPool.index !== 0 || votingFinalizationPerPool.index !== 0
+                let proofThatAtLeastFirstBlockWasCreated = votingFinalizationPerPool.index !== 0
 
                 // We 100% need ALRP for previous pool
                 // But no need in pools who created at least one block in epoch and it's not our previous pool

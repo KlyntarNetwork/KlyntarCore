@@ -1,75 +1,12 @@
-import {verifyEd25519, verifyEd25519Sync, blake3Hash} from '../../../KLY_Utils/utils.js'
-
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
-
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyntar_core.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../globals.js'
 
-import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
+import {verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
-import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
-
-import {getUserAccountFromState} from './state_interactions.js'
+import {CONFIGURATION} from '../../../klyntar_core.js'
 
 import Block from '../structures/block.js'
-
-
-
-
-
-
-export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject) => {
-
-    
-    if(WORKING_THREADS[threadID].CORE_MAJOR_VERSION === tx.v){
-
-        // Sender sign concatenated NETWORK_ID(to prevent cross-chains attacks and reuse nonce & signatures), core version, tx type, JSON'ed payload,nonce and fee
-        
-        let signedData = BLOCKCHAIN_GENESIS.NETWORK_ID + tx.v + tx.type + JSON.stringify(tx.payload) + tx.nonce + tx.fee
-        
-
-        if(tx.sigType==='D') return verifyEd25519(signedData,tx.sig,tx.creator)
-        
-        if(tx.sigType==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
-        
-        if(tx.sigType==='P/D') {
-
-            let isOk = false
-
-            try{
-
-                let appropriatePqcUserAccount = await getUserAccountFromState(tx.creator)
-
-                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyDilithiumSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
-            
-            }catch{ isOk = false }
-
-            return isOk
-            
-        }
-        
-        if(tx.sigType==='P/B'){
-          
-            let isOk = false
-
-            try{
-
-                let appropriatePqcUserAccount = await getUserAccountFromState(tx.creator)
-
-                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyBlissSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
-            
-            }catch{ isOk = false }
-
-            return isOk
-
-        }
-        
-        if(tx.sigType==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t)     
-
-    } else return false
-
-}
 
 
 
@@ -267,7 +204,7 @@ export let getFirstBlockInEpoch = async(threadID,epochHandler,getBlockFunction) 
 
     let idOfHandlerWithFirstBlock = `${threadID}:${epochHandler.id}`
 
-    let cache = threadID === 'VERIFICATION_THREAD' ? GLOBAL_CACHES.STUFF_CACHE : GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE
+    let cache = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE
 
     let pivotData = cache.get(idOfHandlerWithFirstBlock) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
 
@@ -421,34 +358,6 @@ export let getFirstBlockInEpoch = async(threadID,epochHandler,getBlockFunction) 
 
     }
 
-}
-
-
-
-
-export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapping) => {
-
-    // Take the epoch handler on verification thread (VT)
-
-    let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-    
-    let majority = getQuorumMajority(epochHandler)
-
-    let okSignatures = 0
-
-
-    for(let [quorumMemberPubKey,signa] of Object.entries(agreementsMapping)){
-
-        if(verifyEd25519Sync(dataThatShouldBeSigned,signa,quorumMemberPubKey) && epochHandler.quorum.includes(quorumMemberPubKey)){
-
-            okSignatures++
-
-        }
-
-    }
-
-    return okSignatures >= majority
-    
 }
 
 

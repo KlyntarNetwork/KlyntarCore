@@ -1,8 +1,0 @@
-https://www.assemblyscript.org/compiler.html
-https://www.assemblyscript.org/examples.html
-
-https://wasmbyexample.dev/home.en-us.html
-
-
-https://rustwasm.github.io/wasm-bindgen/reference/js-promises-and-rust-futures.html
-https://rustwasm.github.io/wasm-bindgen/reference/arbitrary-data-with-serde.html

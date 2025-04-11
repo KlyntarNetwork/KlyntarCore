@@ -58,7 +58,7 @@ let votingThreadIteration = async() => {
     
         if(nextLeaderPubkey && timeIsOutForCurrentLeader(epochHandler,indexOfCurrentLeader,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME)){
     
-            // Now, update the LEADERS_HANDLER
+            // Now, update the leader
     
             await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndexLocal,indexOfCurrentLeader + 1).then(()=>{
 

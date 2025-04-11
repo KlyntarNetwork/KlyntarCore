@@ -21,7 +21,6 @@ export let getRandomFromArray = arr => {
 
 
 // global.CORE_MAJOR_VERSION shows the major version of your node(core)
-// We use this function on VERIFICATION_THREAD and APPROVEMENT_THREAD to make sure your node can continue to work
 // If major version for network-level was changed but you still has an old version - it should be stopped and update software
 export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].CORE_MAJOR_VERSION > global.CORE_MAJOR_VERSION
 

@@ -1,35 +1,19 @@
-import {verifyTxSignatureAndVersion} from '../common_functions/work_with_proofs.js'
-
-import {getUserAccountFromState} from '../common_functions/state_interactions.js'
-
-
-
-
 let overviewToCheckIfTxIsOk = async tx => {
 
-    let creatorAccount = await getUserAccountFromState(tx.creator)    
-
-    let result = await verifyTxSignatureAndVersion('VERIFICATION_THREAD',tx,creatorAccount).catch(()=>false)
-    
-    
-    if(result){
-
-        if(tx.payload.amount) tx.payload.amount = BigInt(tx.payload.amount)
+    if(tx.payload.amount) tx.payload.amount = BigInt(tx.payload.amount)
         
-        return {
-            
-            v:tx.v,
-            fee: BigInt(tx.fee),
-            creator:tx.creator,
-            type:tx.type,
-            nonce:tx.nonce,
-            payload:tx.payload,
-            sigType:tx.sigType,
-            sig:tx.sig
+    return {
         
-        }
-
-    } else return false
+        v:tx.v,
+        fee: BigInt(tx.fee),
+        creator:tx.creator,
+        type:tx.type,
+        nonce:tx.nonce,
+        payload:tx.payload,
+        sigType:tx.sigType,
+        sig:tx.sig
+    
+    }
 
 }
 

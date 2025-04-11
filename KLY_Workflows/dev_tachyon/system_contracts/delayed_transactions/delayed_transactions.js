@@ -1,12 +1,8 @@
 /* eslint-disable no-unused-vars */
 
-import { getFromState, getUserAccountFromState, trackStateChange } from "../../common_functions/state_interactions.js"
-
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
 
 import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../globals.js"
-
-import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
 
 
@@ -85,26 +81,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 } else return {isOk:false}
 
-            } else {
-
-                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(creator+'(POOL)').catch(()=>null)
-
-                if(!poolAlreadyExists){
-
-                    // Put metadata and default storage
-                    
-                    GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)',contractMetadataTemplate)
-
-                    GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
-
-
-                    trackStateChange(creator+'(POOL)',1,'put')
-
-                    trackStateChange(creator+'(POOL)_STORAGE_POOL',1,'put')
-
-
-                } else return {isOk:false}
-
             }
 
             return {isOk:true}
@@ -160,25 +136,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 } else return {isOk:false}
 
-            } else {
-
-                poolStorage = await getFromState(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-                if(poolStorage){
-
-                    poolStorage.activated = activated
-
-                    poolStorage.percentage = percentage
-
-                    poolStorage.poolURL = poolURL
-
-                    poolStorage.wssPoolURL = wssPoolURL
-
-                } else return {isOk:false}
-
             }
 
-            let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+            let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
             if(poolStorage){
 
@@ -240,13 +200,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
-        } else {
-        
-            poolStorage = await getFromState(poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
         }
 
-        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+        let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
         let toReturn
 
@@ -279,47 +235,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 }
 
-                let amountAsNumber = Number(amount / (BigInt(10)**BigInt(18)))
-
-                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked += amountAsNumber
-                        
-                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked += amountAsNumber
-
                 toReturn = {isOk:true}
 
             } else toReturn = {isOk:false,reason:'Overview failed'}
 
         } else toReturn = {isOk:false,reason:'No such pool'}
-
-
-        if(!toReturn.isOk){
-
-            // Return the stake 
-
-            if(staker.startsWith('0x') && staker.length === 42){
-
-                // Return the stake back tp EVM account
-
-                let recipientAccount = await KLY_EVM.getAccount(staker)
-
-                recipientAccount.balance += amount
-
-                await KLY_EVM.updateAccount(staker,recipientAccount)
-
-
-            } else {
-
-                let txCreatorAccount = await getUserAccountFromState(staker)
-
-                if(txCreatorAccount){
-        
-                    txCreatorAccount.balance += amount
-    
-                }    
-
-            }
-
-        }
 
         return toReturn
 
@@ -350,10 +270,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
-        } else {
-
-            poolStorage = await getFromState(poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
         }
 
         if(poolStorage){
@@ -369,7 +285,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                 poolStorage.totalStakedKly = BigInt(poolStorage.totalStakedKly)
 
 
-                let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+                let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
                 if(unstakerAccount.kly >= amount){
 
@@ -381,41 +297,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                         delete poolStorage.stakers[unstaker] // just to make pool storage more clear
 
-                    }
-
-                    if(threadContext === 'VERIFICATION_THREAD'){
-
-                        // Pay back to staker
-
-                        if(unstaker.startsWith('0x') && unstaker.length === 42){
-
-                            // Return the stake back tp EVM account
-            
-                            let unstakerEvmAccount = await KLY_EVM.getAccount(unstaker)
-            
-                            unstakerEvmAccount.balance += BigInt(amount)
-            
-                            await KLY_EVM.updateAccount(unstaker,unstakerEvmAccount)
-            
-            
-                        } else {
-
-                            let unstakerAccount = await getFromState(unstaker)
-    
-                            if(unstakerAccount){
-    
-                                unstakerAccount.balance += amount
-            
-                            }    
-
-                        }
-
-                        let amountAsNumber = Number(amount / (BigInt(10)**BigInt(18)))
-
-                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalKlyStaked -= amountAsNumber
-                        
-                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalKlyStaked -= amountAsNumber
-    
                     }
 
                 }
@@ -465,13 +346,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             poolStorage = await getFromApprovementThreadState(targetPool+'(POOL)_STORAGE_POOL')
 
-        } else {
-        
-            poolStorage = await getFromState(targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
-
         }
 
         if(poolStorage){
+
+            let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
             let generalUnoChange = 0n
 
@@ -507,13 +386,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
             // Finally modify the general UNO amount for pool
 
             poolStorage.totalStakedUno += generalUnoChange
-
-            let generalUnoChangeAsNumber = Number(generalUnoChange / (BigInt(10)**BigInt(18)))
-            
-            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUnoStaked += generalUnoChangeAsNumber
-                        
-            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalUnoStaked += generalUnoChangeAsNumber
-
             
             return {isOk:true}
 
