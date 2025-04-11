@@ -6,6 +6,6 @@ let systemContractsNames = ['abstractions','cross_shards_messaging','dao_voting'
 
 for(let name of systemContractsNames){
 
-    await import(`./contracts/${name}.js`).then(contractHandler=>SYSTEM_CONTRACTS.set(name,contractHandler.CONTRACT))
+    SYSTEM_CONTRACTS.set(name,true)
 
 }
