@@ -5,7 +5,6 @@ let modules = [
     'api/block_data.js',
     'api/epoch_data.js',
     'api/misc.js',
-    'api/state_data.js',
     
     'internal_logic/epoch_changing.js',
     'internal_logic/temp_vt_builder.js',
