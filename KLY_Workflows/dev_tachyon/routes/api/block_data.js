@@ -69,31 +69,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
 
             response.send(aggregatedFinalizationProof)
 
-        } else {
-
-            // If we don't have an aggregated finalization proof - check if block was executed in verification thread
-            // In case we have a receipt for blockID - that's signal that block was included to state
-            // So, we can return a manually built AFP
-
-            let possibleReceipt = await BLOCKCHAIN_DATABASES.STATE.get('BLOCK_RECEIPT:'+request.params.blockID).catch(()=>null)
-
-            if(possibleReceipt){
-
-                let afpToReturn = {
-
-                    prevBlockHash: "",
-                    blockID: request.params.blockID,
-                    blockHash: "",
-                    proofs: {
-                        approvedAndIncludedToState:true
-                    }
-                }
-
-                response.send(afpToReturn)
-
-            } else response.send({err:'No proof'})
-
-        }
+        } else response.send({err:'No proof'})
 
     }else response.send({err:'Route is off'})
     

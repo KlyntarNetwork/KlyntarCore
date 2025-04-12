@@ -339,7 +339,7 @@ let getBatchOfApprovedDelayedTxsByQuorum = async indexOfLeader => {
     if(indexOfLeader !== 0) return {epochIndex,delayedTransactions:[],proofs:{}}
 
     
-    let delayedTransactions = await BLOCKCHAIN_DATABASES.STATE.get(`DELAYED_TRANSACTIONS:${epochIndex}`).catch(()=>null)
+    let delayedTransactions
 
     if(Array.isArray(delayedTransactions)){
 

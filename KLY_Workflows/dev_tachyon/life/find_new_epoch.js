@@ -8,13 +8,103 @@ import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_tra
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../globals.js'
 
-import {getBlock} from '../verification_process/verification.js'
-
 import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
 
 import Block from '../structures/block.js'
 
 import fs from 'fs'
+import { CONFIGURATION } from '../../../klyntar_core.js'
+
+
+
+
+export let getBlock = async (epochIndex,blockCreator,index) => {
+
+    let blockID = epochIndex+':'+blockCreator+':'+index
+
+    // Try to find block locally
+
+    let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).catch(()=>null)
+
+
+    if(!block){
+
+        // First of all - try to find by pre-set URL
+
+        const controller = new AbortController()
+
+        setTimeout(() => controller.abort(), 2000)
+
+
+        block = await fetch(CONFIGURATION.NODE_LEVEL.GET_BLOCKS_URL+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).then(block=>{
+                
+            if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
+
+                BLOCKCHAIN_DATABASES.BLOCKS.put(blockID,block)
+    
+                return block
+    
+            } 
+    
+        }).catch(()=>null)
+
+        
+        if(!block){
+
+            // Finally - request blocks from quorum members
+
+            // Combine all nodes we know about and try to find block there
+            
+            let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES]
+    
+            for(let host of allKnownNodes){
+
+                if(host===CONFIGURATION.NODE_LEVEL.MY_HOSTNAME) continue
+
+                const controller = new AbortController()
+
+                setTimeout(() => controller.abort(), 2000)
+                
+                let itsProbablyBlock = await fetch(host+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).catch(()=>null)
+                
+                if(itsProbablyBlock){
+
+                    let overviewIsOk =
+
+                        typeof itsProbablyBlock.extraData==='object'
+                        &&
+                        typeof itsProbablyBlock.prevHash==='string'
+                        &&
+                        typeof itsProbablyBlock.epoch==='string'
+                        &&
+                        typeof itsProbablyBlock.sig==='string'
+                        &&
+                        itsProbablyBlock.index===index
+                        &&
+                        itsProbablyBlock.creator===blockCreator
+                        &&
+                        Array.isArray(itsProbablyBlock.transactions)
+                
+
+                    if(overviewIsOk){
+
+                        BLOCKCHAIN_DATABASES.BLOCKS.put(blockID,itsProbablyBlock).catch(()=>{})
+    
+                        return itsProbablyBlock
+    
+                    }
+    
+                }
+    
+            }
+
+        }
+
+    }
+
+    return block
+
+}
 
 
 
@@ -178,15 +268,7 @@ export let startEpochRotationThread=async()=>{
 
                 // Structure is {firstBlockCreator,firstBlockHash}
             
-                let storedFirstBlockData = await BLOCKCHAIN_DATABASES.STATE.get(`FIRST_BLOCK:${currentEpochHandler.id}`).catch(()=>null)
-
-                if(!storedFirstBlockData){
-
-                    // Try to find via network requests
-
-                    storedFirstBlockData = await getFirstBlockInEpoch('APPROVEMENT_THREAD',currentEpochHandler,getBlock)
-
-                }
+                let storedFirstBlockData = await getFirstBlockInEpoch('APPROVEMENT_THREAD',currentEpochHandler,getBlock)
 
                 if(storedFirstBlockData){
 
