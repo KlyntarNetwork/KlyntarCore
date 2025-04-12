@@ -10,10 +10,11 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAP
 
 import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
 
+import {CONFIGURATION} from '../../../klyntar_core.js'
+
 import Block from '../structures/block.js'
 
 import fs from 'fs'
-import { CONFIGURATION } from '../../../klyntar_core.js'
 
 
 
