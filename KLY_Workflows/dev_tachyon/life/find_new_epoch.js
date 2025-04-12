@@ -21,7 +21,7 @@ import fs from 'fs'
 
 
 
-export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
+export let executeDelayedTransaction = async(delayedTransaction) => {
 
     /*
 
@@ -37,7 +37,7 @@ export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
 
     if(functionHandler){
 
-        await functionHandler(threadID,delayedTransaction).catch(()=>{})
+        await functionHandler(delayedTransaction).catch(()=>{})
 
     }
 
@@ -308,7 +308,7 @@ export let startEpochRotationThread=async()=>{
 
                 for(let delayedTransaction of delayedTransactionsOrderByPriority){
         
-                    await executeDelayedTransaction('APPROVEMENT_THREAD',delayedTransaction).catch(()=>{})
+                    await executeDelayedTransaction(delayedTransaction).catch(()=>{})
                 
                 }
                 

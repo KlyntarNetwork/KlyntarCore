@@ -25,7 +25,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     
     
     */
-    createStakingPool:async (threadContext,delayedTransaction) => {
+    createStakingPool:async (delayedTransaction) => {
 
         let {creator,percentage,poolURL,wssPoolURL} = delayedTransaction
 
@@ -34,17 +34,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         let percentageIsOk = Number.isInteger(percentage) && percentage >= 0 && percentage <= 100
 
         if(typeCheckIsOk && percentageIsOk){
-
-            let contractMetadataTemplate = {
-
-                type:'contract',
-                lang:'system/staking/sub',
-                balance:'0',
-                gas:0,
-                storages:['POOL'],
-                storageAbstractionLastPayment:0
-
-            }
 
             let onlyOnePossibleStorageForStakingContract = {
 
@@ -68,20 +57,17 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:'0',uno:'0'}
 
-            if(threadContext === 'APPROVEMENT_THREAD'){
+            let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+            if(!poolAlreadyExists){
 
-                if(!poolAlreadyExists){
+                // Put storage
+                // NOTE: We just need a simple storage with ID="POOL"
+            
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
-                    // Put storage
-                    // NOTE: We just need a simple storage with ID="POOL"
-                
-                    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+            } else return {isOk:false}
 
-                } else return {isOk:false}
-
-            }
 
             return {isOk:true}
 
@@ -105,7 +91,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    updateStakingPool:async (threadContext,delayedTransaction) => {
+    updateStakingPool:async (delayedTransaction) => {
 
         let {creator,activated,percentage,poolURL,wssPoolURL} = delayedTransaction
 
@@ -115,28 +101,23 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         if(typeCheckIsOk && percentageIsOk){
 
-            let poolStorage
+            let poolStorage = await getFromApprovementThreadState(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-            if(threadContext === 'APPROVEMENT_THREAD'){
+            if(poolStorage){
 
-                poolStorage = await getFromApprovementThreadState(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+                // Update values
 
-                if(poolStorage){
+                poolStorage.activated = activated
 
-                    // Update values
+                poolStorage.percentage = percentage
 
-                    poolStorage.activated = activated
+                poolStorage.poolURL = poolURL
 
-                    poolStorage.percentage = percentage
-
-                    poolStorage.poolURL = poolURL
-
-                    poolStorage.wssPoolURL = wssPoolURL
+                poolStorage.wssPoolURL = wssPoolURL
 
 
-                } else return {isOk:false}
+            } else return {isOk:false}
 
-            }
 
             let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
@@ -190,17 +171,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    stake:async(threadContext,delayedTransaction) => {
+    stake:async(delayedTransaction) => {
 
         let {staker,poolPubKey,amount} = delayedTransaction
 
-        let poolStorage
-
-        if(threadContext === 'APPROVEMENT_THREAD'){
-
-            poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
-
-        }
+        let poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
         let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
@@ -259,18 +234,12 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    unstake:async (threadContext,delayedTransaction) => {
+    unstake:async (delayedTransaction) => {
 
         let {unstaker,poolPubKey,amount} = delayedTransaction
 
-        let poolStorage
+        let poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
-
-        if(threadContext === 'APPROVEMENT_THREAD'){
-
-            poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
-
-        }
 
         if(poolStorage){
 
@@ -335,22 +304,14 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     
     
     */
-    changeUnobtaniumAmount:async (threadContext,delayedTransaction)=>{
+    changeUnobtaniumAmount:async (delayedTransaction)=>{
 
         let {targetPool,changesPerAccounts} = delayedTransaction
 
-        let poolStorage
+        let poolStorage = await getFromApprovementThreadState(targetPool+'(POOL)_STORAGE_POOL')
 
-
-        if(threadContext === 'APPROVEMENT_THREAD'){
-
-            poolStorage = await getFromApprovementThreadState(targetPool+'(POOL)_STORAGE_POOL')
-
-        }
 
         if(poolStorage){
-
-            let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
             let generalUnoChange = 0n
 

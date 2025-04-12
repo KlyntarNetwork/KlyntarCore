@@ -9,17 +9,6 @@ import {CONFIGURATION} from '../../klyntar_core.js'
 
 
 
-export let getRandomFromArray = arr => {
-
-    let randomIndex = Math.floor(Math.random() * arr.length)
-  
-    return arr[randomIndex]
-
-}
-
-
-
-
 // global.CORE_MAJOR_VERSION shows the major version of your node(core)
 // If major version for network-level was changed but you still has an old version - it should be stopped and update software
 export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].CORE_MAJOR_VERSION > global.CORE_MAJOR_VERSION
