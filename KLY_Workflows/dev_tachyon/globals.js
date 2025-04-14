@@ -18,16 +18,17 @@ let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{value
 global.CORE_MAJOR_VERSION = +(fs.readFileSync(versionFilePath).toString()) // major version of core. In case network decides to add modification, fork is created & software should be updated
 
 
-export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
-
-
 export let GLOBAL_CACHES = {
 
     VOTING_REQUESTS: new Map(),
 
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
-    APPROVEMENT_THREAD_CACHE:new Map() // ... the same, but used by APPROVEMENT_THREAD
+    APPROVEMENT_THREAD_CACHE:new Map(), // ... the same, but used by APPROVEMENT_THREAD
+
+    FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
+
+    TEMP_CACHE:new Map()  // simple key=>value mapping to be used as temporary cache for epoch
 
 }
 
@@ -48,7 +49,17 @@ export let WORKING_THREADS = {
     
     },
 
-    APPROVEMENT_THREAD:{}
+    APPROVEMENT_THREAD:{
+
+        CORE_MAJOR_VERSION:-1,
+
+        NETWORK_PARAMETERS:{},
+
+        EPOCH:{},
+
+        CURRENT_LEADER_INDEX:0
+
+    }
 
 }
 

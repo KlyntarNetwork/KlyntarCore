@@ -1,8 +1,8 @@
 import {checkAlrpChainValidity, verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
-
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
+
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
 
 import {getQuorumMajority} from '../../common_functions/quorum_related.js'
 
@@ -95,17 +95,8 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+    let currentLeaderIndex = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
 
-    // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-        
-    if(!currentEpochMetadata){
-
-        connection.close()
-    
-        return
-    
-    }
 
     if(GLOBAL_CACHES.VOTING_REQUESTS.has('LOCK')) return
 
@@ -115,7 +106,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     let typeCheckIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' 
 
-    let itsLeader = epochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX] === block.creator
+    let itsLeader = epochHandler.leadersSequence[currentLeaderIndex] === block.creator
 
     let overviewIsOk = typeCheckIsOk && itsLeader
 
@@ -398,17 +389,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-    if(!currentEpochMetadata){
-
-        connection.sendUTF(JSON.stringify({err:'Epoch handler on AT is not ready'}))
-
-        return
-    }
-
-
-    let indexOfLeader = currentEpochMetadata.CURRENT_LEADER_INDEX
+    let indexOfLeader = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
 
     let overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
 

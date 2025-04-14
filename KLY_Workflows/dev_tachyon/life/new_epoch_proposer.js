@@ -2,7 +2,7 @@ import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProo
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -20,17 +20,10 @@ export let startNewEpochProposerThread=async()=>{
     let epochIndex = atEpochHandler.id
 
     let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
-
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
+    let currentLeaderIndex = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
 
-    if(!currentEpochMetadata){
-
-        setTimeout(startNewEpochProposerThread,3000)
-
-        return
-
-    }
+    let pubKeyOfLeader = atEpochHandler.leadersSequence[currentLeaderIndex]
 
 
     let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
@@ -54,11 +47,6 @@ export let startNewEpochProposerThread=async()=>{
     }
 
     if(iAmInTheQuorum && timeForNewEpoch && epochFinishResponse){
-     
-
-        let indexOfLeader = currentEpochMetadata.CURRENT_LEADER_INDEX        
-
-        let pubKeyOfLeader = atEpochHandler.leadersSequence[indexOfLeader]
 
         let epochFinishProposition = {}
 
@@ -79,7 +67,7 @@ export let startNewEpochProposerThread=async()=>{
 
             // Change to previous leader that finish its work on height > -1
 
-            for(let position = indexOfLeader-1 ; position >= 0 ; position --){
+            for(let position = currentLeaderIndex-1 ; position >= 0 ; position --){
 
                 let previousLeader = atEpochHandler.leadersSequence[position]
 
@@ -89,7 +77,7 @@ export let startNewEpochProposerThread=async()=>{
 
                     pubKeyOfLeader = previousLeader
 
-                    indexOfLeader = position
+                    currentLeaderIndex = position
 
                     break
 
@@ -101,13 +89,13 @@ export let startNewEpochProposerThread=async()=>{
 
         // Structure is Map(quorumMember=>SIG('EPOCH_DONE'+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId))
         
-        let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')
+        let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
         if(!agreements){
 
             agreements = new Map()
 
-            currentEpochMetadata.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
+            GLOBAL_CACHES.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
         
         }
 
@@ -119,7 +107,7 @@ export let startNewEpochProposerThread=async()=>{
 
             epochFinishProposition = {
 
-                currentLeader:indexOfLeader,
+                currentLeader:currentLeaderIndex,
 
                 afpForFirstBlock:{},
 
@@ -186,7 +174,7 @@ export let startNewEpochProposerThread=async()=>{
 
                 if(typeof possibleAgreements === 'object'){
 
-                    let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
+                    let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
 
                     if(possibleAgreements){
 
@@ -217,14 +205,14 @@ export let startNewEpochProposerThread=async()=>{
                         
                                 // Update the info about current leader
 
-                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,possibleAgreements.currentLeader).then(()=>{
+                                if(atEpochHandler.id === epochIndex){
 
-                                    currentEpochMetadata.CURRENT_LEADER_INDEX = possibleAgreements.currentLeader
-                        
-                                }).catch(()=>null)
-                                
-                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}}).catch(()=>{})
-                        
+                                    WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX = possibleAgreements.currentLeader
+
+                                    await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}}).catch(()=>{})
+
+                                }
+                                                        
                                 // Clear the mapping with signatures because it becomes invalid
 
                                 agreements.clear()
@@ -244,7 +232,7 @@ export let startNewEpochProposerThread=async()=>{
             
 
 
-        let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
+        let agreementsForEpochManager = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
 
         if(agreementsForEpochManager.size >= majority){
         
