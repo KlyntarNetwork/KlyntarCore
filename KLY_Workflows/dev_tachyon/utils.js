@@ -17,11 +17,9 @@ export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETW
 
 export let getCurrentLeaderURL = async () => {
 
-    let currentApprovementThread = WORKING_THREADS.APPROVEMENT_THREAD
-
-    let epochHandler = currentApprovementThread.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
-    let currentLeaderPubkey = epochHandler.leadersSequence[currentApprovementThread.CURRENT_LEADER_INDEX]
+    let currentLeaderPubkey = epochHandler.leadersSequence[epochHandler.currentLeaderIndex]
 
     if(currentLeaderPubkey){
 

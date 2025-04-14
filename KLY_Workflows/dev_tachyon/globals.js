@@ -55,9 +55,7 @@ export let WORKING_THREADS = {
 
         NETWORK_PARAMETERS:{},
 
-        EPOCH:{},
-
-        CURRENT_LEADER_INDEX:0
+        EPOCH:{}
 
     }
 

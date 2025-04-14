@@ -95,7 +95,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let currentLeaderIndex = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
+    let currentLeaderIndex = epochHandler.currentLeaderIndex
 
 
     if(GLOBAL_CACHES.VOTING_REQUESTS.has('LOCK')) return
@@ -389,11 +389,10 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let indexOfLeader = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
 
     let overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
 
-        overviewIsOk &&= indexOfLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of leader is bigger/equal to requested
+        overviewIsOk &&= epochHandler.currentLeaderIndex > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of leader is bigger/equal to requested
         
 
     if(overviewIsOk){

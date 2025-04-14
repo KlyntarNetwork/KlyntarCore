@@ -91,8 +91,10 @@ let setGenesisToState=async()=>{
 
         quorum:[], // [pool0,pool1,...,poolN]
 
-        leadersSequence:[] // [pool0,pool1,...,poolN]
+        leadersSequence:[], // [pool0,pool1,...,poolN]
     
+        currentLeaderIndex:0
+        
     }
 
     let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH

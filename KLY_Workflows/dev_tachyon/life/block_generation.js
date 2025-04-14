@@ -430,9 +430,11 @@ let generateBlocksPortion = async() => {
 
     let epochIndex = epochHandler.id
 
-    let currentLeaderIndex = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
+    let currentLeaderIndex = epochHandler.currentLeaderIndex
 
+    let currentLeader = epochHandler.leadersSequence[currentLeaderIndex]
 
+    
     //_________________ No sense to generate blocks more in case we haven't approved the previous ones _________________
 
     let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
@@ -440,8 +442,6 @@ let generateBlocksPortion = async() => {
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
     // Safe "if" branch to prevent unnecessary blocks generation
-    
-    let currentLeader = epochHandler.leadersSequence[currentLeaderIndex]
     
     if(currentLeader === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 

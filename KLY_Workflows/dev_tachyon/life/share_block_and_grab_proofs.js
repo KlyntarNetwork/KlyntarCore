@@ -350,10 +350,8 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochIndex = epochHandler.id
-    
-    let currentLeaderIndex = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
 
-    let currentLeader = epochHandler.leadersSequence[currentLeaderIndex]
+    let currentLeader = epochHandler.leadersSequence[epochHandler.currentLeaderIndex]
 
     // If we don't generate the blocks - skip this function
     

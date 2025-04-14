@@ -52,7 +52,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let localIndexOfLeader = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
+    let localIndexOfLeader = epochHandler.currentLeaderIndex
 
     let pubKeyOfCurrentLeader = epochHandler.leadersSequence[localIndexOfLeader]
 

@@ -146,6 +146,10 @@ export let startEpochRotationThread=async()=>{
         let currentEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
         let currentEpochFullID = currentEpochHandler.hash+"#"+currentEpochHandler.id
+
+        let readyToChangeEpoch = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+currentEpochHandler.id).catch(()=>false)
+
+        if(!readyToChangeEpoch) return
     
         let majority = getQuorumMajority(currentEpochHandler)
 
@@ -422,7 +426,7 @@ export let startEpochRotationThread=async()=>{
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
 
-                WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX = 0
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.currentLeaderIndex = 0
 
                 let nextEpochDataToStore = {
 

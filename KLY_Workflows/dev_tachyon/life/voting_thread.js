@@ -27,48 +27,47 @@ export let startVotingThread = async() => {
 }
 
 
+
+
 let votingThreadIteration = async() => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
     let epochIndexLocal = epochHandler.id
-
-    let currentLeaderIndex = WORKING_THREADS.APPROVEMENT_THREAD.CURRENT_LEADER_INDEX
+    
     
     // Check if we have the request for epoch finish - if so, send response and skip the following loop
 
     let timeForNewEpoch = !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)
 
+    let indexOfCurrentLeader = epochHandler.currentLeaderIndex
+
     // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
 
-    let acceptVotingRequestsFrom = epochHandler.leadersSequence[currentLeaderIndex]
+    let acceptVotingRequestsFrom = epochHandler.leadersSequence[indexOfCurrentLeader]
 
-    let nextLeaderPubkey = epochHandler.leadersSequence[currentLeaderIndex+1]
+    let nextLeaderPubkey = epochHandler.leadersSequence[indexOfCurrentLeader+1]
 
     let epochFinishRequest = timeForNewEpoch && await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_REQUEST:'+epochIndexLocal).catch(()=>false)
 
 
     // Check if we should rotate the leader
 
-    if(nextLeaderPubkey && timeIsOutForCurrentLeader(epochHandler,currentLeaderIndex,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME)){
+    if(!epochFinishRequest && nextLeaderPubkey && timeIsOutForCurrentLeader(epochHandler,indexOfCurrentLeader,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME)){
 
-        // Now, update the leader
+        // Now, update the leader on approvement thread
 
-        if(!epochFinishRequest){
+        let copyOfApprovementThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
 
-            const copyOfApprovementThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
+        copyOfApprovementThread.EPOCH.currentLeaderIndex = indexOfCurrentLeader + 1
 
-            copyOfApprovementThread.CURRENT_LEADER_INDEX = currentLeaderIndex + 1
+        await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.put('AT',copyOfApprovementThread).then(()=>{
 
-            await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.put('AT',copyOfApprovementThread).then(()=>{
+            epochHandler.currentLeaderIndex = indexOfCurrentLeader + 1
 
-                WORKING_THREADS.APPROVEMENT_THREAD = copyOfApprovementThread
+            acceptVotingRequestsFrom = nextLeaderPubkey
 
-                acceptVotingRequestsFrom = nextLeaderPubkey
-    
-            }).catch(()=>null)
-
-        }
+        }).catch(()=>null)
 
     }
 
