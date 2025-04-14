@@ -33,10 +33,11 @@ if (platform === 'win32' || platform === 'darwin') {
 global.CORE_MAJOR_VERSION = +(fs.readFileSync(versionFilePath).toString()) // major version of core. In case network decides to add modification, fork is created & software should be updated
 
 
-export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
-
-
 export let GLOBAL_CACHES = {
+
+    FINALIZATION_PROOFS: new Map(),
+
+    TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
 
     VOTING_REQUESTS: new Map(),
 
@@ -133,9 +134,9 @@ export let WORKING_THREADS = {
 
         MONTHLY_ALLOCATION_FOR_REWARDS:0, // need this var for block reward
 
-        EPOCH:{}, // epoch handler
+        NETWORK_PARAMETERS:{},
 
-        NETWORK_PARAMETERS:{}
+        EPOCH:{}, // epoch handler
 
     },
 
@@ -152,10 +153,12 @@ export let WORKING_THREADS = {
     },
 
     APPROVEMENT_THREAD:{
-        
+
         CORE_MAJOR_VERSION:-1,
 
-        NETWORK_PARAMETERS:{}
+        NETWORK_PARAMETERS:{},
+
+        EPOCH:{}
 
     }
 

@@ -1,10 +1,10 @@
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
 
-import {EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
-
 import {getQuorumUrlsAndPubkeys} from '../../common_functions/quorum_related.js'
 
 import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
+
+import {GLOBAL_CACHES, WORKING_THREADS} from '../../globals.js'
 
 import {getCurrentLeaderURL} from '../../utils.js'
 
@@ -299,25 +299,15 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
 
     } else if(GLOBAL_CACHES.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
 
-        let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+        let filteredTx = await TXS_FILTERS[transaction.type](transaction)
+        
+        if(filteredTx){
     
-        let epochFullID = epochHandler.hash+"#"+epochHandler.id
-
-        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-        if(currentEpochMetadata){
+            response.send({status:'OK'})
     
-            let filteredTx = await TXS_FILTERS[transaction.type](transaction)
-        
-            if(filteredTx){
-        
-                response.send({status:'OK'})
-        
-                GLOBAL_CACHES.MEMPOOL.push(filteredTx)
-                                
-            }else response.send({err:`Can't get filtered value of tx`})
-
-        } else response.send({err:'Try later'})
+            GLOBAL_CACHES.MEMPOOL.push(filteredTx)
+                            
+        }else response.send({err:`Can't get filtered value of tx`})
 
     } else response.send({err:'Mempool is fullfilled'})
     

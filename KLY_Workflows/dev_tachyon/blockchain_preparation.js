@@ -2,7 +2,7 @@ import {getCurrentEpochQuorum, getQuorumMajority, setLeadersSequence} from './co
 
 import {customLog, pathResolve, logColors, blake3Hash, gracefulStop} from '../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from './globals.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from './globals.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -311,8 +311,10 @@ let setGenesisToState=async()=>{
 
         quorum:[], // [pool0,pool1,...,poolN]
 
-        leadersSequence:[] // [pool0,pool1,...,poolN]
+        leadersSequence:[], // [pool0,pool1,...,poolN]
     
+        currentLeaderIndex:0
+
     }
 
 
@@ -462,20 +464,5 @@ export let prepareBlockchain=async()=>{
         WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
 
     }
-
-    // Get the info about last known leader
-
-    let currentLeaderIndex = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('CURRENT_LEADER:'+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id).catch(()=>0)
-
-    
-    EPOCH_METADATA_MAPPING.set(epochFullID,{
-
-        FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
-
-        TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
-
-        CURRENT_LEADER_INDEX: currentLeaderIndex
-
-    })
 
 }

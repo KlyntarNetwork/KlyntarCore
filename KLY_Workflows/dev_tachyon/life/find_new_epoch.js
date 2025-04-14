@@ -6,7 +6,7 @@ import {getFirstBlockInEpoch, verifyAggregatedEpochFinalizationProof} from '../c
 
 import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_transactions/delayed_transactions.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../globals.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
@@ -55,16 +55,11 @@ export let startEpochRotationThread=async()=>{
         let currentEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
         let currentEpochFullID = currentEpochHandler.hash+"#"+currentEpochHandler.id
-    
-        let temporaryObject = EPOCH_METADATA_MAPPING.get(currentEpochFullID)
-    
-        if(!temporaryObject){
-    
-            setTimeout(startEpochRotationThread,3000)
-    
-            return
-    
-        }
+
+        let readyToChangeEpoch = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+currentEpochHandler.id).catch(()=>false)
+
+        if(!readyToChangeEpoch) return
+        
 
         let majority = getQuorumMajority(currentEpochHandler)
 
@@ -336,8 +331,6 @@ export let startEpochRotationThread=async()=>{
 
                 let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
 
-                let nextEpochFullID = nextEpochHash+'#'+nextEpochId
-
                 // After execution - assign new sequence of leaders
 
                 await setLeadersSequence(currentEpochHandler,nextEpochHash)
@@ -349,6 +342,8 @@ export let startEpochRotationThread=async()=>{
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
+
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.currentLeaderIndex = 0
 
 
                 let nextEpochDataToStore = {
@@ -380,17 +375,9 @@ export let startEpochRotationThread=async()=>{
 
                 GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.clear()
 
+                GLOBAL_CACHES.FINALIZATION_PROOFS.clear()
 
-                // Create mappings & set for the next epoch
-                let nextTemporaryObject = {
-
-                    FINALIZATION_PROOFS:new Map(),
-
-                    TEMP_CACHE:new Map(),
-
-                    CURRENT_LEADER_INDEX: 0
-            
-                }
+                GLOBAL_CACHES.TEMP_CACHE.clear()
 
                 customLog(`Epoch on approvement thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,logColors.GREEN)
 
@@ -409,12 +396,6 @@ export let startEpochRotationThread=async()=>{
                     gracefulStop()
 
                 }
-        
-                EPOCH_METADATA_MAPPING.delete(currentEpochFullID)
-
-                // Set next temporary object by ID
-
-                EPOCH_METADATA_MAPPING.set(nextEpochFullID,nextTemporaryObject)
 
             }
 

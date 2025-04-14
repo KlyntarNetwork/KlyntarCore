@@ -1,10 +1,10 @@
 import {getFromApprovementThreadState} from './common_functions/approvement_thread_related.js'
 
-import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from './globals.js'
-
 import {getUtcTimestamp} from '../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../klyntar_core.js'
+
+import {WORKING_THREADS} from './globals.js'
 
 
 
@@ -32,12 +32,8 @@ export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETW
 export let getCurrentLeaderURL = async () => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-    
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-    let currentLeaderPubkey = epochHandler.leadersSequence[currentEpochMetadata?.CURRENT_LEADER_INDEX]
+    let currentLeaderPubkey = epochHandler.leadersSequence[epochHandler.currentLeaderIndex]
 
     if(currentLeaderPubkey){
 

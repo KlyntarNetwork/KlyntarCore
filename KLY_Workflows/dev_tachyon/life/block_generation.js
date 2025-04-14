@@ -1,8 +1,8 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
-
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../globals.js'
 
 import {getUserAccountFromState} from '../common_functions/state_interactions.js'
 
@@ -245,16 +245,9 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => 
 
 let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence) => {
 
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
-
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-    if(!currentEpochMetadata) return
-
-
     // Try to return immediately
     
-    let aggregatedLeaderRotationMetadata = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`)
+    let aggregatedLeaderRotationMetadata = GLOBAL_CACHES.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`)
 
     let quorumMajority = getQuorumMajority(epochHandler)
 
@@ -279,7 +272,7 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
     // Create the cache to store LRPs for appropriate previous leader
 
-    if(!currentEpochMetadata.TEMP_CACHE.has(`LRPS:${pubKeyOfOneOfPreviousLeader}`)){
+    if(!GLOBAL_CACHES.TEMP_CACHE.has(`LRPS:${pubKeyOfOneOfPreviousLeader}`)){
 
         let templateToStore = {
 
@@ -295,11 +288,11 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
         }
 
-        currentEpochMetadata.TEMP_CACHE.set(`LRPS:${pubKeyOfOneOfPreviousLeader}`,templateToStore)
+        GLOBAL_CACHES.TEMP_CACHE.set(`LRPS:${pubKeyOfOneOfPreviousLeader}`,templateToStore)
     
     }
 
-    let futureAlrpMetadata = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`)
+    let futureAlrpMetadata = GLOBAL_CACHES.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`)
 
     let messageToSend = JSON.stringify({
 
@@ -330,7 +323,7 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
         if(futureAlrpMetadata.proofs[pubKeyOfQuorumMember]) continue
 
-        let connection = currentEpochMetadata.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
+        let connection = GLOBAL_CACHES.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
 
         if(connection) connection.sendUTF(messageToSend)
 
@@ -438,6 +431,7 @@ let getBatchOfApprovedDelayedTxsByQuorum = async indexOfLeader => {
 
 
 
+
 let generateBlocksPortion = async() => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
@@ -446,20 +440,18 @@ let generateBlocksPortion = async() => {
 
     let epochIndex = epochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+    let currentLeaderIndex = epochHandler.currentLeaderIndex
 
-    if(!currentEpochMetadata) return
+    let currentLeader = epochHandler.leadersSequence[currentLeaderIndex]
 
 
     //_________________ No sense to generate blocks more in case we haven't approved the previous ones _________________
 
-    let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
+    let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
     // Safe "if" branch to prevent unnecessary blocks generation
-    
-    let currentLeader = epochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX]
     
     if(currentLeader === CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
@@ -536,7 +528,7 @@ let generateBlocksPortion = async() => {
             let previousLeaderPubkey = epochHandler.leadersSequence[indexOfPreviousLeaderInSequence]
 
 
-            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(currentEpochMetadata.CURRENT_LEADER_INDEX)
+            extraData.delayedTxsBatch = await getBatchOfApprovedDelayedTxsByQuorum(currentLeaderIndex)
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________

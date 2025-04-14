@@ -1,8 +1,8 @@
 import {getVerifiedAggregatedFinalizationProofByBlockId} from '../../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
-
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
 
 
 
@@ -37,16 +37,12 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+    let indexOfCurrentLeader = epochHandler.currentLeaderIndex
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+    // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
 
-    if(!currentEpochMetadata){
-        
-        response.send({err:'Epoch handler on AT is not ready'})
+    let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[indexOfCurrentLeader]
 
-        return
-    }
 
     let proposedIndexOfLeader = JSON.parse(request.body) // format {proposedIndex:index}
 
@@ -54,43 +50,33 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
         let objectToReturn = {}
 
-        let indexOfCurrentLeader = currentEpochMetadata.CURRENT_LEADER_INDEX
+        let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
 
-        if(typeof indexOfCurrentLeader === 'number' && epochHandler.leadersSequence){
-
-            // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
-
-            let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[indexOfCurrentLeader]
-
-            let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
-
-            let firstBlockByCurrentLeader = await BLOCKCHAIN_DATABASES.BLOCKS.get(firstBlockID).catch(()=>null)
+        let firstBlockByCurrentLeader = await BLOCKCHAIN_DATABASES.BLOCKS.get(firstBlockID).catch(()=>null)
 
 
-            if(firstBlockByCurrentLeader){
+        if(firstBlockByCurrentLeader){
 
-                let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
+            let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
 
-                let afpForSecondBlockByCurrentLeader = await getVerifiedAggregatedFinalizationProofByBlockId(secondBlockID,epochHandler).catch(()=>null)
+            let afpForSecondBlockByCurrentLeader = await getVerifiedAggregatedFinalizationProofByBlockId(secondBlockID,epochHandler).catch(()=>null)
 
-                if(afpForSecondBlockByCurrentLeader){
+            if(afpForSecondBlockByCurrentLeader){
 
-                    objectToReturn = {
-                            
-                        proposedIndexOfLeader:indexOfCurrentLeader,
-                            
-                        firstBlockByCurrentLeader,
-                            
-                        afpForSecondBlockByCurrentLeader
+                objectToReturn = {
                         
-                    }
-
+                    proposedIndexOfLeader:indexOfCurrentLeader,
+                        
+                    firstBlockByCurrentLeader,
+                        
+                    afpForSecondBlockByCurrentLeader
+                    
                 }
 
             }
 
         }
-
+        
         response.send(objectToReturn)
 
     } else response.send({err:'Wrong format'})

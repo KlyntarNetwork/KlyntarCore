@@ -1,8 +1,8 @@
 import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
-
 import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {logColors,verifyEd25519,customLog} from '../../../KLY_Utils/utils.js'
 
@@ -19,11 +19,9 @@ import WS from 'websocket'
 
 
 
-let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
+let openConnectionsWithQuorum = async epochHandler => {
 
     // Now we can open required WebSocket connections with quorums majority
-
-    let {FINALIZATION_PROOFS,TEMP_CACHE} = currentEpochMetadata
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -31,7 +29,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
         // Check if we already have an open connection stored in cache
 
-        if(!TEMP_CACHE.has('WS:'+pubKey)){
+        if(!GLOBAL_CACHES.TEMP_CACHE.has('WS:'+pubKey)){
             
             let poolStorage = await getFromApprovementThreadState(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
@@ -53,13 +51,13 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
                             let parsedData = JSON.parse(message.utf8Data)
 
-                            let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
+                            let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
 
 
                             if(parsedData.route === 'get_leader_rotation_proof'){                                
 
 
-                                let localMetadataForPotentialAlrp = TEMP_CACHE.get(`LRPS:${parsedData.forPoolPubkey}`) // format is {afpForFirstBlock,skipIndex,skipHash,skipAfp,proofs}
+                                let localMetadataForPotentialAlrp = GLOBAL_CACHES.TEMP_CACHE.get(`LRPS:${parsedData.forPoolPubkey}`) // format is {afpForFirstBlock,skipIndex,skipHash,skipAfp,proofs}
 
 
                                 if(localMetadataForPotentialAlrp){
@@ -133,18 +131,18 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
                             }
 
-                            if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                            if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && GLOBAL_CACHES.FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
 
                                 // Verify the finalization proof
                         
                                 let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+epochFullID
                         
-                                let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await verifyEd25519(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
+                                let finalizationProofIsOk = GLOBAL_CACHES.FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await verifyEd25519(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
 
 
-                                if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                                if(finalizationProofIsOk && GLOBAL_CACHES.FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
-                                    FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
+                                    GLOBAL_CACHES.FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
                     
                                 }
 
@@ -154,11 +152,11 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
                     })
 
-                    connection.on('close',()=>TEMP_CACHE.delete('WS:'+pubKey))
+                    connection.on('close',()=>GLOBAL_CACHES.TEMP_CACHE.delete('WS:'+pubKey))
                       
-                    connection.on('error',()=>TEMP_CACHE.delete('WS:'+pubKey))
+                    connection.on('error',()=>GLOBAL_CACHES.TEMP_CACHE.delete('WS:'+pubKey))
 
-                    TEMP_CACHE.set('WS:'+pubKey,connection)
+                    GLOBAL_CACHES.TEMP_CACHE.set('WS:'+pubKey,connection)
 
                 })
                 
@@ -175,16 +173,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
 let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {    
 
-    let epochFullID = epochHandler.hash + "#" + epochHandler.id
-
     let epochIndex = epochHandler.id
-
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-    if(!currentEpochMetadata) return
-
-    let {FINALIZATION_PROOFS,TEMP_CACHE} = currentEpochMetadata
-
 
     // Get the block index & hash that we're currently hunting for
 
@@ -193,9 +182,9 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
     let finalizationProofsMapping
 
 
-    if(FINALIZATION_PROOFS.has(blockIDForHunting)){
+    if(GLOBAL_CACHES.FINALIZATION_PROOFS.has(blockIDForHunting)){
 
-        finalizationProofsMapping = FINALIZATION_PROOFS.get(blockIDForHunting)
+        finalizationProofsMapping = GLOBAL_CACHES.FINALIZATION_PROOFS.get(blockIDForHunting)
 
     }
 
@@ -203,13 +192,13 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
         finalizationProofsMapping = new Map()
         
-        FINALIZATION_PROOFS.set(blockIDForHunting,finalizationProofsMapping)
+        GLOBAL_CACHES.FINALIZATION_PROOFS.set(blockIDForHunting,finalizationProofsMapping)
 
     }
 
     let majority = getQuorumMajority(epochHandler)
 
-    let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIDForHunting).catch(()=>null)
+    let blockToSend = GLOBAL_CACHES.TEMP_CACHE.get(blockIDForHunting) || await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIDForHunting).catch(()=>null)
 
 
     if(!blockToSend) return
@@ -218,7 +207,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
     let blockHash = Block.genHash(blockToSend)
 
 
-    TEMP_CACHE.set(blockIDForHunting,blockToSend)
+    GLOBAL_CACHES.TEMP_CACHE.set(blockIDForHunting,blockToSend)
 
 
     proofsGrabber.huntingForBlockID = blockIDForHunting
@@ -228,9 +217,9 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
     if(finalizationProofsMapping.size<majority){
 
-        if(TEMP_CACHE.has('FP_SPAM_FLAG')) return
+        if(GLOBAL_CACHES.TEMP_CACHE.has('FP_SPAM_FLAG')) return
     
-        TEMP_CACHE.set('FP_SPAM_FLAG',true)
+        GLOBAL_CACHES.TEMP_CACHE.set('FP_SPAM_FLAG',true)
 
 
         let dataToSend = JSON.stringify({
@@ -253,7 +242,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
             if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
 
-            let connection = TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
+            let connection = GLOBAL_CACHES.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
 
             if(connection){
 
@@ -314,7 +303,7 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
         // Delete finalization proofs that we don't need more
-        FINALIZATION_PROOFS.delete(blockIDForHunting)
+        GLOBAL_CACHES.FINALIZATION_PROOFS.delete(blockIDForHunting)
 
 
         // Repeat procedure for the next block and store the progress
@@ -335,14 +324,14 @@ let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         console.log('\n')
 
 
-        TEMP_CACHE.delete('FP_SPAM_FLAG')
+        GLOBAL_CACHES.TEMP_CACHE.delete('FP_SPAM_FLAG')
 
-        TEMP_CACHE.delete(blockIDForHunting)
+        GLOBAL_CACHES.TEMP_CACHE.delete(blockIDForHunting)
 
 
     }else{
 
-        setTimeout(()=>TEMP_CACHE.delete('FP_SPAM_FLAG'),10000)
+        setTimeout(()=>GLOBAL_CACHES.TEMP_CACHE.delete('FP_SPAM_FLAG'),10000)
 
     }
 
@@ -364,20 +353,8 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
 
     let epochIndex = epochHandler.id
     
-    let epochFullID = epochHandler.hash + "#" + epochHandler.id
+    let currentLeader = epochHandler.leadersSequence[epochHandler.currentLeaderIndex]
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-
-    if(!currentEpochMetadata){
-
-        setTimeout(startBlocksSharingAndProofsGrabingThread,2000)
-
-        return
-
-    }
-
-    let currentLeader = epochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX]
 
     // If we don't generate the blocks - skip this function
     
@@ -389,10 +366,7 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
 
     }
 
-    let {TEMP_CACHE} = currentEpochMetadata
-
-    let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
-
+    let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
 
     if(!proofsGrabber || proofsGrabber.epochID !== epochIndex){
 
@@ -423,12 +397,12 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
 
         await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).catch(()=>{})
 
-        TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
+        GLOBAL_CACHES.TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
 
     }
 
 
-    await openConnectionsWithQuorum(epochHandler,currentEpochMetadata)
+    await openConnectionsWithQuorum(epochHandler)
 
     await runFinalizationProofsGrabbing(epochHandler,proofsGrabber).catch(()=>{})
 

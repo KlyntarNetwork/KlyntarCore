@@ -2,7 +2,7 @@ import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProo
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -21,16 +21,14 @@ export let startNewEpochProposerThread=async()=>{
 
     let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+    let indexOfLeader = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':CURRENT_LEADER') || atEpochHandler.currentLeaderIndex
+
+    let pubKeyOfLeader = atEpochHandler.leadersSequence[indexOfLeader]
+
+    let leadersSequence = atEpochHandler.leadersSequence // [pool0,pool1,...,poolN]
+
     
-
-    if(!currentEpochMetadata){
-
-        setTimeout(startNewEpochProposerThread,3000)
-
-        return
-
-    }
+    GLOBAL_CACHES.TEMP_CACHE.set(epochIndex+':CURRENT_LEADER',indexOfLeader)
 
 
     let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
@@ -54,17 +52,10 @@ export let startNewEpochProposerThread=async()=>{
     }
 
     if(iAmInTheQuorum && timeForNewEpoch && epochFinishResponse){
-     
-
-        let indexOfLeader = currentEpochMetadata.CURRENT_LEADER_INDEX        
-
-        let pubKeyOfLeader = atEpochHandler.leadersSequence[indexOfLeader]
 
         let epochFinishProposition = {}
 
         let majority = getQuorumMajority(atEpochHandler)
-
-        let leadersSequence = atEpochHandler.leadersSequence // [pool0,pool1,...,poolN]
 
 
         /*
@@ -101,13 +92,13 @@ export let startNewEpochProposerThread=async()=>{
 
         // Structure is Map(quorumMember=>SIG('EPOCH_DONE'+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId))
         
-        let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')
+        let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
         if(!agreements){
 
             agreements = new Map()
 
-            currentEpochMetadata.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
+            GLOBAL_CACHES.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
         
         }
 
@@ -186,7 +177,7 @@ export let startNewEpochProposerThread=async()=>{
 
                 if(typeof possibleAgreements === 'object'){
 
-                    let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
+                    let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
 
                     if(possibleAgreements){
 
@@ -217,12 +208,8 @@ export let startNewEpochProposerThread=async()=>{
                         
                                 // Update the info about current leader
 
-                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put('CURRENT_LEADER:'+epochIndex,possibleAgreements.currentLeader).then(()=>{
+                                GLOBAL_CACHES.TEMP_CACHE.set(epochIndex+':CURRENT_LEADER',possibleAgreements.currentLeader)
 
-                                    currentEpochMetadata.CURRENT_LEADER_INDEX = possibleAgreements.currentLeader
-                        
-                                }).catch(()=>null)
-                                
                                 await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}}).catch(()=>{})
                         
                                 // Clear the mapping with signatures because it becomes invalid
@@ -244,7 +231,7 @@ export let startNewEpochProposerThread=async()=>{
             
 
 
-        let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
+        let agreementsForEpochManager = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
 
         if(agreementsForEpochManager.size >= majority){
         

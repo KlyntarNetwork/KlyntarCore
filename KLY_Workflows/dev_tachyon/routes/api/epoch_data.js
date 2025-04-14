@@ -1,6 +1,8 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
-
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
+
+
 
 
 /*
@@ -89,18 +91,13 @@ FASTIFY_SERVER.get('/current_leader',async(_request,response)=>{
         // Get the current epoch metadata
 
         let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-        
-        let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
-        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+        let currentLeaderPubKey = atEpochHandler.leadersSequence[atEpochHandler.currentLeaderIndex]
 
-        if(currentEpochMetadata){
-
-            let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: atEpochHandler.leadersSequence[currentEpochMetadata.CURRENT_LEADER_INDEX] }
+        let dataToReturn = { [BLOCKCHAIN_GENESIS.SHARD]: currentLeaderPubKey }
     
-            response.send(dataToReturn)    
+        response.send(dataToReturn)
 
-        }
 
     }else response.send({err:'Route is off'})
 

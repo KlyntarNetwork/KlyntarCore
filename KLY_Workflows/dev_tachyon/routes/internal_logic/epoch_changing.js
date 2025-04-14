@@ -1,8 +1,8 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../globals.js'
-
 import {verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyntar_core.js'
+
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../globals.js'
 
 import {signEd25519} from '../../../../KLY_Utils/utils.js'
 
@@ -50,17 +50,12 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     let epochIndex = epochHandler.id
 
+    let localIndexOfLeader = epochHandler.currentLeaderIndex
+
+    let pubKeyOfCurrentLeader = epochHandler.leadersSequence[localIndexOfLeader]
+
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-
-    if(!currentEpochMetadata){
-
-        response.send({err:'Epoch handler on AT is not fresh'})
-
-        return
-    }
 
     let signalAboutFinishOfEpoch = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+epochIndex).catch(()=>false)
 
@@ -76,13 +71,6 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
             let typeCheckIsOk = typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'
     
             if(typeCheckIsOk){
-    
-                // Get the local version about voting
-                
-                let localIndexOfLeader = currentEpochMetadata.CURRENT_LEADER_INDEX
-
-                let pubKeyOfCurrentLeader = epochHandler.leadersSequence[localIndexOfLeader]
-
     
                 // Structure is {index,hash,afp}
     
