@@ -317,10 +317,6 @@ export let startEpochRotationThread=async()=>{
                 let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
 
 
-                // After execution - assign new sequence of leaders
-
-                currentEpochHandler.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER]
-
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash = nextEpochHash
@@ -328,6 +324,8 @@ export let startEpochRotationThread=async()=>{
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
+
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER]
 
 
                 let nextEpochDataToStore = {

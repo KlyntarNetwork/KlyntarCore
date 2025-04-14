@@ -1,8 +1,8 @@
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
+
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
-
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {signEd25519, verifyEd25519} from '../../../KLY_Utils/utils.js'
 

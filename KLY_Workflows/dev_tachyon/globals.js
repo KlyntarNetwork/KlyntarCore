@@ -64,6 +64,8 @@ export let WORKING_THREADS = {
 
     VERIFICATION_THREAD: {
 
+        CORE_MAJOR_VERSION:-1,
+
         LAST_HEIGHT:-1,
         
         LAST_BLOCKHASH:'',
@@ -134,6 +136,8 @@ export let WORKING_THREADS = {
 
         MONTHLY_ALLOCATION_FOR_REWARDS:0, // need this var for block reward
 
+        NETWORK_PARAMETERS:{},
+
         EPOCH:{} // epoch handler
 
     },
@@ -150,7 +154,15 @@ export let WORKING_THREADS = {
     
     },
 
-    APPROVEMENT_THREAD:{}
+    APPROVEMENT_THREAD:{
+
+        CORE_MAJOR_VERSION:-1,
+
+        NETWORK_PARAMETERS:{},
+
+        EPOCH:{}
+    
+    }
 
 }
 
