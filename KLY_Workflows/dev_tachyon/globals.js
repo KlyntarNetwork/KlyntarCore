@@ -37,12 +37,13 @@ global.CORE_MAJOR_VERSION = +(fs.readFileSync(versionFilePath).toString()) // ma
 
 
 
-export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
-
-
 export let GLOBAL_CACHES = {
 
     VOTING_REQUESTS: new Map(),
+
+    FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
+
+    TEMP_CACHE:new Map(),  // simple key => value mapping to be used as temporary cache for epoch
 
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 

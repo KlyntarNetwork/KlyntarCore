@@ -2,7 +2,7 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/qu
 
 import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../globals.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../globals.js'
 
 import {signEd25519, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -44,19 +44,19 @@ export let grabEpochFinalizationProofs=async()=>{
 
         // Structure is Map(quorumMember=>SIG('EPOCH_DONE'+lastLeaderIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId))
         
-        let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')
+        let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
         if(!agreements){
 
             agreements = new Map()
 
-            currentEpochMetadata.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
+            GLOBAL_CACHES.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
         
         }
 
         let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}`).catch(()=>null)
 
-        let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
+        let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
 
         if(!aefpExistsLocally && proofsGrabber && proofsGrabber.finishedVoting){
 
@@ -118,7 +118,7 @@ export let grabEpochFinalizationProofs=async()=>{
 
                 if(typeof possibleAgreements === 'object'){                    
 
-                    let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
+                    let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
 
                     if(possibleAgreements){
 
@@ -144,7 +144,7 @@ export let grabEpochFinalizationProofs=async()=>{
             
 
 
-        let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
+        let agreementsForEpochManager = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
 
         if(agreementsForEpochManager.size >= majority && epochFinishProposition.payload && epochFinishProposition.payload.lastBlockProposition){
         
