@@ -394,7 +394,7 @@ export let prepareBlockchain=async()=>{
 
 
 
-    if(WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION === undefined){
+    if(WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION === -1){
 
         await setGenesisToState()
 
