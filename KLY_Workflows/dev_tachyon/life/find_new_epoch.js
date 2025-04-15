@@ -285,10 +285,13 @@ export let startEpochRotationThread=async()=>{
                 
                 let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(allTheRestContractCalls)
 
+                // Create the copy of approvement thread to modify
+
+                let copyOfApprovementThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
 
                 for(let delayedTransaction of delayedTransactionsOrderByPriority){
         
-                    await executeDelayedTransaction('APPROVEMENT_THREAD',delayedTransaction).catch(()=>{})
+                    await executeDelayedTransaction('APPROVEMENT_THREAD',delayedTransaction,copyOfApprovementThread).catch(()=>{})
                 
                 }
                 
@@ -317,26 +320,26 @@ export let startEpochRotationThread=async()=>{
                 let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
 
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
+                copyOfApprovementThread.EPOCH.id = nextEpochId
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash = nextEpochHash
+                copyOfApprovementThread.EPOCH.hash = nextEpochHash
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
+                copyOfApprovementThread.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + copyOfApprovementThread.NETWORK_PARAMETERS.EPOCH_TIME
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
+                copyOfApprovementThread.EPOCH.quorum = await getCurrentEpochQuorum(copyOfApprovementThread.EPOCH.poolsRegistry,copyOfApprovementThread.NETWORK_PARAMETERS,nextEpochHash)
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER]
+                copyOfApprovementThread.EPOCH.leadersSequence = [CONFIGURATION.NODE_LEVEL.OPTIONAL_SEQUENCER]
 
 
                 let nextEpochDataToStore = {
 
                     nextEpochHash,
 
-                    nextEpochPoolsRegistry: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,
+                    nextEpochPoolsRegistry: copyOfApprovementThread.EPOCH.poolsRegistry,
 
-                    nextEpochQuorum: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum,
+                    nextEpochQuorum: copyOfApprovementThread.EPOCH.quorum,
 
-                    nextEpochLeadersSequence: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence,
+                    nextEpochLeadersSequence: copyOfApprovementThread.EPOCH.leadersSequence,
 
                     delayedTransactions: delayedTransactionsOrderByPriority
 
@@ -348,9 +351,13 @@ export let startEpochRotationThread=async()=>{
 
                 atomicBatch.put('LATEST_BATCH_INDEX',latestBatchIndex)
 
-                atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
+                atomicBatch.put('AT',copyOfApprovementThread)
 
-                await atomicBatch.write()
+                await atomicBatch.write().then(()=>{
+
+                    WORKING_THREADS.APPROVEMENT_THREAD = copyOfApprovementThread
+                    
+                }).catch(()=>{})
 
                 // Clean the cache
 
