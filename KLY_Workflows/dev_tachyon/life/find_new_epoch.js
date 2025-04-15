@@ -112,7 +112,7 @@ export let getBlock = async (epochIndex,blockCreator,index) => {
 
 
 
-export let executeDelayedTransaction = async(delayedTransaction) => {
+export let executeDelayedTransaction = async(delayedTransaction,threadCopy) => {
 
     /*
 
@@ -128,7 +128,7 @@ export let executeDelayedTransaction = async(delayedTransaction) => {
 
     if(functionHandler){
 
-        await functionHandler(delayedTransaction).catch(()=>{})
+        await functionHandler(delayedTransaction,threadCopy).catch(()=>{})
 
     }
 
@@ -382,10 +382,11 @@ export let startEpochRotationThread=async()=>{
                 
                 let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(allTheRestContractCalls)
 
+                let copyOfApprovementThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
 
                 for(let delayedTransaction of delayedTransactionsOrderByPriority){
         
-                    await executeDelayedTransaction(delayedTransaction).catch(()=>{})
+                    await executeDelayedTransaction(delayedTransaction,copyOfApprovementThread).catch(()=>{})
                 
                 }
                 
@@ -414,34 +415,32 @@ export let startEpochRotationThread=async()=>{
                 let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
 
 
-                // After execution - assign new sequence of leaders
+                copyOfApprovementThread.EPOCH.id = nextEpochId
 
-                await setLeadersSequence(currentEpochHandler,nextEpochHash)
+                copyOfApprovementThread.EPOCH.hash = nextEpochHash
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
+                copyOfApprovementThread.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + copyOfApprovementThread.NETWORK_PARAMETERS.EPOCH_TIME
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash = nextEpochHash
+                copyOfApprovementThread.EPOCH.quorum = await getCurrentEpochQuorum(copyOfApprovementThread.EPOCH.poolsRegistry,copyOfApprovementThread.NETWORK_PARAMETERS,nextEpochHash)
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
+                copyOfApprovementThread.EPOCH.currentLeaderIndex = 0
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
+                await setLeadersSequence(copyOfApprovementThread.EPOCH,nextEpochHash)
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.currentLeaderIndex = 0
 
                 let nextEpochDataToStore = {
 
                     nextEpochHash,
 
-                    nextEpochPoolsRegistry: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,
+                    nextEpochPoolsRegistry: copyOfApprovementThread.EPOCH.poolsRegistry,
 
-                    nextEpochQuorum: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum,
+                    nextEpochQuorum: copyOfApprovementThread.EPOCH.quorum,
 
-                    nextEpochLeadersSequence: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence,
+                    nextEpochLeadersSequence: copyOfApprovementThread.EPOCH.leadersSequence,
 
                     delayedTransactions: delayedTransactionsOrderByPriority
 
                 }
-                
 
                 atomicBatch.put(`EPOCH_DATA:${nextEpochId}`,nextEpochDataToStore)
 
@@ -449,9 +448,13 @@ export let startEpochRotationThread=async()=>{
                 
                 // Commit changes
 
-                atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
+                atomicBatch.put('AT',copyOfApprovementThread)
 
-                await atomicBatch.write()
+                await atomicBatch.write().then(()=>{
+
+                    WORKING_THREADS.APPROVEMENT_THREAD = copyOfApprovementThread
+                    
+                }).catch(()=>{})
 
                 // Clean the caches
 

@@ -10,6 +10,11 @@ import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../glob
 export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
 
+    votingAccept:async(threadContext, transaction, threadCopy)=>{
+
+
+    },
+
     /*
     
 
@@ -25,7 +30,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     
     
     */
-    createStakingPool:async (delayedTransaction) => {
+    createStakingPool:async (delayedTransaction,threadCopy) => {
 
         let {creator,percentage,poolURL,wssPoolURL} = delayedTransaction
 
@@ -91,7 +96,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    updateStakingPool:async (delayedTransaction) => {
+    updateStakingPool:async (delayedTransaction,threadCopy) => {
 
         let {creator,activated,percentage,poolURL,wssPoolURL} = delayedTransaction
 
@@ -118,20 +123,17 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             } else return {isOk:false}
 
-
-            let threadById = WORKING_THREADS.APPROVEMENT_THREAD
-
             if(poolStorage){
 
                 if(poolStorage.activated){
 
                     // Check if pool has enough power to be added to pools registry
 
-                    let enoughToBeValidator = BigInt(poolStorage.totalStakedKly) >= BigInt(threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE)
+                    let enoughToBeValidator = BigInt(poolStorage.totalStakedKly) >= BigInt(threadCopy.NETWORK_PARAMETERS.VALIDATOR_STAKE)
 
-                    if(enoughToBeValidator && !threadById.EPOCH.poolsRegistry.includes(creator)){
+                    if(enoughToBeValidator && !threadCopy.EPOCH.poolsRegistry.includes(creator)){
 
-                        threadById.EPOCH.poolsRegistry.push(creator)
+                        threadCopy.EPOCH.poolsRegistry.push(creator)
 
                     }
 
@@ -139,11 +141,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                     // Just remove the pool from registry
 
-                    if(threadById.EPOCH.poolsRegistry.includes(creator)){
+                    if(threadCopy.EPOCH.poolsRegistry.includes(creator)){
 
-                        let indexOfPool = threadById.EPOCH.poolsRegistry.indexOf(creator)
+                        let indexOfPool = threadCopy.EPOCH.poolsRegistry.indexOf(creator)
 
-                        threadById.EPOCH.poolsRegistry.splice(indexOfPool, 1)
+                        threadCopy.EPOCH.poolsRegistry.splice(indexOfPool, 1)
 
                     }
 
@@ -171,13 +173,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    stake:async(delayedTransaction) => {
+    stake:async(delayedTransaction,threadCopy) => {
 
         let {staker,poolPubKey,amount} = delayedTransaction
 
         let poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
-
-        let threadById = WORKING_THREADS.APPROVEMENT_THREAD
 
         let toReturn
 
@@ -187,7 +187,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             amount = BigInt(amount)
 
-            let amountIsBiggerThanMinimalStake = amount >= BigInt(threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY)
+            let amountIsBiggerThanMinimalStake = amount >= BigInt(threadCopy.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY)
 
             // Here we also need to check if pool is still not fullfilled
 
@@ -202,11 +202,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 // Check if pool has enough power to be added to pools registry
 
-                let hasEnoughPower = poolStorage.totalStakedKly >= BigInt(threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE)
+                let hasEnoughPower = poolStorage.totalStakedKly >= BigInt(threadCopy.NETWORK_PARAMETERS.VALIDATOR_STAKE)
 
-                if(poolStorage.activated && hasEnoughPower && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+                if(poolStorage.activated && hasEnoughPower && !threadCopy.EPOCH.poolsRegistry.includes(poolPubKey)){
 
-                    threadById.EPOCH.poolsRegistry.push(poolPubKey)
+                    threadCopy.EPOCH.poolsRegistry.push(poolPubKey)
 
                 }
 
@@ -234,7 +234,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    unstake:async (delayedTransaction) => {
+    unstake:async (delayedTransaction,threadCopy) => {
 
         let {unstaker,poolPubKey,amount} = delayedTransaction
 
@@ -254,8 +254,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                 poolStorage.totalStakedKly = BigInt(poolStorage.totalStakedKly)
 
 
-                let threadById = WORKING_THREADS.APPROVEMENT_THREAD
-
                 if(unstakerAccount.kly >= amount){
 
                     unstakerAccount.kly -= amount
@@ -272,13 +270,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 // Check if pool has not enough power to be at pools registry
 
-                if(poolStorage.totalStakedKly < BigInt(threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE) && threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+                if(poolStorage.totalStakedKly < BigInt(threadCopy.NETWORK_PARAMETERS.VALIDATOR_STAKE) && threadCopy.EPOCH.poolsRegistry.includes(poolPubKey)){
 
                     // Remove from registry
 
-                    let indexOfThisPool = threadById.EPOCH.poolsRegistry.indexOf(poolPubKey)
+                    let indexOfThisPool = threadCopy.EPOCH.poolsRegistry.indexOf(poolPubKey)
 
-                    threadById.EPOCH.poolsRegistry.splice(indexOfThisPool, 1)
+                    threadCopy.EPOCH.poolsRegistry.splice(indexOfThisPool, 1)
 
                 }
 
@@ -304,7 +302,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     
     
     */
-    changeUnobtaniumAmount:async (delayedTransaction)=>{
+    changeUnobtaniumAmount:async (delayedTransaction,threadCopy)=>{
 
         let {targetPool,changesPerAccounts} = delayedTransaction
 
