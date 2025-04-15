@@ -23,7 +23,7 @@ import fs from 'fs'
 
 
 
-export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
+export let executeDelayedTransaction = async(threadID,delayedTransaction,threadCopy) => {
 
     /*
 
@@ -39,7 +39,7 @@ export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
 
     if(functionHandler){
 
-        await functionHandler(threadID,delayedTransaction).catch(()=>{})
+        await functionHandler(threadID,delayedTransaction,threadCopy).catch(()=>{})
 
     }
 

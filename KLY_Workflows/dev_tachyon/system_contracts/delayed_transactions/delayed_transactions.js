@@ -4,6 +4,8 @@ import { getFromState, getUserAccountFromState, trackStateChange } from "../../c
 
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
 
+import { verifyQuorumMajoritySolution } from "../../common_functions/work_with_proofs.js"
+
 import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../globals.js"
 
 import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
@@ -12,6 +14,62 @@ import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
 
 export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
+
+        /*
+    
+        {
+
+            votingType:'version' | 'parameters'
+
+            payload:{
+
+                newMajorVersion: <uint> (?)
+
+                OR
+
+                updateField: 'Field name from network params',
+                newValue:''
+
+            }
+
+            quorumAgreements:{
+
+                quorumMemberPubKey1: Signature(`votingAccept:${epochFullID}:${votingType}:${JSON.stringify(payload)}`),
+                ...
+                quorumMemberPubKeyN: Signature(`votingAccept:${epochFullID}:${votingType}:${JSON.stringify(payload)}`)
+
+            }
+        }
+
+    
+    */
+    votingAccept:async(threadContext, transaction, threadCopy)=>{
+
+        let {votingType, payload, quorumAgreements} = transaction.payload.params
+
+        let threadById = threadContext === 'APPROVEMENT_THREAD' ? threadCopy : WORKING_THREADS.VERIFICATION_THREAD
+
+        let epochFullID = threadById.EPOCH.hash+'#'+threadById.EPOCH.hash
+
+        // Verify the majority's proof
+
+        let dataThatShouldBeSignedByQuorum = `votingAccept:${epochFullID}:${votingType}:${JSON.stringify(payload)}`
+
+        let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
+
+
+        if(majorityProofIsOk){
+
+            if(votingType === 'version') threadById.CORE_MAJOR_VERSION = payload.newMajorVersion
+
+            else if (votingType === 'parameters') threadById.NETWORK_PARAMETERS[payload.updateField] = payload.newValue
+
+            return {isOk:true}
+
+        } else return {isOk:false,reason:'Majority proof verification failed'}
+
+    },
+
 
 
     /*
@@ -29,7 +87,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     
     
     */
-    createStakingPool:async (threadContext,delayedTransaction) => {
+    createStakingPool:async (threadContext,delayedTransaction,threadCopy) => {
 
         let {creator,percentage,poolURL,wssPoolURL} = delayedTransaction
 
@@ -129,7 +187,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    updateStakingPool:async (threadContext,delayedTransaction) => {
+    updateStakingPool:async (threadContext,delayedTransaction,threadCopy) => {
 
         let {creator,activated,percentage,poolURL,wssPoolURL} = delayedTransaction
 
@@ -178,7 +236,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             }
 
-            let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+            let threadById = threadContext === 'APPROVEMENT_THREAD' ? threadCopy : WORKING_THREADS.VERIFICATION_THREAD
 
             if(poolStorage){
 
@@ -230,7 +288,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    stake:async(threadContext,delayedTransaction) => {
+    stake:async(threadContext,delayedTransaction,threadCopy) => {
 
         let {staker,poolPubKey,amount} = delayedTransaction
 
@@ -246,7 +304,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         }
 
-        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+        let threadById = threadContext === 'APPROVEMENT_THREAD' ? threadCopy : WORKING_THREADS.VERIFICATION_THREAD
 
         let toReturn
 
@@ -339,7 +397,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     }
     
     */
-    unstake:async (threadContext,delayedTransaction) => {
+    unstake:async (threadContext,delayedTransaction,threadCopy) => {
 
         let {unstaker,poolPubKey,amount} = delayedTransaction
 
@@ -369,7 +427,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                 poolStorage.totalStakedKly = BigInt(poolStorage.totalStakedKly)
 
 
-                let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+                let threadById = threadContext === 'APPROVEMENT_THREAD' ? threadCopy : WORKING_THREADS.VERIFICATION_THREAD
 
                 if(unstakerAccount.kly >= amount){
 
@@ -454,7 +512,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     
     
     */
-    changeUnobtaniumAmount:async (threadContext,delayedTransaction)=>{
+    changeUnobtaniumAmount:async (threadContext,delayedTransaction,threadCopy)=>{
 
         let {targetPool,changesPerAccounts} = delayedTransaction
 
