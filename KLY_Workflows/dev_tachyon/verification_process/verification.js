@@ -41,12 +41,12 @@ let getBlockReward = () => {
 
         let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS / 30
     
-        let blocksPerEpoch = Math.floor(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
+        let blocksPerEpoch = Math.trunc(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
     
         let blockReward = perEpochAllocation / blocksPerEpoch
 
     
-        return BigInt(Math.floor(blockReward))
+        return BigInt(Math.trunc(blockReward))
 
     }
 
