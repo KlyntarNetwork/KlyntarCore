@@ -78,7 +78,7 @@ export let getQuorumMajority = epochHandler => {
 
     let quorumSize = epochHandler.quorum.length
 
-    let majority = Math.floor(quorumSize*(2/3))+1
+    let majority = Math.trunc(quorumSize*(2/3))+1
 
 
     // Check if majority is not bigger than number of pools. It's possible when there is a small number of pools
