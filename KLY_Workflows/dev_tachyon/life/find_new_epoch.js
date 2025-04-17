@@ -243,9 +243,11 @@ export let startEpochRotationThread=async()=>{
 
                             let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-                            if(isOK && currentEpochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+                            let loweredPubKey = signerPubKey.toLowerCase()
 
-                                unique.add(signerPubKey)
+                            if(isOK && currentEpochHandler.quorum.includes(signerPubKey) && !unique.has(loweredPubKey)){
+
+                                unique.add(loweredPubKey)
 
                                 okSignatures++
 
