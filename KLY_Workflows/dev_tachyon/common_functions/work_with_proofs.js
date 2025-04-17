@@ -82,10 +82,6 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
         &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.epochIndex === 'number'
-        &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.epochHash === 'string'
-        &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastLeader === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
@@ -127,46 +123,41 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
         */
 
-        let {epochIndex,epochHash,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
+        let {lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
 
-        let epochFullIDFromAefp = epochHash+'#'+epochIndex
-
-
-        if(epochFullIDFromAefp === epochFullID){
-
-            let dataThatShouldBeSigned = `EPOCH_DONE:${lastLeader}:${lastIndex}:${lastHash}:${hashOfFirstBlockByLastLeader}:${epochFullID}`
+        let dataThatShouldBeSigned = `EPOCH_DONE:${lastLeader}:${lastIndex}:${lastHash}:${hashOfFirstBlockByLastLeader}:${epochFullID}`
         
-            let okSignatures = 0
+        let okSignatures = 0
+
+        let unique = new Set()
+        
+
+        for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
+
+            let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
+
+            let loweredPubKey = signerPubKey.toLowerCase()
+
+            if (isOK && quorum.includes(loweredPubKey) && !unique.has(loweredPubKey)) {
     
-            let unique = new Set()
+                unique.add(loweredPubKey)
+    
+                okSignatures++
             
-    
-            for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
-    
-                let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
-    
-                if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
-    
-                    unique.add(signerPubKey)
-    
-                    okSignatures++
-    
-                }
-    
             }
+
+        }
+
     
-        
-            if(okSignatures>=majority){
-    
-                return {
-                
-                    epochIndex,epochHash,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
+        if(okSignatures>=majority){
+
+            return {
             
-                    proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
-    
-                }
-    
-            }    
+                lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
+        
+                proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
+
+            }
 
         }
         
@@ -212,12 +203,13 @@ export let verifyAggregatedFinalizationProof = async (itsProbablyAggregatedFinal
 
             let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-            if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            let loweredPubKey = signerPubKey.toLowerCase()
 
-                unique.add(signerPubKey)
-
+            if (isOK && epochHandler.quorum.includes(loweredPubKey) && !unique.has(loweredPubKey)) {
+                
+                unique.add(loweredPubKey)
+                
                 okSignatures++
-
             }
 
         }
