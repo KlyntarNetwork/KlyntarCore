@@ -11,7 +11,7 @@ import {WORKING_THREADS} from './globals.js'
 
 export let getRandomFromArray = arr => {
 
-    let randomIndex = Math.floor(Math.random() * arr.length)
+    let randomIndex = Math.trunc(Math.random() * arr.length)
   
     return arr[randomIndex]
 

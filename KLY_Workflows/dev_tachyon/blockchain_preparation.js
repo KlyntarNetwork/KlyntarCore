@@ -134,7 +134,7 @@ let setGenesisToState=async()=>{
 
         parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
 
-        timestamp:Math.floor(epochTimestamp/1000)
+        timestamp:Math.trunc(epochTimestamp/1000)
 
     }
 
