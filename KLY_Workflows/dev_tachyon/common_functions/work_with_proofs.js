@@ -75,7 +75,7 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
             let loweredPubKey = signerPubKey.toLowerCase()
 
-            if (isOK && quorum.includes(loweredPubKey) && !unique.has(loweredPubKey)) {
+            if (isOK && quorum.includes(signerPubKey) && !unique.has(loweredPubKey)) {
     
                 unique.add(loweredPubKey)
     
@@ -142,7 +142,7 @@ export let verifyAggregatedFinalizationProof = async (itsProbablyAggregatedFinal
 
             let loweredPubKey = signerPubKey.toLowerCase()
 
-            if (isOK && epochHandler.quorum.includes(loweredPubKey) && !unique.has(loweredPubKey)) {
+            if (isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(loweredPubKey)) {
                 
                 unique.add(loweredPubKey)
                 
@@ -418,14 +418,15 @@ let verifyAggregatedLeaderRotationProof = async (pubKeyOfSomePreviousLeader,aggr
     
         for(let [signerPubKey,signa] of Object.entries(proofs)){
 
-            let isOk = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
+            let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-            if(isOk && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            let loweredPubKey = signerPubKey.toLowerCase()
 
-                unique.add(signerPubKey)
-
+            if (isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(loweredPubKey)) {
+                
+                unique.add(loweredPubKey)
+                
                 okSignatures++
-
             }
     
         }

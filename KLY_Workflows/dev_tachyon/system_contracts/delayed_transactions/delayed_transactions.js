@@ -2,7 +2,7 @@
 
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
 
-import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../globals.js"
+import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES } from "../../globals.js"
 
 
 
