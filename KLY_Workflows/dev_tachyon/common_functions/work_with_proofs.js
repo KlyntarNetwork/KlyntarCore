@@ -73,12 +73,14 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
             let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-            if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            let loweredPubKey = signerPubKey.toLowerCase()
 
-                unique.add(signerPubKey)
-
+            if (isOK && quorum.includes(loweredPubKey) && !unique.has(loweredPubKey)) {
+    
+                unique.add(loweredPubKey)
+    
                 okSignatures++
-
+            
             }
 
         }
@@ -138,12 +140,13 @@ export let verifyAggregatedFinalizationProof = async (itsProbablyAggregatedFinal
 
             let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-            if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            let loweredPubKey = signerPubKey.toLowerCase()
 
-                unique.add(signerPubKey)
-
+            if (isOK && epochHandler.quorum.includes(loweredPubKey) && !unique.has(loweredPubKey)) {
+                
+                unique.add(loweredPubKey)
+                
                 okSignatures++
-
             }
 
         }
@@ -363,7 +366,7 @@ export let getFirstBlockInEpoch = async(threadID,epochHandler,getBlockFunction) 
 
 
 
-let checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
+let verifyAggregatedLeaderRotationProof = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
 
     /*
 
@@ -475,7 +478,7 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
     
             if(alrpForThisPool && typeof alrpForThisPool === 'object'){
 
-                let signaIsOk = dontCheckSignature || await checkAggregatedLeaderRotationProofValidity(poolPubKey,alrpForThisPool,epochFullID,oldEpochHandler)
+                let signaIsOk = dontCheckSignature || await verifyAggregatedLeaderRotationProof(poolPubKey,alrpForThisPool,epochFullID,oldEpochHandler)
 
                 if(signaIsOk){
 
