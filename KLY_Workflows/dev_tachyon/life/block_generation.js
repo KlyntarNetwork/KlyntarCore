@@ -233,8 +233,6 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => 
 
     let allKnownNodes = [
         
-        CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,
-        
         ...await getQuorumUrlsAndPubkeys(), ...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES
     
     ]
