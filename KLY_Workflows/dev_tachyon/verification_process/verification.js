@@ -75,19 +75,6 @@ export let getBlock = async (epochIndex,blockCreator,index) => {
 
         setTimeout(() => controller.abort(), 2000)
 
-
-        block = await fetch(CONFIGURATION.NODE_LEVEL.GET_BLOCKS_URL+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).then(block=>{
-                
-            if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
-
-                BLOCKCHAIN_DATABASES.BLOCKS.put(blockID,block)
-    
-                return block
-    
-            } 
-    
-        }).catch(()=>null)
-
         
         if(!block){
 
