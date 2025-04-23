@@ -261,9 +261,7 @@ export let startEpochRotationThread=async()=>{
                 }
 
 
-                let firstBlocksHashes = []
-
-                firstBlocksHashes.push(aefpAndFirstBlockData.firstBlockHash)
+                let firstBlockHash = aefpAndFirstBlockData.firstBlockHash
 
                 
                 // For API - store the whole epoch handler object by epoch numerical index
@@ -319,7 +317,7 @@ export let startEpochRotationThread=async()=>{
                 
                 let nextEpochId = currentEpochHandler.id + 1
 
-                let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
+                let nextEpochHash = blake3Hash(firstBlockHash)
 
 
                 copyOfApprovementThread.EPOCH.id = nextEpochId
