@@ -233,7 +233,7 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => 
 
 
 
-let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence) => {
+let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader,indexOfPoolToRotate) => {
 
     // Try to return immediately
     
@@ -290,9 +290,7 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
         afpForFirstBlock: futureAlrpMetadata.afpForFirstBlock,
 
-        poolPubKey:pubKeyOfOneOfPreviousLeader,
-
-        hisIndexInLeadersSequence,
+        indexOfPoolToRotate,
         
         skipData:{
 

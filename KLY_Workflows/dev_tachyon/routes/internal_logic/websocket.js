@@ -392,14 +392,15 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
     let overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
 
-        overviewIsOk &&= epochHandler.currentLeaderIndex > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of leader is bigger/equal to requested
-        
+        overviewIsOk &&= epochHandler.currentLeaderIndex > requestForLeaderRotationProof.indexOfPoolToRotate // we can't create LRP in case local version of leader is bigger/equal to requested
 
-    if(overviewIsOk){
+    let poolToRotate = epochHandler.leadersSequence[requestForLeaderRotationProof.indexOfPoolToRotate]
+
+    if(overviewIsOk && poolToRotate){
         
         let {index,hash,afp} = requestForLeaderRotationProof.skipData
 
-        let localVotingData = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+requestForLeaderRotationProof.poolPubKey).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
+        let localVotingData = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+poolToRotate).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
 
         // We can't sign the LRP(leader rotation proof) in case requested height is lower than our local version. So, send 'UPDATE' message to requester
@@ -408,7 +409,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
             // Try to return with AFP for the first block
 
-            let firstBlockID = `${epochHandler.id}:${requestForLeaderRotationProof.poolPubKey}:0`
+            let firstBlockID = `${epochHandler.id}:${poolToRotate}:0`
 
             let afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>null)
 
@@ -418,7 +419,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
                 voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,
                 
-                forPoolPubkey: requestForLeaderRotationProof.poolPubKey,
+                forPoolPubkey: poolToRotate,
 
                 type:'UPDATE',
 
@@ -473,7 +474,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
                 
-                dataToSignForLeaderRotation = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
+                dataToSignForLeaderRotation = `LEADER_ROTATION_PROOF:${poolToRotate}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
 
                 firstBlockAfpIsOk = true
 
@@ -482,13 +483,13 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
                 // Verify the afpForFirstBlock to know the hash of first block by pool
 
-                let blockIdOfFirstBlock = epochHandler.id+':'+requestForLeaderRotationProof.poolPubKey+':0'
+                let blockIdOfFirstBlock = epochHandler.id+':'+poolToRotate+':0'
             
                 if(await verifyAggregatedFinalizationProof(requestForLeaderRotationProof.afpForFirstBlock,epochHandler) && requestForLeaderRotationProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
 
                     let firstBlockHash = requestForLeaderRotationProof.afpForFirstBlock.blockHash
 
-                    dataToSignForLeaderRotation = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
+                    dataToSignForLeaderRotation = `LEADER_ROTATION_PROOF:${poolToRotate}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
                     firstBlockAfpIsOk = true
 
@@ -506,7 +507,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
                     voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,
 
-                    forPoolPubkey: requestForLeaderRotationProof.poolPubKey,
+                    forPoolPubkey: poolToRotate,
                     
                     type:'OK',
 
