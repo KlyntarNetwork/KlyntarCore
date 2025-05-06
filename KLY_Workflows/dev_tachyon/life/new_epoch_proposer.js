@@ -176,7 +176,7 @@ export let startNewEpochProposerThread=async()=>{
 
                         let agreements = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':EPOCH_PROPOSITION') // signer => signature                        
 
-                        if(possibleAgreements){
+                        if(agreements){
 
                             if(possibleAgreements.status==='OK'){
 
