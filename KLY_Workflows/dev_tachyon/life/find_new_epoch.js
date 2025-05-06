@@ -136,8 +136,15 @@ export let startEpochRotationThread=async()=>{
 
         let readyToChangeEpoch = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+currentEpochHandler.id).catch(()=>false)
 
-        if(!readyToChangeEpoch) return
-    
+        if(!readyToChangeEpoch) {
+
+            setTimeout(startEpochRotationThread,3000)
+
+            return
+
+        }
+        
+
         let majority = getQuorumMajority(currentEpochHandler)
 
         let quorumNodesUrls = await getQuorumUrlsAndPubkeys()
@@ -147,7 +154,7 @@ export let startEpochRotationThread=async()=>{
         let aefpAndFirstBlockData = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`) || {} // {firstBlockCreator,firstBlockHash,aefp}
 
         let haveEverything = aefpAndFirstBlockData.aefp && aefpAndFirstBlockData.firstBlockHash
-
+        
 
         if(!haveEverything){
 
