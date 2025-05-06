@@ -58,6 +58,15 @@ export let startEpochRotationThread=async()=>{
 
         let currentEpochFullID = currentEpochHandler.hash+"#"+currentEpochHandler.id
     
+        let readyToChangeEpoch = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get('EPOCH_FINISH_RESPONSE:'+currentEpochHandler.id).catch(()=>false)
+
+        if(!readyToChangeEpoch) {
+
+            setTimeout(startEpochRotationThread,3000)
+
+            return
+
+        }
 
         let majority = getQuorumMajority(currentEpochHandler)
 
