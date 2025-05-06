@@ -246,8 +246,10 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async epochHandler => 
 let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader,indexOfPoolToRotate) => {
 
     // Try to return immediately
+
+    let epochIndex = epochHandler.id
     
-    let aggregatedLeaderRotationMetadata = GLOBAL_CACHES.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`)
+    let aggregatedLeaderRotationMetadata = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+`:LRPS:${pubKeyOfOneOfPreviousLeader}`)
 
     let quorumMajority = getQuorumMajority(epochHandler)
 
@@ -272,7 +274,7 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
     // Create the cache to store LRPs for appropriate previous leader
 
-    if(!GLOBAL_CACHES.TEMP_CACHE.has(`LRPS:${pubKeyOfOneOfPreviousLeader}`)){
+    if(!GLOBAL_CACHES.TEMP_CACHE.has(epochIndex+`:LRPS:${pubKeyOfOneOfPreviousLeader}`)){
 
         let templateToStore = {
 
@@ -288,11 +290,11 @@ let getAggregatedLeaderRotationProof = (epochHandler,pubKeyOfOneOfPreviousLeader
 
         }
 
-        GLOBAL_CACHES.TEMP_CACHE.set(`LRPS:${pubKeyOfOneOfPreviousLeader}`,templateToStore)
+        GLOBAL_CACHES.TEMP_CACHE.set(epochIndex+`:LRPS:${pubKeyOfOneOfPreviousLeader}`,templateToStore)
     
     }
 
-    let futureAlrpMetadata = GLOBAL_CACHES.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`)
+    let futureAlrpMetadata = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+`:LRPS:${pubKeyOfOneOfPreviousLeader}`)
 
     let messageToSend = JSON.stringify({
 
@@ -445,7 +447,7 @@ let generateBlocksPortion = async() => {
 
     //_________________ No sense to generate blocks more in case we haven't approved the previous ones _________________
 
-    let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
+    let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':PROOFS_GRABBER')
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 

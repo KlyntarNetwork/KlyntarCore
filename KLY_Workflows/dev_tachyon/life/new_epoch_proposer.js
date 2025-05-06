@@ -92,19 +92,18 @@ export let startNewEpochProposerThread=async()=>{
 
         // Structure is Map(quorumMember=>SIG('EPOCH_DONE'+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId))
         
-        let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION')
+        let agreements = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':EPOCH_PROPOSITION')
 
         if(!agreements){
 
             agreements = new Map()
 
-            GLOBAL_CACHES.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
+            GLOBAL_CACHES.TEMP_CACHE.set(epochIndex+':EPOCH_PROPOSITION',agreements)
         
         }
 
-
-
         let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${epochIndex}`).catch(()=>false)
+        
 
         if(!aefpExistsLocally){
 
@@ -127,137 +126,137 @@ export let startNewEpochProposerThread=async()=>{
 
                 epochFinishProposition.afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
 
-            }    
-
-        }
+            }
 
 
-        //____________________________________ Send the epoch finish proposition ____________________________________
+            //____________________________________ Send the epoch finish proposition ____________________________________
 
 
-        let optionsToSend = {method:'POST',body:JSON.stringify(epochFinishProposition)}
-        
-        let quorumMembers = await getQuorumUrlsAndPubkeys(true)
-
-
-        //Descriptor is {url,pubKey}
-
-        for(let descriptor of quorumMembers){
+            let optionsToSend = {method:'POST',body:JSON.stringify(epochFinishProposition)}
             
-            const controller = new AbortController()
+            let quorumMembers = await getQuorumUrlsAndPubkeys(true)
 
-            setTimeout(() => controller.abort(), 2000)
 
-            optionsToSend.signal = controller.signal
+            //Descriptor is {url,pubKey}
 
-            await fetch(descriptor.url+'/epoch_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
-
-                /*
+            for(let descriptor of quorumMembers){
                 
-                    possibleAgreements structure is:
+                const controller = new AbortController()
+
+                setTimeout(() => controller.abort(), 2000)
+
+                optionsToSend.signal = controller.signal
+
+                await fetch(descriptor.url+'/epoch_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
+
+                    /*
                     
-                    
-                        {
-                                status:'UPGRADE'|'OK',
-
-                                -------------------------------[In case 'OK']-------------------------------
-
-                                sig: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
+                        possibleAgreements structure is:
                         
-                                -----------------------------[In case 'UPGRADE']----------------------------
-
-                                currentLeader:<index>,
-                                lastBlockProposition:{
-                                    index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}
-                                }
-                        }
-                
-                
-                */
-
-                if(typeof possibleAgreements === 'object'){
-
-                    let agreements = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature                        
-
-                    if(possibleAgreements){
-
-                        if(possibleAgreements.status==='OK'){
-
-                            // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
-
-                            let dataThatShouldBeSigned = `EPOCH_DONE:${epochFinishProposition.currentLeader}:${epochFinishProposition.lastBlockProposition.index}:${epochFinishProposition.lastBlockProposition.hash}:${epochFinishProposition.afpForFirstBlock.blockHash}:${epochFullID}`
-
-                            if(await verifyEd25519(dataThatShouldBeSigned,possibleAgreements.sig,descriptor.pubKey)) agreements.set(descriptor.pubKey,possibleAgreements.sig)
-
-
-                        }else if(possibleAgreements.status==='UPGRADE'){
-
-                            // Check the AFP and update the local data
-
-                            let {index,hash,afp} = possibleAgreements.lastBlockProposition
                         
-                            let pubKeyOfProposedLeader = leadersSequence[possibleAgreements.currentLeader]
+                            {
+                                    status:'UPGRADE'|'OK',
+
+                                    -------------------------------[In case 'OK']-------------------------------
+
+                                    sig: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
                             
-                            let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
+                                    -----------------------------[In case 'UPGRADE']----------------------------
 
-                            let blockIDThatShouldBeInAfp = epochIndex+':'+pubKeyOfProposedLeader+':'+index
-                        
-                            if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
+                                    currentLeader:<index>,
+                                    lastBlockProposition:{
+                                        index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}
+                                    }
+                            }
+                    
+                    
+                    */
 
-                                let {prevBlockHash,blockID,blockHash,proofs} = afp
-                        
-                                // Update the info about current leader
+                    if(typeof possibleAgreements === 'object'){
 
-                                GLOBAL_CACHES.TEMP_CACHE.set(epochIndex+':CURRENT_LEADER',possibleAgreements.currentLeader)
+                        let agreements = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':EPOCH_PROPOSITION') // signer => signature                        
 
-                                await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}}).catch(()=>{})
-                        
-                                // Clear the mapping with signatures because it becomes invalid
+                        if(possibleAgreements){
 
-                                agreements.clear()
+                            if(possibleAgreements.status==='OK'){
+
+                                // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
+
+                                let dataThatShouldBeSigned = `EPOCH_DONE:${epochFinishProposition.currentLeader}:${epochFinishProposition.lastBlockProposition.index}:${epochFinishProposition.lastBlockProposition.hash}:${epochFinishProposition.afpForFirstBlock.blockHash}:${epochFullID}`
+
+                                if(await verifyEd25519(dataThatShouldBeSigned,possibleAgreements.sig,descriptor.pubKey)) agreements.set(descriptor.pubKey,possibleAgreements.sig)
+
+
+                            }else if(possibleAgreements.status==='UPGRADE'){
+
+                                // Check the AFP and update the local data
+
+                                let {index,hash,afp} = possibleAgreements.lastBlockProposition
+                            
+                                let pubKeyOfProposedLeader = leadersSequence[possibleAgreements.currentLeader]
+                                
+                                let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
+
+                                let blockIDThatShouldBeInAfp = epochIndex+':'+pubKeyOfProposedLeader+':'+index
+                            
+                                if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
+
+                                    let {prevBlockHash,blockID,blockHash,proofs} = afp
+                            
+                                    // Update the info about current leader
+
+                                    GLOBAL_CACHES.TEMP_CACHE.set(epochIndex+':CURRENT_LEADER',possibleAgreements.currentLeader)
+
+                                    await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':'+pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}}).catch(()=>{})
+                            
+                                    // Clear the mapping with signatures because it becomes invalid
+
+                                    agreements.clear()
+
+                                }
 
                             }
 
                         }
 
                     }
+                    
+                }).catch(()=>{});
+                
+                
+            }
+                
+
+
+            let agreementsForEpochManager = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':EPOCH_PROPOSITION') // signer => signature
+
+            if(agreementsForEpochManager && agreementsForEpochManager.size >= majority){
+            
+                let aggregatedEpochFinalizationProof = {
+
+                    lastLeader: epochFinishProposition.currentLeader,
+                    
+                    lastIndex: epochFinishProposition.lastBlockProposition.index,
+                    
+                    lastHash: epochFinishProposition.lastBlockProposition.hash,
+
+                    hashOfFirstBlockByLastLeader: epochFinishProposition.afpForFirstBlock.blockHash,
+
+                    proofs:Object.fromEntries(agreementsForEpochManager)
+                    
+                }                
+
+                // Make final verification
+
+                if(await verifyAggregatedEpochFinalizationProof(aggregatedEpochFinalizationProof,atEpochHandler.quorum,majority,epochFullID)){
+
+                    await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${epochIndex}`,aggregatedEpochFinalizationProof).catch(()=>{})
+
+                } else {
+
+                    agreementsForEpochManager.clear()
 
                 }
-                
-            }).catch(()=>{});
-            
-            
-        }
-            
-
-
-        let agreementsForEpochManager = GLOBAL_CACHES.TEMP_CACHE.get('EPOCH_PROPOSITION') // signer => signature
-
-        if(agreementsForEpochManager.size >= majority){
-        
-            let aggregatedEpochFinalizationProof = {
-
-                lastLeader: epochFinishProposition.currentLeader,
-                
-                lastIndex: epochFinishProposition.lastBlockProposition.index,
-                
-                lastHash: epochFinishProposition.lastBlockProposition.hash,
-
-                hashOfFirstBlockByLastLeader: epochFinishProposition.afpForFirstBlock.blockHash,
-
-                proofs:Object.fromEntries(agreementsForEpochManager)
-                
-            }                
-
-            // Make final verification
-
-            if(await verifyAggregatedEpochFinalizationProof(aggregatedEpochFinalizationProof,atEpochHandler.quorum,majority,epochFullID)){
-
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${epochIndex}`,aggregatedEpochFinalizationProof).catch(()=>{})
-
-            } else {
-
-                agreementsForEpochManager.clear()
 
             }
 

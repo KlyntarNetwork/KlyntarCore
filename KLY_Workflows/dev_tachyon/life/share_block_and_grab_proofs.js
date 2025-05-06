@@ -25,6 +25,8 @@ let openConnectionsWithQuorum = async epochHandler => {
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
+    let epochIndex = epochHandler.id
+
     for(let pubKey of epochHandler.quorum){
 
         // Check if we already have an open connection stored in cache
@@ -51,13 +53,13 @@ let openConnectionsWithQuorum = async epochHandler => {
 
                             let parsedData = JSON.parse(message.utf8Data)
 
-                            let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
+                            let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':PROOFS_GRABBER')
 
 
                             if(parsedData.route === 'get_leader_rotation_proof'){                                
 
 
-                                let localMetadataForPotentialAlrp = GLOBAL_CACHES.TEMP_CACHE.get(`LRPS:${parsedData.forPoolPubkey}`) // format is {afpForFirstBlock,skipIndex,skipHash,skipAfp,proofs}
+                                let localMetadataForPotentialAlrp = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+`:LRPS:${parsedData.forPoolPubkey}`) // format is {afpForFirstBlock,skipIndex,skipHash,skipAfp,proofs}
 
 
                                 if(localMetadataForPotentialAlrp){
@@ -366,7 +368,7 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
 
     }
 
-    let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get('PROOFS_GRABBER')
+    let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':PROOFS_GRABBER')
 
     if(!proofsGrabber || proofsGrabber.epochID !== epochIndex){
 
@@ -397,7 +399,7 @@ export let startBlocksSharingAndProofsGrabingThread = async () => {
 
         await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.put(epochIndex+':PROOFS_GRABBER',proofsGrabber).catch(()=>{})
 
-        GLOBAL_CACHES.TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
+        GLOBAL_CACHES.TEMP_CACHE.set(epochIndex+':PROOFS_GRABBER',proofsGrabber)
 
     }
 
