@@ -540,7 +540,7 @@ let generateBlocksPortion = async() => {
 
                 let votingFinalizationPerPool = await BLOCKCHAIN_DATABASES.FINALIZATION_VOTING_STATS.get(epochIndex+':'+leaderPubKey).catch(()=>({index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}))
 
-                let proofThatAtLeastFirstBlockWasCreated = votingFinalizationPerPool.index !== 0
+                let proofThatAtLeastFirstBlockWasCreated = votingFinalizationPerPool.index >= 0
 
                 // We 100% need ALRP for previous pool
                 // But no need in pools who created at least one block in epoch and it's not our previous pool
