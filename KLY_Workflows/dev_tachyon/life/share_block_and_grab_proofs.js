@@ -56,7 +56,7 @@ let openConnectionsWithQuorum = async (epochHandler) => {
 
                             let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':PROOFS_GRABBER')
 
-                            if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && GLOBAL_CACHES.FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                            if(parsedData.finalizationProof && proofsGrabber && proofsGrabber.huntingForHash === parsedData.votedForHash && GLOBAL_CACHES.FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
 
                                 // Verify the finalization proof
                                                         
