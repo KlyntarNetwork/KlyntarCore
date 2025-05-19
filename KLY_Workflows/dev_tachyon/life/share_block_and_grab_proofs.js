@@ -52,9 +52,6 @@ let openConnectionsWithQuorum = async epochHandler => {
 
                             let parsedData = JSON.parse(message.utf8Data)
 
-                            let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':PROOFS_GRABBER')
-
-
                             if(parsedData.route === 'get_leader_rotation_proof'){                                
 
 
@@ -132,7 +129,10 @@ let openConnectionsWithQuorum = async epochHandler => {
 
                             }
 
-                            if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && GLOBAL_CACHES.FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                            let proofsGrabber = GLOBAL_CACHES.TEMP_CACHE.get(epochIndex+':PROOFS_GRABBER')
+
+
+                            if(proofsGrabber && parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && GLOBAL_CACHES.FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
 
                                 // Verify the finalization proof
                         
