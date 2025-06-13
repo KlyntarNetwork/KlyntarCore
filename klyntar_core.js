@@ -85,86 +85,39 @@ BigInt.prototype.toJSON = function () {
 // Set size of libuv threads pool
 process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
 
-// Run your node in 'test'/'main' mode
-process.env.KLY_MODE||='mainnet'
-
-
-
-
-if(process.env.KLY_MODE!=='mainnet' && process.env.KLY_MODE!=='testnet'){
-
-    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'testnet' or 'mainnet')\x1b[0m`)
-
-    process.exit(101)
-
-}
-
-
-
 
 //____________________DEFINE PATHS_______________________
 
-// SYMBIOTE_DIR must be an absolute path
-let pathToChainDataIsAbsolute = process.env.SYMBIOTE_DIR && isAbsolute(process.env.SYMBIOTE_DIR)
+// Create the directory for chaindata
+!fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
+
+// CHAINDATA_PATH must be an absolute path
+let pathToChainDataIsAbsolute = process.env.CHAINDATA_PATH && isAbsolute(process.env.CHAINDATA_PATH)
 
 // ... and finish with NO slashes
-let finishWithNoSlashes = !( process.env.SYMBIOTE_DIR.endsWith('/') || process.env.SYMBIOTE_DIR.endsWith('\\') )
+let finishWithNoSlashes = !( process.env.CHAINDATA_PATH.endsWith('/') || process.env.CHAINDATA_PATH.endsWith('\\') )
 
 
 if(!(pathToChainDataIsAbsolute && finishWithNoSlashes)){
 
-    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to SYMBIOTE_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
+    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to CHAINDATA_PATH must be absolute and without '/' or '\\' on the end\x1b[0m`)
 
     process.exit(102)
 
 }
 
 
-// Creating/resolving 3 common directories:
-
-[
-
-    'CHAINDATA', // Data of blockchain - epoch data, blocks, state, metadata, etc.
-    
-    'GENESIS',   // Directory with 'genesis.json'
-
-    'CONFIGS',   // Directory with configs(specific to your node only(not a network-level configs))
-
-
-].forEach(scope=>{
-
-    if(process.env.KLY_MODE==='mainnet'){
-    
-        // If SYMBIOTE_DIR is set - it will be a location for all the subdirs above(CHAINDATA,GENESIS,CONFIGS)
-
-        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR+`/${scope}`
-
-        // If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
-        
-        else process.env[`${scope}_PATH`] ||= pathResolve('MAINNET/'+scope)  
-
-    }else{
-
-        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR+`/${scope}`
-
-        process.env[`${scope}_PATH`] ||= pathResolve(`TESTNET/${scope}`) //Testnet available in a separate directory
-
-    }
-
-})
-
-
 //____________________LOAD CONFIGS FROM FILES_______________________
 
-export const CONFIGURATION = {}
+export const CONFIGURATION = {};
 
 
 // Load all the configs
-fs.readdirSync(process.env.CONFIGS_PATH).forEach(file => {
+['configs.json','kly_wvm.json','kly_evm.json'].forEach(file => {
 
     if (extname(file) === '.json') {
     
-        const configData = fs.readFileSync(process.env.CONFIGS_PATH + `/${file}`);
+        const configData = fs.readFileSync(process.env.CHAINDATA_PATH + `/${file}`);
     
         Object.assign(CONFIGURATION, JSON.parse(configData));
     
@@ -177,34 +130,11 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file => {
 
 //____________________LOAD GENESIS FROM FILE_______________________
 
-export const BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.json`))
+export const BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.CHAINDATA_PATH+`/genesis.json`))
 
 
-
-
-// Create the directory for chaindata
-!fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
-
-
-
-
-if(process.env.KLY_MODE==='mainnet'){
-
-    //Read banner
-    console.log('\x1b[36;1m'+fs.readFileSync(pathResolve('images/banner.txt')).toString()
-
-    //...and add extra colors & changes)
-    .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
-    .replace('REMEMBER:To infinity and beyond!','\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m')
-    .replaceAll('≈','\x1b[31m≈\x1b[36m')
-    .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
-
-}else{
-
-    //else show the testnet banner
-
-     //Read banner
-    console.log('\u001b[37m'+fs.readFileSync(pathResolve('images/testmode_banner.txt')).toString()
+//Read banner
+console.log('\u001b[37m'+fs.readFileSync(pathResolve('images/testmode_banner.txt')).toString()
 
     //...and add extra colors & changes)
     .replace('Made on Earth for Universe','\u001b[38;5;87mMade on Earth for Universe\u001b[37m')
@@ -219,10 +149,6 @@ if(process.env.KLY_MODE==='mainnet'){
     .replaceAll('╚','\u001b[38;5;87m╚\u001b[37m')
 
     .replaceAll('#','\u001b[38;5;202m#\u001b[37m')+'\x1b[0m\n')
-
-
-
-}
 
 
 customLog(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,logColors.CYAN)
