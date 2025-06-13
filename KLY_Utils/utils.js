@@ -19,7 +19,7 @@ import fs from 'fs'
 export const logColors = {
     
     CLEAR:'\x1b[0m',
-    TIME_COLOR:`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`, // for time view
+    TIME_COLOR:`\u001b[38;5;23m`, // for time view
     
     RED:'\x1b[31;1m', // red(error,no collapse,problems with sequence,etc.)
     GREEN:'\x1b[32;1m', // green(new block, exported something, something important, etc.)
